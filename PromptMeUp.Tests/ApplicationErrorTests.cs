@@ -86,7 +86,7 @@ public sealed class ApplicationErrorTests
                 shell: shell,
                 paths: null!,
                 artifactLimits: ArtifactLimits.Default),
-            null!);
+            null!, AppLicenseTests.CreateGuard(new(AppLicenseState.Source), text), null!);
         var app = new PromptMeUpApplication(
             parser: new CommandLineParser(text),
             database: TestProxy.Create<IDatabaseService>((method, _) => method.Name == "InitializeAsync"
@@ -108,7 +108,9 @@ public sealed class ApplicationErrorTests
             firstRunView: null!,
             firstRun: null!,
             home: null!,
-            diagnosticBundles: null!);
+            diagnosticBundles: null!,
+            license: AppLicenseTests.CreateGuard(new(AppLicenseState.Source), text),
+            about: null!);
 
         var exitCode = await app.RunAsync(["--costs"], default);
 

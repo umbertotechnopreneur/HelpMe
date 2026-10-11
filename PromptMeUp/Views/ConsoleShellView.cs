@@ -103,6 +103,8 @@ public sealed class ConsoleShellView : IConsoleShellView
         var dividerWidth = Math.Max(1, width - (icon.Length + "P R O M P T M E U P".Length) - 1);
         _console.WriteLine();
         _console.MarkupLine($"{title} {ThemeSeparator.Markup(dividerWidth)}");
+        var trial = TrialNotice.MarkupFor(_text, TerminalSession.For(_console).License?.Invoke());
+        if (trial.Length > 0) _console.MarkupLine("  " + trial);
         if (_projectBannerSchedule.TryMarkOpeningTipRenderedToday())
         {
             _console.MarkupLine($"  [bold {TerminalTheme.Info}]{Markup.Escape(_text.Text("Shell.OpeningKicker"))}[/]");

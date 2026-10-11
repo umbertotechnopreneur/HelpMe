@@ -375,7 +375,7 @@ public sealed class FullscreenSetupView : ISetupView
             new Text(TerminalTheme.IconPrefix(_shell.Options, "🪞", "=") + _text.Text("Settings.DraftStatus"), Style.Parse("bold " + TerminalTheme.Accent)),
             status, new Text(" "),
             new Text(TerminalTheme.IconPrefix(_shell.Options, "📊", "=") + _text.Text("Main.Costs"), Style.Parse("bold " + TerminalTheme.Accent)),
-            usage));
+            usage, TrialNotice.Create(_console, _text, detailed: true)));
     }
 
     /// <summary>Builds ordinary skill preference fields from the inspected snapshot without reading files.</summary>

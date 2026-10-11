@@ -34,6 +34,7 @@ internal sealed class TerminalSession
     internal string ModeKey { get; set; } = "Terminal.Mode.Chat";
     internal TerminalActivityState State { get; set; } = TerminalActivityState.Ready;
     internal ShellRuntimeStatus? LastStatus { get; set; }
+    internal Func<PromptMeUp.Models.AppLicense>? License { get; set; }
     internal TerminalTranscript History { get; } = new();
     internal bool HasPromptDock { get; set; }
     internal int ChatIndent => ModeKey == "Terminal.Mode.Chat" && HasPromptDock ? 2 : 0;

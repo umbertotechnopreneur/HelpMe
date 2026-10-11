@@ -2,6 +2,14 @@
 
 Ask `hm` a terminal question, check its answer, and choose whether to run a suggested command. `hm` means **help me** and works on Windows, Linux, and macOS.
 
+## Microsoft Store trial
+
+The Microsoft Store edition gives you all features during its 30-day trial. A small notice in the prompt, welcome, Setup, and About shows the remaining days and links to Microsoft Store. The final partial day is shown as one day.
+
+When the trial expires, only `hm --about` and `hm --help` remain available. Other commands return exit code `3` and show a purchase link. Help stays read-only after expiration. PromptMeUp checks licensing again before provider requests and command execution in sessions that remain open. Buying the app enables subsequent operations once the Store reports your active full license.
+
+The countdown uses the expiration supplied by Microsoft Store. Resetting preferences does not restart the trial. If the license cannot be verified, operational commands remain blocked; open the Store and try again. Debug builds and unpackaged source builds do not use commercial Store licensing.
+
 ## Skills and memory
 
 PromptMeUp includes opt-in `hm --skills`, `hm --learning`, `hm --dream`, `hm --heartbeat`, and `hm --proposals` screens. They require an interactive terminal. The same names are available as slash commands inside chat. `hm --proposals` opens the suggested-memory entry in the shared memory editor. `--yes` never approves skill actions or memory changes.

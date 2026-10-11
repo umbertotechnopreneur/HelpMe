@@ -38,6 +38,7 @@ $candidates = @(
     (Join-Path $PSScriptRoot 'hm'),
     (Join-Path $repositoryRoot 'scripts\hm.exe'),
     (Join-Path $repositoryRoot 'scripts\hm'),
+    (Join-Path $repositoryRoot 'PromptMeUp\bin\Release\net10.0-windows10.0.19041.0\hm.exe'),
     (Join-Path $repositoryRoot 'PromptMeUp\bin\Release\net10.0\hm.exe'),
     (Join-Path $repositoryRoot 'PromptMeUp\bin\Release\net10.0\hm')
 ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
