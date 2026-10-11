@@ -40,6 +40,7 @@ internal static partial class UiTextCatalog
     {
         var entries = new Dictionary<string, LocalizedText>(StringComparer.Ordinal);
         AddAboutEntries(entries);
+        AddTrialEntries(entries);
         AddApplicationEntries(entries);
         AddArtifactsEntries(entries);
         AddCommandsEntries(entries);

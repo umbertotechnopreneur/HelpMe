@@ -48,6 +48,8 @@ public sealed class PromptMeUpApplication : IPromptMeUpApplication
     private readonly DiagnosticBundleService _diagnosticBundles;
     private readonly ILogger<PromptMeUpApplication> _logger;
     private readonly IThemeCatalogService _themes;
+    private readonly AppLicenseGuard _license;
+    private readonly AboutWorkflow _about;
 
     /// <summary>Creates the application orchestrator while keeping business services independent from Spectre views.</summary>
     public PromptMeUpApplication(
@@ -67,7 +69,9 @@ public sealed class PromptMeUpApplication : IPromptMeUpApplication
         IFirstRunView firstRunView,
         FirstRunWorkflow firstRun,
         IHomeView home,
-        DiagnosticBundleService diagnosticBundles)
+        DiagnosticBundleService diagnosticBundles,
+        AppLicenseGuard license,
+        AboutWorkflow about)
     {
         _parser = parser;
         _database = database;
@@ -86,6 +90,8 @@ public sealed class PromptMeUpApplication : IPromptMeUpApplication
         _firstRun = firstRun;
         _home = home;
         _diagnosticBundles = diagnosticBundles;
+        _license = license;
+        _about = about;
     }
 
     /// <summary>Parses one invocation, initializes local state, and dispatches the selected CLI or interactive flow.</summary>
@@ -107,6 +113,15 @@ public sealed class PromptMeUpApplication : IPromptMeUpApplication
 
         var options = parse.Options!;
         _shell.Configure(new ConsoleRenderOptions(options.NoAnimation, options.NoEmoji));
+        _text.SetLanguage(options.Language ?? SupportedLanguages.ResolveSystemLanguage());
+        if (!await _license.CheckAsync(options.Command, cancellationToken).ConfigureAwait(false)) return 3;
+        if (options.Command == AppCommand.About) return _about.Run(options, cancellationToken);
+        if (options.Command == AppCommand.Help && !_license.AllowsCommands)
+        {
+            // Static help cannot open the memory manager or other operational workflows.
+            _helpView.RenderStatic();
+            return 0;
+        }
         if (options.Command == AppCommand.PrepareLogs)
         {
             var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
@@ -230,6 +245,7 @@ public sealed class PromptMeUpApplication : IPromptMeUpApplication
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!await _license.CheckAsync(AppCommand.Main, cancellationToken).ConfigureAwait(false)) return 3;
             var current = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
             _text.SetLanguage(options.Language ?? current.Language);
             current = current with { Language = _text.Language };

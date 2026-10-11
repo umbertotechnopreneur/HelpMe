@@ -50,6 +50,8 @@ public sealed class FirstRunView(IAnsiConsole console, ILocalizationService text
         console.MarkupLine($"[bold {TerminalTheme.Accent}]{Markup.Escape(Icon("✨", "*") + text.Text("Oobe.Welcome"))}[/]");
         Write("Benefit");
         Write("Journey", TerminalTheme.Muted);
+        console.Write(TrialNotice.Create(console, text, detailed: true));
+        console.WriteLine();
         console.WriteLine();
         RenderWelcomeLinks();
     }

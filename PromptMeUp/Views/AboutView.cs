@@ -79,7 +79,8 @@ public sealed class AboutView(
         new Text(" "),
         new Text(text.Text("About.Description"), Style.Parse(TerminalTheme.Primary)),
         new Text(" "),
-        new InstallationInfo(text, buildInformation, renderCard: renderInstallationCard));
+        new InstallationInfo(text, buildInformation, renderCard: renderInstallationCard),
+        TrialNotice.Create(console, text, detailed: renderInstallationCard));
 
     /// <summary>Scrolls the project information while leaving a permanently focused close action available.</summary>
     private void RunLoop()

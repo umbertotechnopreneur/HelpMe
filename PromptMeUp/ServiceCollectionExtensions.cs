@@ -40,7 +40,12 @@ internal static class ServiceCollectionExtensions
     {
         services.AddSingleton(paths);
         services.AddSingleton(_ => BuildInformationReader.Read());
-        services.AddSingleton<IAnsiConsole>(new EscapeAwareAnsiConsole(AnsiConsole.Console, shutdownToken));
+        services.AddSingleton<IAnsiConsole>(provider =>
+        {
+            var console = new EscapeAwareAnsiConsole(AnsiConsole.Console, shutdownToken);
+            TerminalSession.For(console).License = () => provider.GetRequiredService<IAppLicenseService>().Current;
+            return console;
+        });
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
@@ -48,6 +53,10 @@ internal static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<ICommandLineParser, CommandLineParser>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IAppLicenseService, AppLicenseService>();
+        services.AddSingleton<AppLicenseGuard>();
+        services.AddTransient<LicenseGuardHandler>();
         services.AddSingleton<ILennaImageService, LennaImageService>();
         services.AddSingleton<ILocalizationService, LocalizationService>();
         services.AddSingleton(provider => ArtifactLimitConfiguration.Load(
@@ -82,7 +91,8 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<SkillsAndMemoryView>();
         services.AddSingleton<SkillsAndMemoryWorkflow>();
         services.AddSingleton<ICommandRiskAssessmentService, CommandRiskAssessmentService>();
-        services.AddSingleton<ICommandExecutionService, CommandExecutionService>();
+        services.AddSingleton<CommandExecutionService>();
+        services.AddSingleton<ICommandExecutionService, LicensedCommandExecutionService>();
         services.AddSingleton<IScriptLanguageCatalog, ScriptLanguageCatalog>();
         services.AddSingleton<IPortablePathService, PortablePathService>();
         services.AddSingleton<IExecutableLocationService, ExecutableLocationService>();
@@ -92,12 +102,12 @@ internal static class ServiceCollectionExtensions
         {
             client.Timeout = TimeSpan.FromMinutes(3);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("PromptMeUp/0.1");
-        });
+        }).AddHttpMessageHandler<LicenseGuardHandler>();
         services.AddHttpClient<IPricingService, OpenAiPricingService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("PromptMeUp/0.1");
-        });
+        }).AddHttpMessageHandler<LicenseGuardHandler>();
 
         services.AddSingleton<IConsoleShellView, ConsoleShellView>();
         services.AddSingleton<IPoorMarkdownRenderer, PoorMarkdownRenderer>();
