@@ -40,6 +40,16 @@ These instructions apply to every change in this repository.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
 - Use `artifacts/` as the only repository-local area for temporary, generated, compiled, and packaging output produced during work, including intermediates, logs, reports, and scratch files. Store each output type in a dedicated subdirectory; never place these outputs at the repository root or beside source files.
 
+## Mandatory artifact cleanup
+
+- Every authorized local or CI build, test, packaging, installation, or artifact-download task includes cleanup of its own generated output. Apply this to Debug, Release, and Microsoft Store work, including failed attempts. This rule does not authorize starting builds or tests.
+- Use task-specific subdirectories under ignored `artifacts/` for temporary output. Before reusing a build directory, remove its obsolete transient contents while preserving pending deliverables. Do not run builds concurrently in the same checkout.
+- After the last use and before handoff, run `dotnet clean` with the matching configuration, platform, runtime, and output paths, then remove task-owned intermediates that it leaves behind: `publish`, `payload`, `bin`, `obj`, temporary caches, scratch files, transport archives, disposable test profiles, and unnecessary logs. Clean task-owned temporary directories too; `dotnet clean` alone is not sufficient. Do not retain whole historical build/run directories.
+- Retain only the latest validated MSIX for each requested channel and architecture, with matching checksums, minimal package metadata, and any small verification record needed for handoff. Preserve Store packages awaiting upload until the owner confirms upload, and preserve any explicitly requested reinstall/rollback package, backup, or unresolved failure evidence.
+- Remove superseded generated packages and run directories once their replacement is validated and they are no longer needed for pending delivery, reinstall, rollback, or diagnosis. After a confirmed upload, remove its local bundle unless the owner asks to retain it. Do not accumulate an indefinite archive of installers or full logs.
+- Before recursive removal or moving, resolve and verify every absolute target stays inside this repository's `artifacts/` or the exact temporary directory created by the task; do not follow links outside those roots. Use `pwsh -NoProfile` and literal-path filesystem operations. Never blindly wipe all of `artifacts/`, a shared/system temp directory, unrelated output, user data, backups, or shared SDK/NuGet caches.
+- Verify the cleanup result and report briefly what deliverables remain. If locks, permissions, or approval review prevent cleanup, identify the remaining paths and approximate size; do not claim the directory is clean.
+
 ## Context and token efficiency
 
 - Do not read more than five files for a task without explicit user approval. If additional context is needed, ask first; this limit prevents whole-repository reading.
@@ -101,7 +111,7 @@ These instructions apply to every change in this repository.
 - Use `apply_patch` for deliberate tracked-file edits and avoid broad formatting churn.
 - Fail fast on invalid input and unsupported state; do not conceal failures with silent fallbacks.
 - Run automated tests and CLI smoke tests only when the user explicitly requests them. Implementation, review, commit, and push requests do not authorize test execution.
-- If this task attempted a build, clean its generated output once after the last build, requested test, packaging, or installation step, including after failure and before handoff. Use `dotnet clean .\PromptMeUp.slnx --configuration Release` with matching configuration, runtime, and output paths. Preserve requested deliverables and unrelated artifacts. Commit or push alone does not require cleanup.
+- If this task attempted a build, follow Mandatory artifact cleanup after the last build, requested test, packaging, or installation step, including after failure and before handoff. Use `dotnet clean .\PromptMeUp.slnx` with the matching configuration, runtime, and output paths, then remove leftover task-owned intermediates. Preserve pending deliverables and unrelated artifacts. Commit or push alone does not require cleanup.
 - Record active work in `.github/tasks/todo.md` and move completed work to `.github/tasks/archive.md`.
 
 ## Required validation
