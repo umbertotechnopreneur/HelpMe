@@ -2,6 +2,17 @@
 
 Add a `Public update:` line to a completed task only when it changes something readers can use. `scripts/Generate-Changelog.ps1` copies those lines into the public `CHANGELOG.md`; keep internal validation and plans out of them.
 
+## 2026-10-12 — Read Store trial entitlement and gate expired commands
+
+- Read the Windows packaged app entitlement and UTC expiration through StoreContext. Keep Debug and unpackaged source builds outside commercial licensing; block packaged Release commands when the license cannot be verified.
+- Show localized remaining days and a Microsoft Store link in prompt headers, welcome, General Setup, and About. Show a purchase action after expiration.
+- Preserve About and static Help after expiration; block other CLI routes before database initialization, provider requests, and command process execution. Refresh entitlement for subsequent operations and allow purchased licenses to resume work.
+- Add focused regression coverage for UTC expiration, remaining-day rounding, every CLI command, inactive entitlement, routing, and six-language notices.
+
+Validation: Debug build completed with zero warnings and errors; all 44 focused AppLicenseTests, ApplicationErrorTests, ShellBannerTests, and FirstRunViewTests passed. Preflight, formatting verification, XML method-comment checks, PowerShell syntax, and scoped diff checks passed. Package installation, real Store entitlement, purchase, offline licensing, and Partner Center trial configuration remain unverified.
+
+Public update: Microsoft Store trials show remaining days in the terminal and stop operational commands after expiration, with Help, About, and a purchase link available.
+
 ## 2026-10-10 — Explain the everyday problem behind PromptMeUp
 
 - Open the README with my difficulty remembering Git commands and the growing role of CLI tools in my daily work, including my preference for the terminal over web portals for many Azure and AWS tasks.

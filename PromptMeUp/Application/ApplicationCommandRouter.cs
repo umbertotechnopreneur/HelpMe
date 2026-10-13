@@ -31,11 +31,20 @@ internal sealed class ApplicationCommandRouter(
     AiCommandHandler ai,
     MemoryCommandHandler memory,
     InformationCommandHandler information,
-    SetupCommandHandler setup) : IApplicationCommandRouter
+    SetupCommandHandler setup,
+    AppLicenseGuard license,
+    PromptMeUp.Views.IHelpView helpView) : IApplicationCommandRouter
 {
     /// <summary>Dispatches one command after common startup and first-run checks.</summary>
-    public Task<int> DispatchAsync(CommandLineOptions options, AppSettings settings, int promptCount, CancellationToken cancellationToken) =>
-        options.Command switch
+    public async Task<int> DispatchAsync(CommandLineOptions options, AppSettings settings, int promptCount, CancellationToken cancellationToken)
+    {
+        if (!await license.CheckAsync(options.Command, cancellationToken).ConfigureAwait(false)) return 3;
+        if (options.Command == AppCommand.Help && !license.AllowsCommands)
+        {
+            helpView.RenderStatic();
+            return 0;
+        }
+        return await (options.Command switch
         {
             AppCommand.Preview or AppCommand.Plan or AppCommand.Script or AppCommand.Diagnose or
                 AppCommand.Query or AppCommand.Direct or AppCommand.Chat or AppCommand.TestAi =>
@@ -50,5 +59,6 @@ internal sealed class ApplicationCommandRouter(
                 AppCommand.InstallFont or AppCommand.Path =>
                 setup.RunAsync(options, settings, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(options), "Unsupported application command.")
-        };
+        }).ConfigureAwait(false);
+    }
 }

@@ -2,6 +2,10 @@
 
 Selected user-facing changes to PromptMeUp. These are task completion dates, not release dates. See [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases) for published versions.
 
+## 2026-10-12
+
+- Microsoft Store trials show remaining days in the terminal and stop operational commands after expiration, with Help, About, and a purchase link available.
+
 ## 2026-10-07
 
 - When several commands are suggested, choose Copy… to pick one in a separate submenu instead of repeating a copy choice beside every command.

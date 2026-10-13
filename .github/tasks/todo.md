@@ -1,5 +1,7 @@
 ﻿## Task
 
+- [ ] Validate the Store trial countdown and expiration gate with an acquired Store license; confirm the 30-day trial setting in Partner Center and verify purchase, offline behavior, x64, and ARM64. Source implementation, Debug compilation, and focused local tests do not verify real Store entitlement.
+
 - [ ] Deliver the Microsoft Store MSIX workflow through a reviewed pull request, build version 1.0.0.0 on GitHub Actions, submit the x64 and ARM64 packages in Partner Center, and verify availability through the WinGet msstore source.
 
 - [ ] Remove the disposable welcome profile under `artifacts/smoke/layout-refinement-20260927/`. Release build output was cleaned; automatic approval review blocked removal of this smoke-test directory.

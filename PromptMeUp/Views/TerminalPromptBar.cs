@@ -37,6 +37,7 @@ internal sealed class TerminalPromptBar(
         var rows = new List<string>();
         if (showBorders) rows.Add(ThemeSeparator.Markup(width));
         if (showStatus) rows.AddRange(new TerminalSessionStrip(text, status, session).Rows(width, showBreakdown));
+        rows.AddRange(TrialNotice.Rows(text, session?.License?.Invoke(), width));
         return rows;
     }
 

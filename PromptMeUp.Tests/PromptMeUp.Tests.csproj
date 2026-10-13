@@ -20,6 +20,8 @@ VBWR E -->
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework Condition="('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">net10.0-windows10.0.19041.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <ImplicitUsings>enable</ImplicitUsings>
