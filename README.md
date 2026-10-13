@@ -17,6 +17,7 @@ You can use it for Git, Bash, PowerShell, and other CLI tools, with your own Ope
 <p align="center">
   <a href="CHANGELOG.md"><strong>What's new</strong></a> ·
   <a href="#meet-hm"><strong>Meet hm</strong></a> ·
+  <a href="#download"><strong>Download</strong></a> ·
   <a href="#get-started"><strong>Get started</strong></a> ·
   <a href="https://umbertogiacobbi.biz/promptmeup/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=promptmeup&amp;utm_content=readme_product_page"><strong>Product page</strong></a> ·
   <a href="docs/PRIVACY.md"><strong>Privacy</strong></a> ·
@@ -50,9 +51,17 @@ Plan saves your progress, so you can pause and resume. It shows commands and the
 
 *I generated this conceptual illustration with ImageGen; it is not an app screenshot.*
 
+## Download
+
+Download PromptMeUp for Windows 11 from the Microsoft Store.
+
+<a href="https://apps.microsoft.com/detail/9P2WJBVQMW4J"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Download PromptMeUp from the Microsoft Store" width="160" /></a>
+
+AI features use your own OpenAI API account. PowerShell 7 is required to run commands.
+
 ## Get started
 
-There is no public download yet. To build locally, install the **.NET 10 SDK**, **Git**, and **PowerShell 7**. AI features use your own OpenAI API account.
+To build from source, install the **.NET 10 SDK**, **Git**, and **PowerShell 7**.
 
 ```powershell
 git clone https://github.com/umbertotechnopreneur/PromptMeUp.git
@@ -66,15 +75,11 @@ Setup walks you through your language, model, answer style, and command checks. 
 
 Enter your API key in setup or use your usual secret manager. Don't put it in a command. On Windows, setup can save the key for your user account. It works right away in the open `hm` session. Before starting `hm` again, fully close and reopen your terminal app — and your IDE too, if that's where the terminal runs. On Linux and macOS, a key entered in setup lasts only for that session; use your shell or secret manager to make it available next time.
 
-The other examples use the shorter `hm` command. When running from source, replace it with `dotnet run --project PromptMeUp/PromptMeUp.csproj --` and keep the same arguments. Ready-to-download builds will appear on [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases).
+The other examples use the shorter `hm` command. When running from source, replace it with `dotnet run --project PromptMeUp/PromptMeUp.csproj --` and keep the same arguments.
 
-### Use a portable build
+### Linux and macOS
 
-You can make a portable build for Windows, Linux, or macOS on x64 or Arm64. Keep its files together. To use `hm` from any folder, run `hm --path install` from that copy and review the proposed PATH change. Use `hm --path status` to check it or `hm --path remove` to undo it. The [release guide](docs/RELEASING.md#rehearse-a-release) has the build commands.
-
-### Windows installers
-
-The release workflow also prepares EXE installers for Windows x64 and ARM64. They install for your user account and add `hm` to your PATH. PowerShell 7 is still required to execute commands. These installers are unsigned, so Windows may show an unknown-publisher warning. See the [Windows packaging guide](docs/WINDOWS_PACKAGING.md#unsigned-exe-installers-for-x64-and-arm64) for upgrades and other installation methods.
+Linux and macOS are source-only. Compile and adapt the source for your environment; prebuilt packages and commercial support are not provided for these platforms.
 
 ## Before you run a command
 
@@ -94,9 +99,6 @@ See [what is saved and shared](docs/PRIVACY.md) for the details. The app is MIT-
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-8B5CF6" alt="Windows, Linux, and macOS" />
   <img src="https://img.shields.io/badge/early%20preview-F59E0B" alt="Early preview" />
 </p>
-
-> [!NOTE]
-> **Distributed MSIX installers are temporarily unavailable.** Use a portable build for now. Maintainers can still create self-signed MSIX packages locally for Windows testing; see the [Windows packaging guide](docs/WINDOWS_PACKAGING.md#install-with-the-hm-execution-alias).
 
 ## Meet `hm`
 
