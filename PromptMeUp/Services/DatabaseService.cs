@@ -64,6 +64,7 @@ public interface IDatabaseService
     Task AppendActivityAuditAsync(ActivityAuditRecord audit, CancellationToken cancellationToken);
 }
 
+/// <summary>Owns SQLite initialization and the application's typed local data access operations.</summary>
 public sealed class SqliteDatabaseService : IDatabaseService
 {
     internal const string AiRequestSummarySql = """

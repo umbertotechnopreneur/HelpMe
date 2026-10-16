@@ -22,6 +22,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Defines the configurable limits applied to generated artifact content and files.</summary>
 public static class ArtifactLimitConfiguration
 {
     /// <summary>Loads non-secret MiB settings without changing persistent application preferences.</summary>

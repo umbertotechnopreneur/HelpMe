@@ -59,6 +59,7 @@ public interface IOpenAiService
         CancellationToken cancellationToken);
 }
 
+/// <summary>Builds and sends bounded OpenAI requests while normalizing provider responses and failures.</summary>
 public sealed class OpenAiService : IOpenAiService
 {
     private const string Provider = "openai";
@@ -595,6 +596,7 @@ public sealed class OpenAiService : IOpenAiService
 
 }
 
+/// <summary>Represents a provider request failure with a safe status and diagnostic message.</summary>
 public sealed class OpenAiRequestException : Exception
 {
     /// <summary>Creates a provider exception that carries a stable local code and optional HTTP status.</summary>

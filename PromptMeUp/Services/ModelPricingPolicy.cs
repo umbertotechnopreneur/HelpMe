@@ -22,6 +22,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Validates imported model pricing data before it is stored or shown to the user.</summary>
 internal static class ModelPricingPolicy
 {
     private const long LongContextInputThreshold = 272_000;

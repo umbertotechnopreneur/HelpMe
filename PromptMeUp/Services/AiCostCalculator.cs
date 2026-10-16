@@ -28,6 +28,7 @@ public interface IAiCostCalculator
     AiCostBreakdown CalculateBreakdown(AiUsageMetrics usage, AiModelPrice price);
 }
 
+/// <summary>Calculates model usage costs from normalized token metrics and current prices.</summary>
 public sealed class AiCostCalculator : IAiCostCalculator
 {
     /// <summary>Returns the combined locally estimated USD amount for one provider usage record.</summary>

@@ -33,6 +33,7 @@ public interface ICommandExecutionService
         CancellationToken stopToken = default);
 }
 
+/// <summary>Starts authorized local commands and streams their bounded output to the caller.</summary>
 public sealed class CommandExecutionService : ICommandExecutionService
 {
     private readonly ILogger<CommandExecutionService> _logger;

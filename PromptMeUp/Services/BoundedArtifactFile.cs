@@ -19,6 +19,7 @@
 
 namespace PromptMeUp.Services;
 
+/// <summary>Enforces size and path boundaries while preparing artifact files for local use.</summary>
 internal static class BoundedArtifactFile
 {
     /// <summary>Reads at most the configured byte budget even if a file grows after opening.</summary>

@@ -36,6 +36,7 @@ public interface IEnvironmentSecretService
     IDisposable UseTemporary(string variableName, string secret);
 }
 
+/// <summary>Provides short-lived in-process secret values without writing them to persisted settings.</summary>
 public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> logger) : IEnvironmentSecretService
 {
     private readonly AsyncLocal<(string Name, string Secret)?> _temporary = new();

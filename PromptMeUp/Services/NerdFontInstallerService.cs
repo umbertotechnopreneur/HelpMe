@@ -28,6 +28,7 @@ public interface INerdFontInstallerService
     Task<FontInstallResult> InstallAsync(bool dryRun, CancellationToken cancellationToken);
 }
 
+/// <summary>Installs the optional bundled Nerd Font through explicit, user-reviewed local operations.</summary>
 public sealed class NerdFontInstallerService : INerdFontInstallerService
 {
     private const string FontName = "JetBrainsMono Nerd Font";

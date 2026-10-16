@@ -34,6 +34,7 @@ public interface IPromptInjectionProtectionService
     PromptPreambleProtectionResult Protect(string? preamble);
 }
 
+/// <summary>Validates user-supplied prompt preambles before they are included in an AI request.</summary>
 public sealed class PromptInjectionProtectionService : IPromptInjectionProtectionService
 {
     public const int MaximumPreambleWords = 500;

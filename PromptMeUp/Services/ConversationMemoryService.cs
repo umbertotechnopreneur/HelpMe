@@ -26,6 +26,7 @@ public interface IConversationMemoryService
     ConversationMemory Create(AppSettings settings);
 }
 
+/// <summary>Creates conversation memory with the limits derived from the active settings.</summary>
 public sealed class ConversationMemoryService : IConversationMemoryService
 {
     /// <summary>Creates one isolated in-memory sliding window for a short AI work session.</summary>
@@ -36,6 +37,7 @@ public sealed class ConversationMemoryService : IConversationMemoryService
     }
 }
 
+/// <summary>Collects bounded conversation messages and exposes their current context state.</summary>
 public sealed class ConversationMemory
 {
     private readonly AppSettings _settings;
@@ -132,6 +134,7 @@ public sealed class ConversationMemory
         : "user";
 }
 
+/// <summary>Signals that adding a message would exceed the configured conversation limit.</summary>
 public sealed class ConversationLimitException : Exception
 {
     /// <summary>Creates a user-visible bounded-memory validation error.</summary>

@@ -32,6 +32,7 @@ public interface IPromptCatalogService
     Task<IReadOnlyList<PromptDefinition>> ListAsync(CancellationToken cancellationToken);
 }
 
+/// <summary>Loads versioned local prompt definitions from their YAML files.</summary>
 public sealed class YamlPromptCatalogService : IPromptCatalogService
 {
     private readonly AppPaths _paths;
@@ -146,6 +147,7 @@ public sealed class YamlPromptCatalogService : IPromptCatalogService
             new Dictionary<string, string>(document.Metadata ?? [], StringComparer.OrdinalIgnoreCase));
     }
 
+/// <summary>Maps the supported YAML prompt structure before it becomes an immutable prompt definition.</summary>
     private sealed class PromptYaml
     {
         public string Id { get; init; } = string.Empty;

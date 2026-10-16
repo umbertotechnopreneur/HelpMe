@@ -19,6 +19,7 @@
 
 namespace PromptMeUp.Services;
 
+/// <summary>Validates OpenAI endpoint settings against the application's supported HTTPS policy.</summary>
 public static class OpenAiEndpointPolicy
 {
     /// <summary>Allows only the official HTTPS Responses endpoint so an API key cannot be redirected to another host.</summary>

@@ -21,6 +21,7 @@ using System.Text;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Validates and bounds local text input before it reaches a workflow or provider request.</summary>
 public sealed class BoundedTextInput(ISensitiveDataRedactor redactor, ILocalizationService text)
 {
     /// <summary>Reads a bounded UTF-8 text file and sanitizes it before provider use.</summary>

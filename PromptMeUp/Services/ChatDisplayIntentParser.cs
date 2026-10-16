@@ -22,6 +22,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Parses the bounded display instructions returned for a chat response.</summary>
 public static class ChatDisplayIntentParser
 {
     private const int MaximumResponseLength = 1_024;

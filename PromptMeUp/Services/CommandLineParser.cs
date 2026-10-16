@@ -26,6 +26,7 @@ public interface ICommandLineParser
     CommandLineParseResult Parse(IReadOnlyList<string> args);
 }
 
+/// <summary>Parses the supported command-line switches into a single validated command request.</summary>
 public sealed class CommandLineParser : ICommandLineParser
 {
     private readonly ILocalizationService _text;

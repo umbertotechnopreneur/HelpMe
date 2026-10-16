@@ -28,6 +28,7 @@ public interface ISensitiveDataRedactor
     string Redact(string value);
 }
 
+/// <summary>Finds and redacts recognizable secrets before content is persisted or sent to a provider.</summary>
 public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
 {
     /// <summary>Redacts recognizable credentials while preserving ordinary prompt and command text.</summary>

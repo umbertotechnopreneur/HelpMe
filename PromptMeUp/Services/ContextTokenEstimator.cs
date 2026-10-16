@@ -22,6 +22,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Estimates text token usage locally to keep request context within its budget.</summary>
 internal static class ContextTokenEstimator
 {
     /// <summary>Estimates text tokens locally from UTF-8 bytes without claiming provider tokenization accuracy.</summary>

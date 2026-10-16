@@ -28,6 +28,7 @@ public interface ISettingsService
     Task SaveAsync(AppSettings settings, CancellationToken cancellationToken);
 }
 
+/// <summary>Loads and saves the application's typed local settings through the database service.</summary>
 public sealed class SettingsService(IDatabaseService database) : ISettingsService
 {
     /// <summary>Loads the current application settings through the database boundary.</summary>

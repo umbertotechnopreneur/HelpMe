@@ -35,6 +35,7 @@ public interface ICommandRiskAssessmentService
         CancellationToken cancellationToken);
 }
 
+/// <summary>Applies deterministic local risk scoring before optional AI command review.</summary>
 public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmentService
 {
     private readonly IOpenAiService _openAi;
