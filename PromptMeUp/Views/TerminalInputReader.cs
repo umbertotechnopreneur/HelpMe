@@ -24,6 +24,7 @@ namespace PromptMeUp.Views;
 
 internal sealed record TerminalInputEvent(ConsoleKeyInfo? Key = null, string? Paste = null, bool PasteTooLong = false);
 
+/// <summary>Reads keys and bracketed paste input while preserving a bounded, testable event stream.</summary>
 internal sealed class TerminalInputReader
 {
     private const string PasteEnd = "\u001b[201~";

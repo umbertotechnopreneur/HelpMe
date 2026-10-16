@@ -35,6 +35,7 @@ public interface IPoorMarkdownRenderer
     void Render(MarkdownDocument document, bool animate, CancellationToken cancellationToken);
 }
 
+/// <summary>Renders the supported Markdown subset as readable terminal output and optional animation.</summary>
 public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
 {
     private readonly IAnsiConsole _console;

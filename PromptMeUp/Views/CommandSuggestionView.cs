@@ -28,6 +28,7 @@ public interface ICommandSuggestionView
     CommandSuggestionDecision Select(IReadOnlyList<SuggestedCommand> suggestions, bool offerChatContinuation);
 }
 
+/// <summary>Presents AI-suggested commands and captures the user's next navigation or copy decision.</summary>
 public sealed class CommandSuggestionView(
     IAnsiConsole console,
     ILocalizationService text,

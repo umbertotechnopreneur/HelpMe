@@ -29,6 +29,7 @@ public interface IFilePreviewView
     bool ConfirmReview();
 }
 
+/// <summary>Presents local file previews and captures the user's explicit review decision.</summary>
 public sealed class FilePreviewView(IAnsiConsole console, ILocalizationService text) : IFilePreviewView
 {
     /// <summary>Renders concrete file mappings, byte counts, and collision warnings from an immutable snapshot.</summary>

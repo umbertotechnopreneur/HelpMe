@@ -22,6 +22,7 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Signals that an interactive terminal flow was cancelled with the Escape key.</summary>
 internal sealed class InteractiveFlowCanceledException : OperationCanceledException
 {
     /// <summary>Creates the signal raised when Escape cancels only the active interactive flow.</summary>
@@ -31,6 +32,7 @@ internal sealed class InteractiveFlowCanceledException : OperationCanceledExcept
     }
 }
 
+/// <summary>Wraps console output and converts Escape input into a flow-level cancellation.</summary>
 internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
 {
     private readonly IAnsiConsole _inner;
@@ -65,6 +67,7 @@ internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
     public void WriteAnsi(Action<AnsiWriter> action) => _inner.WriteAnsi(action);
 }
 
+/// <summary>Wraps terminal input and exposes Escape as a cancellation signal to the active view.</summary>
 internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
 {
     private readonly IAnsiConsoleInput _inner;

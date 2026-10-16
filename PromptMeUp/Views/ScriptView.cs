@@ -30,6 +30,7 @@ public interface IScriptView
     bool ConfirmSave(string path);
 }
 
+/// <summary>Presents reviewed script content and captures the user's explicit save decision.</summary>
 public sealed class ScriptView(IAnsiConsole console, ILocalizationService text) : IScriptView
 {
     /// <summary>Shows the generated artifact and an exact replacement diff without accessing the filesystem.</summary>

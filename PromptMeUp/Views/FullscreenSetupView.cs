@@ -25,6 +25,7 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Edits setup preferences in a temporary fullscreen form while preserving the main terminal buffer.</summary>
 public sealed class FullscreenSetupView : ISetupView
 {
     private readonly IAnsiConsole _console;
@@ -809,6 +810,7 @@ public sealed class FullscreenSetupView : ISetupView
     /// <summary>Checks whether an invocation has a previously configured key or a new local replacement.</summary>
     private static bool HasApiKey(SetupDraft draft, SetupViewState state) => state.ApiKeyConfigured || draft.ApiKey is not null;
 
+    /// <summary>Collects unsaved setup values until the user confirms or cancels the form.</summary>
     private sealed class SetupDraft
     {
         /// <summary>Starts a local settings draft without reading or copying stored secret values.</summary>
