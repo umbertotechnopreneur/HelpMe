@@ -19,6 +19,7 @@
 
 namespace PromptMeUp.Models;
 
+/// <summary>Defines the per-request limits that keep generated artifacts bounded.</summary>
 public sealed class ArtifactLimits
 {
     public const int Mebibyte = 1024 * 1024;

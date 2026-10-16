@@ -29,6 +29,7 @@ using Spectre.Console;
 
 namespace PromptMeUp;
 
+/// <summary>Configures the composition root and starts the console application.</summary>
 internal static class Program
 {
     /// <summary>Bootstraps UTF-8 output, Serilog, dependency injection, cancellation, and the PromptMeUp application.</summary>

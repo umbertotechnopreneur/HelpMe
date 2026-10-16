@@ -40,6 +40,7 @@ public interface IAuthorizedCommandWorkflow
         CommandExecutionMode executionMode = CommandExecutionMode.Confirm);
 }
 
+/// <summary>Coordinates risk assessment, authorization, execution, and output review for local commands.</summary>
 public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
 {
     private readonly ICommandRiskAssessmentService _riskAssessment;

@@ -23,6 +23,7 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates local file previews without sending file content to an AI provider.</summary>
 public sealed class FilePreviewWorkflow(
     FilePreviewService service,
     IFilePreviewView view,

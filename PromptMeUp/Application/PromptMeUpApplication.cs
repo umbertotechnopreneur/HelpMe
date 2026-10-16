@@ -29,6 +29,7 @@ public interface IPromptMeUpApplication
     Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken);
 }
 
+/// <summary>Initializes the application and routes a parsed command through the appropriate workflow.</summary>
 public sealed class PromptMeUpApplication : IPromptMeUpApplication
 {
     private readonly ICommandLineParser _parser;
