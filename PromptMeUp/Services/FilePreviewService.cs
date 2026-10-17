@@ -22,6 +22,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Reads a bounded local file preview and explains unsupported or unsafe input.</summary>
 public sealed class FilePreviewService(ILocalizationService text, BoundedTextInput input)
 {
     public const int MaximumFiles = 1_000;

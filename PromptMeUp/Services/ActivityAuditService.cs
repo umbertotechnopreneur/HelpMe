@@ -53,6 +53,7 @@ public interface IActivityAuditService
         CancellationToken cancellationToken);
 }
 
+/// <summary>Persists bounded, redacted activity records for the local audit history.</summary>
 public sealed class ActivityAuditService : IActivityAuditService
 {
     private readonly IDatabaseService _database;

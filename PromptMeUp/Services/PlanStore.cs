@@ -24,6 +24,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Persists bounded local plans after redacting sensitive values from their content.</summary>
 public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, ILocalizationService text, ArtifactLimits? limits = null)
 {
     private readonly ArtifactLimits _limits = limits ?? ArtifactLimits.Default;

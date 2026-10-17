@@ -2,6 +2,14 @@
 
 Add a `Public update:` line to a completed task only when it changes something readers can use. `scripts/Generate-Changelog.ps1` copies those lines into the public `CHANGELOG.md`; keep internal validation and plans out of them.
 
+## 2026-10-16 — Clarify production class responsibilities
+
+- Added concise XML summaries to user-authored production classes in the application, models, services, and terminal views when their role was not already stated.
+- Kept existing method summaries intact and documented one primary declaration for each partial type to avoid duplicated, low-value XML.
+- Left behavior, dependencies, generated files, tests, and runtime output unchanged; existing whitespace was already sufficient to separate the relevant responsibilities clearly.
+
+Validation: scoped source and diff review; the repository XML method-summary check passed before this documentation-only refactor. Automated tests, builds, formatters, linters, and CI were not run.
+
 ## 2026-10-12 — Read Store trial entitlement and gate expired commands
 
 - Read the Windows packaged app entitlement and UTC expiration through StoreContext. Keep Debug and unpackaged source builds outside commercial licensing; block packaged Release commands when the license cannot be verified.

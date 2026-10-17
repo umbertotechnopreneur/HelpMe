@@ -45,6 +45,7 @@ public sealed record CommandRiskAssessment(
         && Level is CommandRiskLevel.Low or CommandRiskLevel.Medium;
 }
 
+/// <summary>Describes a locally reviewed command that may be executed in the selected mode.</summary>
 public sealed class ApprovedCommand
 {
     /// <summary>Creates the execution capability after the workflow completes the selected authorization gate.</summary>

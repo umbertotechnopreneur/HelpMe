@@ -62,6 +62,7 @@ public interface IConsoleShellView
     void WriteLine();
 }
 
+/// <summary>Provides the shared terminal shell operations used by passive PromptMeUp views.</summary>
 public sealed class ConsoleShellView : IConsoleShellView
 {
     private const string RepositoryUrl = "https://github.com/umbertotechnopreneur/PromptMeUp";

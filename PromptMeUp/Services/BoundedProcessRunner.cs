@@ -23,6 +23,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Runs a child process with bounded output, cancellation, and timeout handling.</summary>
 internal static class BoundedProcessRunner
 {
     /// <summary>Runs a caller-approved process with one deadline for input, exit, and bounded output collection.</summary>

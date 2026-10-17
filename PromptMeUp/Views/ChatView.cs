@@ -40,6 +40,7 @@ public interface IChatView
     void RenderMemoryPruned(int messageCount);
 }
 
+/// <summary>Renders chat turns, AI activity, and follow-up choices without owning conversation state.</summary>
 public sealed class ChatView : IChatView
 {
     private readonly IAnsiConsole _console;

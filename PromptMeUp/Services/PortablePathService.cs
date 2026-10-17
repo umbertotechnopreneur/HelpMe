@@ -29,6 +29,7 @@ public interface IPortablePathService
     Task<PortablePathResult> ApplyAsync(PortablePathPlan plan, CancellationToken cancellationToken);
 }
 
+/// <summary>Inspects and applies the optional portable command path without elevating the process.</summary>
 public sealed class PortablePathService : IPortablePathService
 {
     private const string MarkerStart = "# >>> PromptMeUp hm PATH >>>";

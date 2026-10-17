@@ -24,6 +24,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services.OpenAi;
 
+/// <summary>Builds validated OpenAI request payloads from normalized application data.</summary>
 internal static class OpenAiRequestBuilder
 {
     private const long MinimumExplicitCachePrefixTokens = 1_024;

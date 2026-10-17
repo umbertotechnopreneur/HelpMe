@@ -23,6 +23,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services.OpenAi;
 
+/// <summary>Parses supported OpenAI response payloads into the application's typed result models.</summary>
 internal static partial class OpenAiResponseParser
 {
     private const int MaximumSuggestedCommands = 8;

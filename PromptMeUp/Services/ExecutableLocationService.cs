@@ -31,6 +31,7 @@ public interface IExecutableLocationService
     void OpenContainingFolder(ExecutableLocationInfo location);
 }
 
+/// <summary>Resolves the installed executable location and opens its containing folder on request.</summary>
 public sealed class ExecutableLocationService : IExecutableLocationService
 {
     /// <summary>Resolves the running hm binary and prepares exact, platform-appropriate action previews.</summary>

@@ -30,6 +30,7 @@ internal enum AuditSessionOutcome
     Completed
 }
 
+/// <summary>Owns the audit lifetime and records its terminal outcome exactly once.</summary>
 internal sealed class AuditSessionScope : IAsyncDisposable
 {
     private readonly IActivityAuditService _audit;

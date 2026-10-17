@@ -28,6 +28,7 @@ public interface IStatusView
     void Render(AppStatus status);
 }
 
+/// <summary>Displays the current local application status with readable terminal hierarchy.</summary>
 public sealed class StatusView(
     IAnsiConsole console,
     ILocalizationService text,
@@ -76,6 +77,7 @@ public interface ICostsView
     void Render(CostOverview overview);
 }
 
+/// <summary>Displays normalized model prices and the current local cost overview.</summary>
 public sealed class CostsView(
     IAnsiConsole console,
     ILocalizationService text,

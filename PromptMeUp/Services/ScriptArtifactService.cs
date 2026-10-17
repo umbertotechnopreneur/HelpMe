@@ -23,6 +23,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Writes reviewed script artifacts to bounded local files and returns their safe metadata.</summary>
 public sealed class ScriptArtifactService(
     ISensitiveDataRedactor redactor,
     ILocalizationService text,

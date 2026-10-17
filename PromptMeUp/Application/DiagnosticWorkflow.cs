@@ -23,6 +23,7 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates diagnostic-bundle creation and presents its local result.</summary>
 public sealed class DiagnosticWorkflow(
     BoundedTextInput input,
     IAiConversationWorkflow conversation,

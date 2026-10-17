@@ -28,6 +28,7 @@ public interface IMemoryView
     void Render(IReadOnlyList<PersistentMemory> memories);
 }
 
+/// <summary>Displays a compact, passive list of the saved local memories.</summary>
 public sealed class MemoryView : IMemoryView
 {
     private readonly IAnsiConsole _console;

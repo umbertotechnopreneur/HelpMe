@@ -30,6 +30,7 @@ public interface IPlanView
     bool ConfirmOutcome(PlanStep step);
 }
 
+/// <summary>Presents a saved plan and captures explicit progress confirmations for each step.</summary>
 public sealed class PlanView(IAnsiConsole console, ILocalizationService text, IConsoleShellView shell) : IPlanView
 {
     /// <summary>Displays ordered progress and the explicit resume command without executing any step.</summary>

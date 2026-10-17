@@ -23,6 +23,7 @@ namespace PromptMeUp.Services;
 
 public sealed record SupportedLanguage(string Code, string NativeName, string CultureName, string Flag);
 
+/// <summary>Lists the languages supported by PromptMeUp's localized terminal interface.</summary>
 public static class SupportedLanguages
 {
     public static IReadOnlyList<SupportedLanguage> All { get; } =
@@ -69,6 +70,7 @@ public interface ILocalizationService
     string Text(string key, params object?[] args);
 }
 
+/// <summary>Resolves localized UI strings and formats their parameter values for the active language.</summary>
 public sealed class LocalizationService : ILocalizationService
 {
     public string Language { get; private set; } = "en";

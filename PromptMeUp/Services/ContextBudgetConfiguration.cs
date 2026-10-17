@@ -22,6 +22,7 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Defines the token budgets reserved for the sections of an AI request.</summary>
 public static class ContextBudgetConfiguration
 {
     /// <summary>Loads the bounded ordinary-chat input budget without persisting environment configuration.</summary>

@@ -35,6 +35,7 @@ public interface ICommandAuthorizationView
     void RenderExecutionResult(CommandExecutionResult result);
 }
 
+/// <summary>Presents command risk, authorization choices, and execution results in the terminal.</summary>
 public sealed class CommandAuthorizationView : ICommandAuthorizationView
 {
     private readonly IAnsiConsole _console;

@@ -21,6 +21,7 @@ using System.Text;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Replaces local text files atomically so interrupted writes do not leave partial content.</summary>
 internal static class AtomicFileWriter
 {
     /// <summary>Publishes a complete text file using the caller's overwrite policy and removes any unfinished temporary file.</summary>

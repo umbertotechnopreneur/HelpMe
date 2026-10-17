@@ -29,6 +29,7 @@ public interface IAppGuideService
     Task<AppGuideContext> LoadAsync(IReadOnlyList<string> topics, string language, CancellationToken cancellationToken);
 }
 
+/// <summary>Loads bounded, localized guidance from the bundled application reference.</summary>
 public sealed class AppGuideService : IAppGuideService
 {
     public const int MaxTopics = 2;

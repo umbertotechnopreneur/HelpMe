@@ -22,6 +22,7 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Renders the cancellable countdown used before an eligible direct command executes.</summary>
 internal sealed class CommandCountdownView(
     IAnsiConsole console,
     ILocalizationService text,

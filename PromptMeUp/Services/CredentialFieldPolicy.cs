@@ -21,6 +21,7 @@ using System.Text;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Identifies credential-bearing fields so they can be protected from display and persistence.</summary>
 internal static class CredentialFieldPolicy
 {
     private static readonly string[] SecretSuffixes =

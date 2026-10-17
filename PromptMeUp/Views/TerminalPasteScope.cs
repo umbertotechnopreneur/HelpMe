@@ -23,6 +23,7 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Temporarily enables bracketed paste mode and restores the terminal state when the scope ends.</summary>
 internal sealed class TerminalPasteScope : IDisposable
 {
     private const uint EnableVirtualTerminalInput = 0x0200;

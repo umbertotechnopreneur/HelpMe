@@ -23,6 +23,7 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates saved-plan loading, editing, and presentation for the current session.</summary>
 public sealed class PlanWorkflow(
     ArtifactAssistant assistant,
     PlanStore store,

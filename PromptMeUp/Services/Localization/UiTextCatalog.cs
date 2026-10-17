@@ -19,6 +19,7 @@
 
 namespace PromptMeUp.Services;
 
+/// <summary>Provides the localized text catalogs used by PromptMeUp's terminal views and workflows.</summary>
 internal static partial class UiTextCatalog
 {
     internal static IReadOnlyDictionary<string, LocalizedText> Entries { get; } = CreateEntries();

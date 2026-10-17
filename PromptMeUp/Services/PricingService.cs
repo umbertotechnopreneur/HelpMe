@@ -33,6 +33,7 @@ public interface IPricingService
     Task<CostOverview> GetOverviewAsync(CancellationToken cancellationToken);
 }
 
+/// <summary>Refreshes and reads OpenAI model prices from the configured public pricing source.</summary>
 public sealed class OpenAiPricingService : IPricingService
 {
     public const string PricingMarkdownUrl = "https://developers.openai.com/api/docs/pricing.md";
@@ -232,6 +233,7 @@ public sealed class OpenAiPricingService : IPricingService
 
 }
 
+/// <summary>Parses the supported OpenAI pricing-table Markdown into normalized model prices.</summary>
 internal static class OpenAiPricingMarkdownParser
 {
     /// <summary>Parses the official Standard pricing table into normalized short/long rows.</summary>

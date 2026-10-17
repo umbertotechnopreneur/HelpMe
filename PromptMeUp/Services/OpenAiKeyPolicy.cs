@@ -19,6 +19,7 @@
 
 namespace PromptMeUp.Services;
 
+/// <summary>Validates OpenAI API-key input without retaining or disclosing the secret value.</summary>
 public static class OpenAiKeyPolicy
 {
     // Windows Credential Manager accepts at most 2,560 bytes; the vault uses UTF-16.

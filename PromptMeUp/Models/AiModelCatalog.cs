@@ -25,6 +25,7 @@ public sealed record AiModelDescriptor(
     IReadOnlyList<string> ReasoningEfforts,
     long ContextWindowTokens);
 
+/// <summary>Provides the supported AI model definitions and their local defaults.</summary>
 public static class AiModelCatalog
 {
     private static readonly string[] FullEfforts = ["none", "low", "medium", "high", "xhigh"];

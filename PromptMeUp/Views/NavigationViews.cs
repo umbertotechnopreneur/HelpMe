@@ -237,6 +237,7 @@ public interface IExecutableLocationView
     void RenderResult(ExecutableLocationInfo location, ExecutableLocationAction action);
 }
 
+/// <summary>Presents the executable location and its reviewed open-folder action.</summary>
 public sealed class ExecutableLocationView(
     IAnsiConsole console,
     ILocalizationService text,
@@ -323,6 +324,7 @@ public interface IThirdPartyView
     void Render();
 }
 
+/// <summary>Displays bundled third-party notices without loading external content.</summary>
 public sealed class ThirdPartyView(
     IAnsiConsole console,
     ILocalizationService text,
@@ -371,6 +373,7 @@ public interface IPortablePathView
     void RenderResult(PortablePathResult result);
 }
 
+/// <summary>Presents the portable PATH plan and its confirmed application result.</summary>
 public sealed class PortablePathView(
     IAnsiConsole console,
     ILocalizationService text,

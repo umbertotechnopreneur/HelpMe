@@ -23,6 +23,7 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Resolves the shared terminal palette from the active theme definition.</summary>
 internal static class TerminalTheme
 {
     internal static TerminalThemeDefinition Current { get; private set; } = TerminalThemeDefinition.Default;

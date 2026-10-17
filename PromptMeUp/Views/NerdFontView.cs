@@ -30,6 +30,7 @@ public interface INerdFontView
     void RenderResult(FontInstallResult result);
 }
 
+/// <summary>Presents optional Nerd Font installation details and captures an explicit confirmation.</summary>
 public sealed class NerdFontView(
     IAnsiConsole console,
     ILocalizationService text,

@@ -19,6 +19,7 @@
 
 namespace PromptMeUp.Services.OpenAi;
 
+/// <summary>Defines the structured response formats requested for supported AI-assisted features.</summary>
 internal static class FeatureResponseFormats
 {
     /// <summary>Limits memory reflection to evidence-linked advisory suggestions with no execution fields.</summary>

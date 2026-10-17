@@ -23,6 +23,7 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates AI-assisted artifact creation and presents the resulting files.</summary>
 public sealed class ArtifactAssistant(
     IOpenAiService openAi,
     IActivityAuditService audit,

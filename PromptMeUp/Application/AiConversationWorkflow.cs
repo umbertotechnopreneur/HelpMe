@@ -43,6 +43,7 @@ public interface IAiConversationWorkflow
     Task RunConnectionTestAsync(AppSettings settings, CancellationToken cancellationToken);
 }
 
+/// <summary>Coordinates AI conversations, command reviews, memory context, and terminal presentation.</summary>
 public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
 {
     private static readonly JsonSerializerOptions MemoryJsonOptions = new()
@@ -827,6 +828,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
     private static IReadOnlyList<ChatMessage> CombineMessages(MemoryEnvelope envelope, IReadOnlyList<ChatMessage> messages) =>
         envelope.Message is null ? messages : [envelope.Message, .. messages];
 
+    /// <summary>Tracks the memory and selected prompt for one active conversation.</summary>
     private sealed class ConversationState(ConversationMemory memory, string promptId)
     {
         public ConversationMemory Memory { get; } = memory;
