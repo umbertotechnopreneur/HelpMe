@@ -2,6 +2,24 @@
 
 Add a `Public update:` line to a completed task only when it changes something readers can use. `scripts/Generate-Changelog.ps1` copies those lines into the public `CHANGELOG.md`; keep internal validation and plans out of them.
 
+## 2026-10-19 — Build and install the command-output fix locally
+
+- Compile the current repository source as a self-contained Debug win-x64 application, including the countdown and output-stream changes. Keep the existing 1.0.7 source version; derive MSIX version 1.0.7.0 from the built executable.
+- Download seven missing direct and transitive NuGet packages from the official NuGet feed. Stage archives and extracted files, complete two targeted Defender scans without detections, and retain source URLs, versions, SHA-256 values, scan commands, and completion events. Reuse existing cached dependencies without rescanning them.
+- Sign the local MSIX with the existing trusted current-user certificate, install it, and verify registered version 1.0.7.0, X64 architecture, and Ok package status. Retain the MSIX, checksum, metadata, and minimal verification records under the ignored task directory.
+
+Validation: Debug source compilation, package signing and verification, installation, registered version, architecture, and package status succeeded. Automated tests, CLI smoke tests, live-terminal behavior, Store packaging, publication, and Git delivery were not performed. Matching `dotnet clean` succeeded; automatic approval review blocked recursive transient cleanup, leaving about 300 MiB recorded in the active task list.
+
+## 2026-10-19 — Remove duplicate execution feedback and avoid output read-ahead
+
+- Clear the command countdown's transient progress row when it closes, leaving the live output view to show the execution heading once. Keep an explicit cancellation receipt.
+- Read stdout and stderr directly from their pipes and decode UTF-8 incrementally. Publish available text without waiting for a larger text-reader buffer, including partial lines and characters split across reads; skip an initial UTF-8 byte order mark.
+- Keep the 50 ms keyboard monitor and silence-notice preference separate from output delivery. Child processes may still buffer their own output before emitting it.
+
+Validation: repository preflight, XML method-summary check, scoped whitespace verification, and diff checks passed. Dependency restore, compilation, automated tests, CLI smoke tests, physical-terminal behavior, packaging, installation, and Git delivery were not performed. No build output was produced.
+
+Public update: Direct commands show one execution heading, and available command output is displayed without waiting for a text-reader buffer to fill.
+
 ## 2026-10-16 — Clarify production class responsibilities
 
 - Added concise XML summaries to user-authored production classes in the application, models, services, and terminal views when their role was not already stated.

@@ -49,7 +49,7 @@ internal sealed class CommandCountdownView(
             ConversationText.Write(console, new Markup($"[bold {TerminalTheme.Info}]C[/] [{TerminalTheme.Primary}]{Markup.Escape(text.Text("Command.CopyAndExit"))}[/]"));
         }
         console.WriteLine();
-        return await console.Progress().AutoClear(false).HideCompleted(false)
+        var authorized = await console.Progress().AutoClear(true).HideCompleted(false)
             .Columns(new TaskDescriptionColumn(), new ProgressBarColumn
             {
                 Width = Math.Clamp(console.Profile.Width / 3, 4, 40),
@@ -98,6 +98,11 @@ internal sealed class CommandCountdownView(
                     await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
                 }
             }).ConfigureAwait(false);
+        if (!authorized)
+        {
+            ConversationText.Write(console, new Markup($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Command.Cancelled"))}[/]"));
+        }
+        return authorized;
     }
 
     /// <summary>Recognizes immediate execution and both cancellation shortcuts, treating end of input as cancellation.</summary>

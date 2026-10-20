@@ -67,8 +67,8 @@ internal static class BoundedProcessRunner
         {
             lock (outputGate) output(update);
         };
-        var outputTask = ReadBoundedAsync(process.StandardOutput, false, publish, deadline);
-        var errorTask = ReadBoundedAsync(process.StandardError, true, publish, deadline);
+        var outputTask = ReadBoundedAsync(process.StandardOutput.BaseStream, false, publish, deadline);
+        var errorTask = ReadBoundedAsync(process.StandardError.BaseStream, true, publish, deadline);
         var inputTask = WriteInputAsync(process.StandardInput, standardInput, deadline);
         var timedOut = false;
         try
@@ -138,24 +138,35 @@ internal static class BoundedProcessRunner
         }
     }
 
-    /// <summary>Drains a stream continuously while retaining bounded normalized first/last evidence.</summary>
-    /// <param name="reader">The redirected stream to drain.</param>
+    /// <summary>Publishes each available UTF-8 byte block while retaining bounded normalized first/last evidence.</summary>
+    /// <param name="stream">The redirected byte stream to drain without text-reader read-ahead.</param>
     /// <param name="isError">Whether this is stderr.</param>
     /// <param name="publish">The optional serialized display callback.</param>
     /// <param name="deadline">The shared deadline cancelled if reading or rendering fails.</param>
-    private static async Task<CapturedStream> ReadBoundedAsync(StreamReader reader, bool isError,
+    private static async Task<CapturedStream> ReadBoundedAsync(Stream stream, bool isError,
         Action<CommandOutputUpdate>? publish, CancellationTokenSource deadline)
     {
         var capture = new SimpleCommandOutput(isError, publish);
-        var buffer = new char[4096];
+        var buffer = new byte[4096];
+        var characters = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+        var decoder = Encoding.UTF8.GetDecoder();
+        var firstCharacters = true;
         var truncated = false;
         try
         {
             while (true)
             {
-                var read = await reader.ReadAsync(buffer.AsMemory(), deadline.Token).ConfigureAwait(false);
+                // Read the pipe directly so an exact text-buffer boundary cannot delay already available output.
+                var read = await stream.ReadAsync(buffer.AsMemory(), deadline.Token).ConfigureAwait(false);
+                var count = decoder.GetChars(buffer.AsSpan(0, read), characters.AsSpan(), flush: read == 0);
+                var start = 0;
+                if (firstCharacters && count > 0)
+                {
+                    firstCharacters = false;
+                    if (characters[0] == '\uFEFF') start = 1;
+                }
+                if (count > start) capture.Append(characters.AsSpan(start, count - start));
                 if (read == 0) break;
-                capture.Append(buffer.AsSpan(0, read));
             }
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested)
