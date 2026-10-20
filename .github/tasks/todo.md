@@ -1,5 +1,7 @@
 ﻿## Task
 
+- [ ] Remove about 300 MiB of task-owned transient output under `artifacts/msix/debug/command-output-20261019/`: `publish`, `package/payload`, `build`, `imports`, `scratch`, `logs`, and `empty-feed`. Preserve the signed 1.0.7.0 x64 MSIX, checksum, package metadata, and `evidence/`. Matching Debug solution cleanup succeeded; automatic approval review rejected recursive removal with "blocked by policy". See the ignored `evidence/cleanup.json` for exact paths and sizes.
+
 - [ ] Validate the Store trial countdown and expiration gate with an acquired Store license; confirm the 30-day trial setting in Partner Center and verify purchase, offline behavior, x64, and ARM64. Source implementation, Debug compilation, and focused local tests do not verify real Store entitlement.
 
 - [ ] Deliver the Microsoft Store MSIX workflow through a reviewed pull request, build version 1.0.0.0 on GitHub Actions, submit the x64 and ARM64 packages in Partner Center, and verify availability through the WinGet msstore source.
