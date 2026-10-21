@@ -277,8 +277,8 @@ I coined the term [VibeWare](https://umbertogiacobbi.biz) and started an open in
 
 *You are welcome to explore, adapt and reuse the open-source VibeWare materials under the project license — my contribution to the developer community.*
 
-## External binary security policy
+## A note on security
 
-Before including third-party prebuilt binaries or compiled libraries in this repository or a deliverable, including components supplied without source code, run an explicit targeted Microsoft Windows Defender scan on the downloaded package or archive and the extracted files to be used, including required third-party dependencies. Keep the files staged until scanning finishes; real-time protection alone is not sufficient.
+I care about what goes into this project. Before I add a third-party library or prebuilt binary, including files supplied without source code, I scan the downloaded package, its extracted files and any dependencies with Microsoft Windows Defender. I keep new imports aside until the scan finishes without detections.
 
-Proceed only after the scan completes without detections. Record the official source, version or SHA-256, scan command and result. An unavailable, disabled, failed or unfinished scan, or any detection, blocks the import. Do not bypass detections with exclusions, allowlisting, restored quarantine items or disabled protection. Any exception requires separate explicit owner approval.
+I keep a record of where each new import came from and the scan result. If a scan cannot finish or flags something, I leave it out.
