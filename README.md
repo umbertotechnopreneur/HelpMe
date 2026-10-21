@@ -1,5 +1,10 @@
 # PromptMeUp — Can't remember that command?
 
+[![Quality gate status](https://github.com/umbertotechnopreneur/PromptMeUp/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/PromptMeUp/actions/workflows/quality.yml)
+![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
+![Status: pre-production](https://img.shields.io/badge/status-pre--production-F9665B)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2EA44F)](LICENSE)
+
 I use Git every day, and I still can't keep its commands in my head. You'd think they'd have stuck by now. They haven't.
 
 But Git is only part of it. In the daily trenches, I work with more and more tools that offer a CLI. For more of my everyday tasks, I find the terminal simpler than clicking through web portals such as Azure or AWS. I can stay where I'm working, repeat a command, and put the steps in a script. The catch? Every tool brings another set of commands and options to remember.
@@ -92,13 +97,6 @@ Approved commands run through PowerShell with your user account's permissions. T
 Your settings, notes, logs, and request history stay on your machine. To answer you, OpenAI receives your question, recent messages, selected notes, some details about your terminal, and any command output you share for a follow-up. `hm` removes secrets it recognizes, but it can't catch every private detail.
 
 See [what is saved and shared](docs/PRIVACY.md) for the details. The app is MIT-licensed; OpenAI's terms and API charges still apply.
-
-<p align="center">
-  <a href="https://github.com/umbertotechnopreneur/PromptMeUp/actions/workflows/quality.yml"><img src="https://github.com/umbertotechnopreneur/PromptMeUp/actions/workflows/quality.yml/badge.svg" alt="Quality gate" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22C55E" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-8B5CF6" alt="Windows, Linux, and macOS" />
-  <img src="https://img.shields.io/badge/early%20preview-F59E0B" alt="Early preview" />
-</p>
 
 ## Meet `hm`
 
