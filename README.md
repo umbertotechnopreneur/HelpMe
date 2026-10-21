@@ -259,14 +259,19 @@ I built PromptMeUp with help from contributors, and I’m grateful to the people
 
 <p align="center">I’m Umberto Giacobbi. I built and maintain PromptMeUp with help from contributors.<br />Find me on <a href="https://www.linkedin.com/in/umbertogiacobbi/">LinkedIn</a> or at <a href="https://umbertogiacobbi.biz/">umbertogiacobbi.biz</a>.</p>
 
+## A note on security
+
+I care about what goes into this project. Before I add a third-party library or prebuilt binary, including files supplied without source code, I scan the downloaded package, its extracted files and any dependencies with Microsoft Windows Defender. I keep new imports aside until the scan finishes without detections.
+
+I keep a record of where each new import came from and the scan result. If a scan cannot finish or flags something, I leave it out.
+
 ---
 
 <p align="right">
   <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
     <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
   </a><br>
-  <strong>VibeWare</strong><br>
-  <em>Human intent, AI execution, and plenty of tokens</em>
+  <em>Human Intent, AI Execution, Plenty of Token</em>
 </p>
 
 ### What is VibeWare?
@@ -276,9 +281,3 @@ I coined the term [VibeWare](https://umbertogiacobbi.biz) and started an open in
 [**Read the VibeWare manifesto**](https://umbertogiacobbi.biz/vibeware/manifesto)
 
 *You are welcome to explore, adapt and reuse the open-source VibeWare materials under the project license — my contribution to the developer community.*
-
-## A note on security
-
-I care about what goes into this project. Before I add a third-party library or prebuilt binary, including files supplied without source code, I scan the downloaded package, its extracted files and any dependencies with Microsoft Windows Defender. I keep new imports aside until the scan finishes without detections.
-
-I keep a record of where each new import came from and the scan result. If a scan cannot finish or flags something, I leave it out.
