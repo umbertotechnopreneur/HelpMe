@@ -267,13 +267,6 @@ I keep a record of where each new import came from and the scan result. If a sca
 
 ---
 
-<p align="right">
-  <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
-    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
-  </a><br>
-  <em>Human Intent, AI Execution, Plenty of Token</em>
-</p>
-
 ### What is VibeWare?
 
 I coined the term [VibeWare](https://umbertogiacobbi.biz) and started an open initiative for developers who build with AI and care about the craft. I challenge the assumption that vibe coding is synonymous with low-quality code, while openly acknowledging the weaknesses and risks of AI-generated software: experienced developers must guide the process, test carefully, check security and take responsibility for the result. With this footer, I acknowledge that I developed this software with AI and ask you to judge the quality of the work.
@@ -281,3 +274,12 @@ I coined the term [VibeWare](https://umbertogiacobbi.biz) and started an open in
 [**Read the VibeWare manifesto**](https://umbertogiacobbi.biz/vibeware/manifesto)
 
 *You are welcome to explore, adapt and reuse the open-source VibeWare materials under the project license — my contribution to the developer community.*
+
+[Terms](https://umbertogiacobbi.biz/terms/) · [Privacy](https://umbertogiacobbi.biz/privacy/)
+
+<p align="right">
+  <a href="https://umbertogiacobbi.biz/vibeware/manifesto">
+    <img src="https://raw.githubusercontent.com/umbertotechnopreneur/VibeWare/main/Branding/vibeware-logo.png" alt="VibeWare floppy logo" width="160">
+  </a><br>
+  <em>Human Intent, AI Execution, Plenty of Token</em>
+</p>
