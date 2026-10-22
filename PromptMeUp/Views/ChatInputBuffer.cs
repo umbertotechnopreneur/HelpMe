@@ -24,8 +24,15 @@ namespace PromptMeUp.Views;
 /// <summary>Keeps editable multiline input bounded without executing pasted keyboard shortcuts.</summary>
 internal sealed class ChatInputBuffer(int maximumCharacters)
 {
+
+    #region Properties
+
     public string Text { get; private set; } = string.Empty;
     public int Cursor { get; private set; }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Inserts a complete text fragment atomically or rejects it without losing the existing draft.</summary>
     internal bool Insert(string value)
@@ -34,13 +41,16 @@ internal sealed class ChatInputBuffer(int maximumCharacters)
         {
             return false;
         }
+
         Text = Text.Insert(Cursor, value);
         Cursor += value.Length;
+
         if (Cursor < Text.Length)
         {
             // Inserting before a combining mark can merge it with the new text element.
             Cursor = StringInfo.ParseCombiningCharacters(Text).FirstOrDefault(index => index >= Cursor, Text.Length);
         }
+
         return true;
     }
 
@@ -48,6 +58,7 @@ internal sealed class ChatInputBuffer(int maximumCharacters)
     internal bool Edit(ConsoleKeyInfo key)
     {
         var control = (key.Modifiers & ConsoleModifiers.Control) != 0;
+
         switch (key.Key)
         {
             case ConsoleKey.Backspace when Cursor > 0:
@@ -87,20 +98,28 @@ internal sealed class ChatInputBuffer(int maximumCharacters)
                 }
                 break;
         }
+
         return true;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Moves to the neighboring logical line without landing inside a composed character.</summary>
     private void MoveLine(int direction)
     {
         var start = LineStart(Cursor);
         var end = LineEnd(Cursor);
+
         if (direction < 0 && start == 0 || direction > 0 && end == Text.Length)
         {
             return;
         }
+
         var targetStart = direction < 0 ? LineStart(start - 1) : end + 1;
         var target = Math.Min(targetStart + Cursor - start, LineEnd(targetStart));
+
         Cursor = target == Text.Length ? target
             : StringInfo.ParseCombiningCharacters(Text).LastOrDefault(index => index <= target);
     }
@@ -112,6 +131,7 @@ internal sealed class ChatInputBuffer(int maximumCharacters)
     private int LineEnd(int position)
     {
         var end = Text.IndexOf('\n', position);
+
         return end < 0 ? Text.Length : end;
     }
 
@@ -120,4 +140,6 @@ internal sealed class ChatInputBuffer(int maximumCharacters)
 
     /// <summary>Finds the next complete Unicode text element or the end of the draft.</summary>
     private int Next(int position) => StringInfo.ParseCombiningCharacters(Text).FirstOrDefault(index => index > position, Text.Length);
+
+    #endregion
 }

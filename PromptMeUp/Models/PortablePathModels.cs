@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Identifies whether to inspect, install, or remove the command path entry.</summary>
 public enum PortablePathAction
 {
     Install,
@@ -26,6 +26,7 @@ public enum PortablePathAction
     Status
 }
 
+/// <summary>Describes a proposed command-path update before it is applied.</summary>
 public sealed record PortablePathPlan(
     PortablePathAction Action,
     string ExecutableDirectory,
@@ -34,6 +35,7 @@ public sealed record PortablePathPlan(
     bool IsPresent,
     bool RequiresChange);
 
+/// <summary>Reports the result and user guidance for a command-path operation.</summary>
 public sealed record PortablePathResult(
     PortablePathAction Action,
     string ExecutableDirectory,
@@ -41,4 +43,5 @@ public sealed record PortablePathResult(
     bool Changed,
     bool IsPresent);
 
+/// <summary>Carries guidance returned by a secret-store operation without exposing credentials.</summary>
 public sealed record SecretStoreResult(string Guidance);

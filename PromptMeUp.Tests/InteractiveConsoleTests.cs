@@ -23,8 +23,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies interactive console behavior.</summary>
 public sealed class InteractiveConsoleTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that ordinary input passes through without changing the selected key.</summary>
     [Fact]
     public async Task ReadKeyAsync_OrdinaryKey_ReturnsKey()
@@ -87,6 +91,10 @@ public sealed class InteractiveConsoleTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Waits indefinitely until the supplied input cancellation token is cancelled.</summary>
     private static async Task<ConsoleKeyInfo?> WaitForCancellationAsync(CancellationToken cancellationToken)
     {
@@ -94,13 +102,29 @@ public sealed class InteractiveConsoleTests
         return null;
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Supplies controlled console keys without reading the physical terminal.</summary>
     private sealed class StubConsoleInput : IAnsiConsoleInput
     {
+
+        #region Fields
+
         private readonly Func<CancellationToken, Task<ConsoleKeyInfo?>> _read;
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Creates a deterministic console input around the supplied asynchronous read.</summary>
         public StubConsoleInput(Func<CancellationToken, Task<ConsoleKeyInfo?>> read) =>
             _read = read ?? throw new ArgumentNullException(nameof(read));
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Reports that the stub has input ready for prompt code.</summary>
         public bool IsKeyAvailable() => true;
@@ -112,5 +136,9 @@ public sealed class InteractiveConsoleTests
         /// <summary>Returns the configured key while forwarding cancellation.</summary>
         public Task<ConsoleKeyInfo?> ReadKeyAsync(bool intercept, CancellationToken cancellationToken) =>
             _read(cancellationToken);
+
+        #endregion
     }
+
+    #endregion
 }

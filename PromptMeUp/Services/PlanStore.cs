@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PromptMeUp.Infrastructure;
@@ -27,12 +26,18 @@ namespace PromptMeUp.Services;
 /// <summary>Persists bounded local plans after redacting sensitive values from their content.</summary>
 public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, ILocalizationService text, ArtifactLimits? limits = null)
 {
+    #region Fields
+
     private readonly ArtifactLimits _limits = limits ?? ArtifactLimits.Default;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter() }
     };
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Parses a model plan as new pending steps, never importing model-supplied execution status.</summary>
     public ExecutionPlan Parse(string json, string goal, string directory)
@@ -130,6 +135,10 @@ public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, I
         BoundedArtifactFile.CheckSize(JsonSerializer.SerializeToUtf8Bytes(plan, JsonOptions).Length, _limits.MaxPlanBytes, text);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Resolves only opaque generated identifiers inside the local plan directory.</summary>
     private string Resolve(string id) => Guid.TryParseExact(id, "N", out _)
         ? Path.Combine(paths.DataDirectory, "plans", id + ".json")
@@ -139,4 +148,6 @@ public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, I
     private bool ValidText(string? value, int maximum) => !string.IsNullOrWhiteSpace(value) && value.Length <= maximum
         && redactor.Redact(value) == value
         && !value.Any(character => char.IsControl(character) && character is not ('\r' or '\n' or '\t'));
+
+    #endregion
 }

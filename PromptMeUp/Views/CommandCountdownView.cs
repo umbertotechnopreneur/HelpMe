@@ -29,8 +29,15 @@ internal sealed class CommandCountdownView(
     TimeProvider? timeProvider = null,
     bool? isInteractive = null)
 {
+
+    #region Fields
+
     private static readonly TimeSpan Duration = TimeSpan.FromSeconds(5);
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Shows a five-second progress bar and returns early for Enter or cancellation without clearing scrollback.</summary>
     /// <param name="cancellationToken">The token used to cancel the countdown.</param>
@@ -43,11 +50,14 @@ internal sealed class CommandCountdownView(
         {
             throw new InvalidOperationException(text.Text("Error.InteractiveRequired"));
         }
+
         ConversationText.Write(console, new Markup($"[{TerminalTheme.Warning}]{Markup.Escape(text.Text("Direct.Keys"))}[/]"));
+
         if (copyAndExit is not null)
         {
             ConversationText.Write(console, new Markup($"[bold {TerminalTheme.Info}]C[/] [{TerminalTheme.Primary}]{Markup.Escape(text.Text("Command.CopyAndExit"))}[/]"));
         }
+
         console.WriteLine();
         var authorized = await console.Progress().AutoClear(true).HideCompleted(false)
             .Columns(new TaskDescriptionColumn(), new ProgressBarColumn
@@ -60,48 +70,60 @@ internal sealed class CommandCountdownView(
             {
                 var task = context.AddTask(Description(5), maxValue: Duration.TotalMilliseconds);
                 var started = _time.GetTimestamp();
+
                 while (true)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
                     // Poll availability so no pending read can steal input from the following chat turn.
                     while (console.Input.IsKeyAvailable())
                     {
                         var key = await console.Input.ReadKeyAsync(true, cancellationToken).ConfigureAwait(false);
+
                         if (key is { Key: ConsoleKey.C, Modifiers: 0 } && copyAndExit is not null)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             task.StopTask();
                             copyAndExit();
+
                             return false;
                         }
+
                         var decision = InterpretKey(key);
+
                         if (decision.HasValue)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             task.Value = task.MaxValue;
                             task.Description = Markup.Escape(text.Text(decision.Value ? "Command.Running" : "Command.Cancelled"));
+
                             return decision.Value;
                         }
                     }
 
                     var elapsed = _time.GetElapsedTime(started);
                     var remaining = Duration - elapsed;
+
                     if (remaining <= TimeSpan.Zero)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         task.Value = task.MaxValue;
                         task.Description = Markup.Escape(text.Text("Command.Running"));
+
                         return true;
                     }
+
                     task.Value = elapsed.TotalMilliseconds;
                     task.Description = Description((int)Math.Ceiling(remaining.TotalSeconds));
                     await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
                 }
             }).ConfigureAwait(false);
+
         if (!authorized)
         {
             ConversationText.Write(console, new Markup($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Command.Cancelled"))}[/]"));
         }
+
         return authorized;
     }
 
@@ -115,7 +137,13 @@ internal sealed class CommandCountdownView(
         _ => null
     };
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Formats a high-contrast localized countdown label.</summary>
     private string Description(int seconds) =>
         $"  [bold {TerminalTheme.Accent}]{Markup.Escape(text.Text("Direct.Countdown", seconds))}[/]";
+
+    #endregion
 }

@@ -25,8 +25,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies terminal view behavior.</summary>
 public sealed class TerminalViewTests
 {
+
+    #region Methods
+
     /// <summary>Escape cancels only the active command and releases input polling before the next prompt.</summary>
     /// <param name="wrapped">Whether input uses the application's general Escape cancellation wrapper.</param>
     [Theory]
@@ -480,6 +484,10 @@ public sealed class TerminalViewTests
         Assert.Equal(initialFrame.Count(character => character == '\n'), int.Parse(firstErase.Groups[1].Value));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a deterministic colorless Spectre console backed by an in-memory writer.</summary>
     private static (IAnsiConsole Console, StringWriter Output) CreateConsole()
     {
@@ -496,4 +504,6 @@ public sealed class TerminalViewTests
     /// <summary>Removes ANSI control sequences so assertions verify semantic text independently of the host terminal.</summary>
     private static string StripAnsi(string value) =>
         Regex.Replace(value, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty, RegexOptions.CultureInvariant);
+
+    #endregion
 }

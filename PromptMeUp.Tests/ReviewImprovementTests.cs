@@ -27,8 +27,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies review improvement behavior.</summary>
 public sealed class ReviewImprovementTests
 {
+
+    #region Methods
+
     /// <summary>Rejects recognizable credential arguments consistently before dispatch or transport.</summary>
     [Theory]
     [InlineData("--query")]
@@ -142,9 +146,21 @@ public sealed class ReviewImprovementTests
         }
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Captures outgoing provider content and supplies an in-memory response.</summary>
     private sealed class CapturingHandler : HttpMessageHandler
     {
+
+        #region Properties
+
         public string Body { get; private set; } = string.Empty;
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures only synthetic request data and returns an in-memory provider response.</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -152,5 +168,9 @@ public sealed class ReviewImprovementTests
             Body = await request.Content!.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(RegressionFixture.ResponseJson(), Encoding.UTF8) };
         }
+
+        #endregion
     }
+
+    #endregion
 }

@@ -26,6 +26,9 @@ namespace PromptMeUp.Views;
 /// <summary>Shares inline decision menus with a docked session strip and the conversation's history shortcuts.</summary>
 internal static class TerminalConversationPrompt
 {
+
+    #region Methods
+
     /// <summary>Returns an explicit menu choice while retaining selection when details or previous turns are inspected.</summary>
     /// <param name="console">The console used to display and read the menu.</param>
     /// <param name="text">The localized menu text.</param>
@@ -38,11 +41,13 @@ internal static class TerminalConversationPrompt
         IReadOnlyList<TerminalMenuChoice<T>> choices, string title, bool numbered = false, bool echoSelection = true)
     {
         if (choices.Count == 0) throw new ArgumentException("A conversation menu needs choices.", nameof(choices));
+
         if (!console.Profile.Capabilities.Interactive || !console.Profile.Capabilities.Ansi
             || !console.Profile.Out.IsTerminal || Console.IsInputRedirected || Console.IsOutputRedirected)
         {
             return TerminalChoiceMenu.Select(console, choices, title);
         }
+
         return SelectInteractive(console, text, choices, title, numbered, echoSelection);
     }
 
@@ -68,34 +73,45 @@ internal static class TerminalConversationPrompt
         {
             var width = Math.Max(1, console.Profile.Width - 1 - session.ChatIndent);
             var rows = new List<IRenderable>();
+
             if (console.Profile.Height >= 10)
             {
                 rows.Add(new ThemeSeparator(width: width));
                 rows.AddRange(new TerminalSessionStrip(text, session.LastStatus, session).Rows(width, showBreakdown: false)
                     .Select(row => new Markup(row)));
             }
+
             rows.Add(new Markup($"[bold {TerminalTheme.Info}]{Markup.Escape(TerminalText.Clip(title, width))}[/]"));
             rows.Add(new Text(" "));
             var visible = Math.Clamp((console.Profile.Height - rows.Count - 3) / 2, 1, Math.Min(7, choices.Count));
             var first = Math.Clamp(selected - visible / 2, 0, choices.Count - visible);
+
             for (var index = first; index < first + visible; index++)
             {
                 if (index > first) rows.Add(new Text(" "));
+
                 var choice = choices[index];
                 var label = (numbered ? $"{index}  " : string.Empty) + choice.Label;
+
                 if (!string.IsNullOrWhiteSpace(choice.Detail)) label += " · " + choice.Detail;
+
                 var style = index == selected
                     ? $"{TerminalTheme.SelectionForeground} on {TerminalTheme.SelectionBackground}"
                     : TerminalChoiceMenu.Color(choice.Tone);
+
                 rows.Add(new Markup($"[{style}]{Markup.Escape(TerminalText.Clip((index == selected ? "> " : "  ") + label, width))}[/]"));
             }
+
             rows.Add(new Text(" "));
             var hint = text.Text("Terminal.ChoiceKeys", selected + 1, choices.Count);
+
             rows.Add(new TerminalShortcutHint(hint, session.Options,
                 ["↕️", "✅", "❌"], [TerminalTheme.Info, TerminalTheme.Success, TerminalTheme.Warning], width));
+
             if (FullscreenViewport.CanUse(console) && session.History.Turns.Count > 0)
                 rows.Add(new TerminalShortcutHint(text.Text("Terminal.NavigationKeys"), session.Options,
                     ["📖", "🔎"], [TerminalTheme.Info, TerminalTheme.Accent], width));
+
             return rows;
         }
 
@@ -106,21 +122,27 @@ internal static class TerminalConversationPrompt
         void EraseMenu()
         {
             if (paintedRows == 0) return;
+
             if (paintedSize != (console.Profile.Width, console.Profile.Height))
             {
                 console.WriteLine();
                 paintedRows = 0;
+
                 return;
             }
+
             console.WriteAnsi(writer =>
             {
                 writer.CursorUp(paintedRows);
                 writer.Write("\r");
+
                 for (var row = 0; row < paintedRows; row++)
                 {
                     writer.EraseInLine(2);
+
                     if (row + 1 < paintedRows) writer.CursorDown(1);
                 }
+
                 if (paintedRows > 1) writer.CursorUp(paintedRows - 1);
             });
             paintedRows = 0;
@@ -132,6 +154,7 @@ internal static class TerminalConversationPrompt
             paintedSize = (console.Profile.Width, console.Profile.Height);
             var menu = new Padder(new Rows(Render()), new Padding(session.ChatIndent, 0, 0, 0));
             var options = new RenderOptions(console.Profile.Capabilities, new Size(paintedSize.Width, paintedSize.Height));
+
             // Count physical output lines, including renderer-added spacing, rather than logical menu items.
             paintedRows = ((IRenderable)menu).Render(options, paintedSize.Width)
                 .Sum(segment => segment.Text.Count(character => character == '\n')) + 1;
@@ -140,13 +163,17 @@ internal static class TerminalConversationPrompt
         }
 
         console.Cursor.Hide();
+
         try
         {
             PaintMenu();
+
             while (true)
             {
                 var pressed = input.ReadKey(PaintMenu);
+
                 if (pressed is not { } key) continue;
+
                 if (TerminalHistoryView.IsShortcut(key))
                 {
                     EraseMenu();
@@ -155,14 +182,18 @@ internal static class TerminalConversationPrompt
                     PaintMenu();
                     continue;
                 }
+
                 if (key.Key == ConsoleKey.Escape) throw new InteractiveFlowCanceledException();
+
                 if (numbered && choices.Count <= 10 && key.Modifiers == 0
                     && key.KeyChar is >= '0' and <= '9' && key.KeyChar - '0' < choices.Count)
                 {
                     selected = key.KeyChar - '0';
                     break;
                 }
+
                 if (key.Key == ConsoleKey.Enter && key.Modifiers == 0) break;
+
                 var nextSelected = key.Key switch
                 {
                     ConsoleKey.UpArrow => (selected + choices.Count - 1) % choices.Count,
@@ -172,19 +203,23 @@ internal static class TerminalConversationPrompt
                     ConsoleKey.End => choices.Count - 1,
                     _ => selected
                 };
+
                 if (nextSelected != selected)
                 {
                     selected = nextSelected;
                     PaintMenu();
                 }
             }
+
             EraseMenu();
+
             if (echoSelection)
             {
                 console.Write(new Text(choices[selected].Label, Style.Parse(TerminalTheme.Info)));
                 console.WriteLine();
                 console.WriteLine();
             }
+
             return choices[selected].Value;
         }
         finally
@@ -201,4 +236,6 @@ internal static class TerminalConversationPrompt
             new(false, text.Text("Common.No"), Tone: TerminalMenuTone.Muted),
             new(true, text.Text("Common.Yes"), Tone: TerminalMenuTone.Caution)
         ], title);
+
+    #endregion
 }

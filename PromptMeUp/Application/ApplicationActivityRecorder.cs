@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Services;
 
@@ -27,6 +26,9 @@ public sealed class ApplicationActivityRecorder(
     IActivityAuditService audit,
     ILogger<ApplicationActivityRecorder> logger)
 {
+
+    #region Methods
+
     /// <summary>Records a non-session activity while allowing diagnostics to continue if auditing itself fails.</summary>
     public async Task TryRecordAsync(string activity, string outcome, string? sessionId, object payload)
     {
@@ -39,4 +41,7 @@ public sealed class ApplicationActivityRecorder(
             logger.LogError("Activity audit persistence failed. Activity={Activity}, Outcome={Outcome}, ErrorType={ErrorType}", activity, outcome, exception.GetType().Name);
         }
     }
+
+    #endregion
+
 }

@@ -16,26 +16,41 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Parses command-line arguments into validated application options.</summary>
 public interface ICommandLineParser
 {
+    #region Methods
+
+    /// <summary>Parses and validates the supplied command-line arguments.</summary>
     CommandLineParseResult Parse(IReadOnlyList<string> args);
+
+    #endregion
 }
 
 /// <summary>Parses the supported command-line switches into a single validated command request.</summary>
 public sealed class CommandLineParser : ICommandLineParser
 {
+    #region Fields
+
     private readonly ILocalizationService _text;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the strict command-line parser with localized validation messages.</summary>
     public CommandLineParser(ILocalizationService text)
     {
         _text = text;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Parses one strict hm invocation without performing environment or network work.</summary>
     public CommandLineParseResult Parse(IReadOnlyList<string> args)
@@ -455,6 +470,10 @@ public sealed class CommandLineParser : ICommandLineParser
             null);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Selects one top-level command and rejects ambiguous command combinations.</summary>
     private bool TrySelect(
         AppCommand selected,
@@ -523,4 +542,6 @@ public sealed class CommandLineParser : ICommandLineParser
         AppCommand.Path => "path",
         _ => command.ToString().ToLowerInvariant()
     };
+
+    #endregion
 }

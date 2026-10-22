@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Represents one explicit, credential-free global note; IsGlobal remains for source compatibility.</summary>

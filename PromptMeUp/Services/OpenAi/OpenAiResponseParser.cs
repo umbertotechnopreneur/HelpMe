@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using PromptMeUp.Models;
@@ -26,9 +25,15 @@ namespace PromptMeUp.Services.OpenAi;
 /// <summary>Parses supported OpenAI response payloads into the application's typed result models.</summary>
 internal static partial class OpenAiResponseParser
 {
+    #region Fields
+
     private const int MaximumSuggestedCommands = 8;
     private const int MaximumSuggestionLabelLength = 160;
     private const int MaximumSuggestionCommandLength = 4_096;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Parses stable provider fields and, for chat, the strict user-facing response envelope.</summary>
     internal static AiResponse ParseResponse(
@@ -176,6 +181,10 @@ internal static partial class OpenAiResponseParser
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Accepts only a bounded, distinct set of built-in guide chapter identifiers.</summary>
     private static IReadOnlyList<string> ParseGuideTopics(JsonElement root)
     {
@@ -197,6 +206,10 @@ internal static partial class OpenAiResponseParser
         }
         return parsed;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Parses the deliberately small JSON contract returned by the risk-review prompt.</summary>
     internal static CommandRiskAssessment ParseRiskAssessment(string text)
@@ -247,6 +260,10 @@ internal static partial class OpenAiResponseParser
             return null;
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Concatenates output_text entries from every assistant output message.</summary>
     private static string ReadOutputText(JsonElement root)
@@ -386,10 +403,21 @@ internal static partial class OpenAiResponseParser
     [GeneratedRegex(@"(?ix)(?:\bsk-(?:proj-|admin-)?[A-Za-z0-9_-]{16,}|\bbearer\s+[A-Za-z0-9._~+/=-]{8,}|\b[A-Z0-9_]*(?:PASSWORD|PASSWD|SECRET|API_?KEY|ACCESS_TOKEN|AUTH_TOKEN|BEARER_TOKEN)\b\s*[:=]\s*[^\s,;]+)")]
     private static partial Regex SensitiveCommandPattern();
 
+    #endregion
+
+    #region Properties
+
     internal static AiUsageMetrics EmptyUsage { get; } = new(0, 0, 0, 0, 0, 0);
+
+    #endregion
 }
 
+/// <summary>Contains validated assistant Markdown, suggested commands, and guide topic identifiers.</summary>
 internal sealed record ChatResponseContent(string Markdown, IReadOnlyList<SuggestedCommand> SuggestedCommands)
 {
+    #region Properties
+
     public IReadOnlyList<string> GuideTopics { get; init; } = [];
+
+    #endregion
 }

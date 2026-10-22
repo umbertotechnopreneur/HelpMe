@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 
@@ -32,6 +31,9 @@ internal sealed class AiCommandHandler(
     IEnvironmentSecretService secrets,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Runs one AI-related command with the same interaction and credential rules as the CLI.</summary>
     internal async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
@@ -84,4 +86,7 @@ internal sealed class AiCommandHandler(
                 throw new ArgumentOutOfRangeException(nameof(options), "Unsupported AI command.");
         }
     }
+
+    #endregion
+
 }

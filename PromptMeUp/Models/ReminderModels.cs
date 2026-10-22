@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Represents one locally retained global reminder and its explicitly reviewed offset.</summary>

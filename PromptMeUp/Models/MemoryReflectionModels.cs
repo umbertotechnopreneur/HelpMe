@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Binds a reflection request to the complete evidence shown before sharing it with OpenAI.</summary>

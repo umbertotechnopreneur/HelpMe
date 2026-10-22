@@ -23,8 +23,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies welcome banner behavior.</summary>
 public sealed class WelcomeBannerTests
 {
+
+    #region Methods
+
     /// <summary>Centering preserves the artwork's fixed columns instead of shifting its shorter rows.</summary>
     [Theory]
     [InlineData(80)]
@@ -48,4 +52,6 @@ public sealed class WelcomeBannerTests
         Assert.Equal(7, artwork.Length);
         Assert.Single(artwork.Select(line => line.IndexOf('#')).Distinct());
     }
+
+    #endregion
 }

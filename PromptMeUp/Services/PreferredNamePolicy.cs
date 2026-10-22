@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Buffers;
 using System.Globalization;
 using System.Text;
@@ -26,7 +25,13 @@ namespace PromptMeUp.Services;
 /// <summary>Normalizes optional display-name data without treating its contents as AI instructions.</summary>
 public static class PreferredNamePolicy
 {
+    #region Fields
+
     public const int MaximumLength = 80;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Accepts a bounded Unicode name while rejecting hidden controls, malformed text, and recognizable credentials.</summary>
     public static string Normalize(string? value, ISensitiveDataRedactor redactor)
@@ -54,6 +59,12 @@ public static class PreferredNamePolicy
         return normalized;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Returns one generic validation error without retaining or echoing the supplied name.</summary>
     private static ArgumentException Invalid() => new("The preferred name is invalid.", "value");
+
+    #endregion
 }

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using PromptMeUp.Models;
 
@@ -25,6 +24,8 @@ namespace PromptMeUp.Services;
 /// <summary>Defines the token budgets reserved for the sections of an AI request.</summary>
 public static class ContextBudgetConfiguration
 {
+    #region Methods
+
     /// <summary>Loads the bounded ordinary-chat input budget without persisting environment configuration.</summary>
     public static ConversationContextLimits Load(Func<string, string?> readVariable, ILocalizationService text)
     {
@@ -42,4 +43,6 @@ public static class ContextBudgetConfiguration
         }
         return new ConversationContextLimits(tokens);
     }
+
+    #endregion
 }

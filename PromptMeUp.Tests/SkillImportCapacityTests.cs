@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies skill import capacity behavior.</summary>
 public sealed class SkillImportCapacityTests
 {
+
+    #region Methods
+
     /// <summary>Allows the last supported package and keeps the complete catalog readable.</summary>
     [Fact]
     public void Import_SixtyFourthPackage_Succeeds()
@@ -121,6 +125,10 @@ public sealed class SkillImportCapacityTests
         catalog.DiscardStaging(second.Directory);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates bounded inert packages only inside the disposable fixture directory.</summary>
     private static void CreatePackages(RegressionFixture fixture, int count)
     {
@@ -157,4 +165,6 @@ public sealed class SkillImportCapacityTests
         return new SkillCatalogService(fixture.Paths, new SkillsAndMemoryStore(fixture.Paths, new SensitiveDataRedactor(), text), text,
             new YamlPromptCatalogService(fixture.Paths, NullLogger<YamlPromptCatalogService>.Instance));
     }
+
+    #endregion
 }

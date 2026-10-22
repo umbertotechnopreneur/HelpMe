@@ -27,14 +27,19 @@ namespace PromptMeUp.Views;
 /// <summary>Colors complete help examples without interpreting their text as terminal markup.</summary>
 internal static class HelpCommandLine
 {
+
+    #region Methods
+
     /// <summary>Renders a lowercase white command, accented switches, green strings, and informative arguments.</summary>
     internal static IRenderable Create(string example)
     {
         var paragraph = new Paragraph { Overflow = Overflow.Fold };
+
         foreach (var token in Tokenize(example))
         {
             Append(paragraph, token.Value, token.Color);
         }
+
         return paragraph;
     }
 
@@ -43,7 +48,9 @@ internal static class HelpCommandLine
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         var paragraph = new Paragraph { Overflow = Overflow.Fold };
+
         AppendDescription(paragraph, description, Tokenize(example));
+
         return paragraph;
     }
 
@@ -56,26 +63,36 @@ internal static class HelpCommandLine
         var argument = tokens.FirstOrDefault(item => item.IsParameter && item.Value == token)
             ?? throw new ArgumentException("The argument must occur exactly in the help example.", nameof(token));
         var paragraph = new Paragraph { Overflow = Overflow.Fold };
+
         Append(paragraph, argument.Value, argument.Color);
         Append(paragraph, ": ", TerminalTheme.Primary);
         AppendDescription(paragraph, description, tokens);
+
         return paragraph;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Retains every example token and whitespace span while assigning its semantic display color.</summary>
     private static IReadOnlyList<CommandToken> Tokenize(string example)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(example);
         var start = 0;
+
         while (start < example.Length && char.IsWhiteSpace(example[start]))
         {
             start++;
         }
+
         var end = start;
+
         while (end < example.Length && !char.IsWhiteSpace(example[end]))
         {
             end++;
         }
+
         if (!example.AsSpan(start, end - start).Equals("hm", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("A help example must begin with the hm command.", nameof(example));
@@ -87,17 +104,20 @@ internal static class HelpCommandLine
             new("hm", "#FFFFFF", false)
         };
         var index = end;
+
         while (index < example.Length)
         {
             start = index;
             string color;
             var parameter = true;
+
             if (char.IsWhiteSpace(example[index]))
             {
                 while (index < example.Length && char.IsWhiteSpace(example[index]))
                 {
                     index++;
                 }
+
                 color = TerminalTheme.Primary;
                 parameter = false;
             }
@@ -117,10 +137,13 @@ internal static class HelpCommandLine
                 {
                     index++;
                 }
+
                 color = example[start] == '-' ? TerminalTheme.Accent : TerminalTheme.Info;
             }
+
             tokens.Add(new CommandToken(example[start..index], color, parameter));
         }
+
         return tokens;
     }
 
@@ -134,28 +157,34 @@ internal static class HelpCommandLine
             .ToArray();
         var plainStart = 0;
         var index = 0;
+
         while (index < description.Length)
         {
             if (description[index] == '[')
             {
                 var optionalEnd = OptionalEnd(description, index);
+
                 Append(paragraph, description[plainStart..index], TerminalTheme.Primary);
                 Append(paragraph, description[index..optionalEnd], TerminalTheme.Warning);
                 index = optionalEnd;
                 plainStart = index;
                 continue;
             }
+
             var match = candidates.FirstOrDefault(token => Matches(description, index, token.Value));
+
             if (match is null)
             {
                 index++;
                 continue;
             }
+
             Append(paragraph, description[plainStart..index], TerminalTheme.Primary);
             Append(paragraph, match.Value, match.Color);
             index += match.Value.Length;
             plainStart = index;
         }
+
         Append(paragraph, description[plainStart..], TerminalTheme.Primary);
     }
 
@@ -163,6 +192,7 @@ internal static class HelpCommandLine
     private static bool Matches(string description, int index, string token)
     {
         var end = index + token.Length;
+
         return end <= description.Length
             && description.AsSpan(index, token.Length).SequenceEqual(token)
             && (index == 0 || !IsTokenCharacter(description[index - 1]))
@@ -176,13 +206,22 @@ internal static class HelpCommandLine
         || char.GetUnicodeCategory(character) is UnicodeCategory.NonSpacingMark
             or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark;
 
+    #endregion
+
+    #region Types
+
     /// <summary>Stores a literal example span and its shared command, description, and argument-note color.</summary>
     private sealed record CommandToken(string Value, string Color, bool IsParameter);
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Keeps optional syntax groups together, including spaces, nested groups, and quoted values.</summary>
     private static int OptionalEnd(string value, int start)
     {
         var depth = 0;
+
         for (var index = start; index < value.Length; index++)
         {
             if (value[index] is '\'' or '"')
@@ -198,6 +237,7 @@ internal static class HelpCommandLine
                 return index + 1;
             }
         }
+
         return value.Length;
     }
 
@@ -206,6 +246,7 @@ internal static class HelpCommandLine
     {
         var quote = example[start];
         var index = start + 1;
+
         while (index < example.Length)
         {
             if (quote == '"' && example[index] == '`' && index + 1 < example.Length)
@@ -228,6 +269,7 @@ internal static class HelpCommandLine
                 index++;
             }
         }
+
         return index;
     }
 
@@ -235,6 +277,7 @@ internal static class HelpCommandLine
     private static void Append(Paragraph paragraph, string value, string color)
     {
         var visible = new StringBuilder(value.Length);
+
         foreach (var character in value)
         {
             if (char.IsControl(character) && character is not ('\r' or '\n' or '\t'))
@@ -246,6 +289,9 @@ internal static class HelpCommandLine
                 visible.Append(character);
             }
         }
+
         paragraph.Append(visible.ToString(), Style.Parse(color));
     }
+
+    #endregion
 }

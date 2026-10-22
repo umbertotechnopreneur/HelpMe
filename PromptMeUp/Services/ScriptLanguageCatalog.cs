@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
@@ -24,22 +23,34 @@ namespace PromptMeUp.Services;
 /// <summary>Resolves script-language metadata, local runtimes, syntax checks, and safe temporary launch commands.</summary>
 public interface IScriptLanguageCatalog
 {
+    #region Methods
+
+    /// <summary>Returns the supported script-language definition for the supplied identifier.</summary>
     ScriptLanguageDefinition Get(ScriptLanguage language);
 
+    /// <summary>Lists the supported script-language definitions.</summary>
     IReadOnlyList<ScriptLanguageDefinition> List();
 
+    /// <summary>Reports whether the selected language runtime is available locally.</summary>
     ScriptRuntimeAvailability GetAvailability(ScriptLanguage language);
 
+    /// <summary>Chooses a preferred script language from the supplied request and runtime context.</summary>
     ScriptLanguage DetectPreferredLanguage();
 
+    /// <summary>Builds the local validation command for the selected script language.</summary>
     string BuildValidationCommand(ScriptLanguage language, string source);
 
+    /// <summary>Builds the approved execution command for the selected script language.</summary>
     string BuildExecutionCommand(ScriptLanguage language, string source);
+
+    #endregion
 }
 
 /// <summary>Keeps the language-specific script contract in one place while commands continue through normal authorization.</summary>
 public sealed class ScriptLanguageCatalog : IScriptLanguageCatalog
 {
+    #region Fields
+
     private static readonly IReadOnlyDictionary<ScriptLanguage, ScriptLanguageDefinition> Definitions =
         new Dictionary<ScriptLanguage, ScriptLanguageDefinition>
         {
@@ -84,6 +95,10 @@ public sealed class ScriptLanguageCatalog : IScriptLanguageCatalog
                 true,
                 ["node"])
         };
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Gets the complete fixed definition for one supported language.</summary>
     public ScriptLanguageDefinition Get(ScriptLanguage language) => Definitions.TryGetValue(language, out var definition)
@@ -206,6 +221,10 @@ public sealed class ScriptLanguageCatalog : IScriptLanguageCatalog
             "if ($parseErrors.Count -gt 0) { exit 1 }";
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Requires a current executable path before a user can authorize validation or execution.</summary>
     private string RequireRuntime(ScriptLanguage language) => GetAvailability(language).ExecutablePath
         ?? throw new InvalidOperationException("The selected script runtime is unavailable.");
@@ -313,4 +332,6 @@ public sealed class ScriptLanguageCatalog : IScriptLanguageCatalog
             yield return candidate + extension.ToLowerInvariant();
         }
     }
+
+    #endregion
 }

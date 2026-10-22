@@ -16,15 +16,22 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Stores one role-tagged conversation message and its context-accounting metadata.</summary>
 public sealed record ChatMessage(string Role, string Content)
 {
+
+    #region Properties
+
     /// <summary>Marks command results that retain the provider's user role but need separate context accounting.</summary>
     public bool IsToolOutput { get; init; }
+
+    #endregion
+
 }
 
+/// <summary>Records provider token counts for usage and cost accounting.</summary>
 public sealed record AiUsageMetrics(
     long InputTokens,
     long CachedInputTokens,
@@ -33,15 +40,25 @@ public sealed record AiUsageMetrics(
     long ReasoningTokens,
     long TotalTokens);
 
+/// <summary>Combines cumulative session usage with the available cost estimate.</summary>
 public sealed record AiSessionAccounting(AiUsageMetrics Usage, decimal? EstimatedCostUsd);
 
+/// <summary>Specifies the optional input-token limit for a conversation.</summary>
 public sealed record ConversationContextLimits(int? MaxInputTokens)
 {
+
+    #region Properties
+
     public static ConversationContextLimits Default { get; } = new(MaxInputTokens: null);
+
+    #endregion
+
 }
 
+/// <summary>Associates a provider response with its model and reported token usage.</summary>
 public sealed record AiResponseAccounting(string? Id, string? Model, AiUsageMetrics Usage);
 
+/// <summary>Separates estimated input, cache, and output costs in US dollars.</summary>
 public sealed record AiCostBreakdown(
     decimal InputUsd,
     decimal CachedInputUsd,
@@ -49,6 +66,7 @@ public sealed record AiCostBreakdown(
     decimal OutputUsd,
     decimal TotalUsd);
 
+/// <summary>Describes context occupancy, reserved output, and message-category token counts.</summary>
 public sealed record AiContextUsage(
     long InputTokens,
     long OutputTokens,
@@ -58,6 +76,9 @@ public sealed record AiContextUsage(
     long ContextWindowTokens,
     bool IsInputEstimate)
 {
+
+    #region Properties
+
     public long InputBudgetTokens { get; init; }
 
     public int ReservedOutputTokens { get; init; }
@@ -69,10 +90,15 @@ public sealed record AiContextUsage(
     public long AssistantMessageTokens { get; init; }
 
     public long GuideTokens { get; init; }
+
+    #endregion
+
 }
 
+/// <summary>Pairs a suggested command with the label shown during local review.</summary>
 public sealed record SuggestedCommand(string Label, string Command);
 
+/// <summary>Carries the parsed model answer, suggested actions, and request accounting.</summary>
 public sealed record AiResponse(
     string Id,
     string Model,
@@ -85,6 +111,9 @@ public sealed record AiResponse(
     long ElapsedMilliseconds,
     string? ProviderRequestId)
 {
+
+    #region Properties
+
     public IReadOnlyList<SuggestedCommand> SuggestedCommands { get; init; } = [];
 
     public IReadOnlyList<string> GuideTopics { get; init; } = [];
@@ -92,8 +121,12 @@ public sealed record AiResponse(
     public decimal? TurnCostUsd { get; init; }
 
     public int RequestCount { get; init; } = 1;
+
+    #endregion
+
 }
 
+/// <summary>Records request timing, redacted content, usage, and failure details for the local audit.</summary>
 public sealed record AiRequestLog(
     string Id,
     string ConversationId,
@@ -114,6 +147,7 @@ public sealed record AiRequestLog(
     bool Succeeded,
     string? FailureCode);
 
+/// <summary>Stores versioned prompt metadata and localized instruction text.</summary>
 public sealed record PromptDefinition(
     string Id,
     int Version,
@@ -122,6 +156,9 @@ public sealed record PromptDefinition(
     IReadOnlyDictionary<string, string> Texts,
     IReadOnlyDictionary<string, string> Metadata)
 {
+
+    #region Methods
+
     /// <summary>Returns localized prompt text with English as the explicit resource fallback.</summary>
     public string ResolveText(string language) =>
         Texts.TryGetValue(language, out var localized)
@@ -129,6 +166,10 @@ public sealed record PromptDefinition(
             : Texts.TryGetValue("en", out var english)
                 ? english
                 : throw new InvalidDataException($"Prompt '{Id}' has no text for '{language}' or English fallback.");
+
+    #endregion
+
 }
 
+/// <summary>Carries the model response returned by a connection diagnostic.</summary>
 public sealed record ConnectionTestResult(AiResponse Response);

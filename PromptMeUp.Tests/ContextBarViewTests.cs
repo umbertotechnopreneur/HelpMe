@@ -25,8 +25,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies context bar view behavior.</summary>
 public sealed class ContextBarViewTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that equal shares include free space and never count the system guide a second time.</summary>
     [Fact]
     public void ContextBar_EqualShares_IncludesFreeCapacityWithoutDuplicatingGuide()
@@ -212,6 +216,10 @@ public sealed class ContextBarViewTests
         Assert.DoesNotContain($"${0.05m:0.00000000}", output.ToString(), StringComparison.Ordinal);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a coherent active estimate with the guide initially absent from system content.</summary>
     private static ShellRuntimeStatus CreateStatus(long system, long user, long assistant, long budget) =>
         ShellRuntimeStatus.FromSettings(AppSettings.Default) with
@@ -247,4 +255,6 @@ public sealed class ContextBarViewTests
     /// <summary>Removes layout whitespace while preserving labels and numeric values through terminal wrapping.</summary>
     private static string Compact(string value) =>
         Regex.Replace(value, @"\s", string.Empty, RegexOptions.CultureInvariant);
+
+    #endregion
 }

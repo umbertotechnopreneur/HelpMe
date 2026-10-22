@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -31,6 +30,9 @@ public sealed partial class SkillsAndMemoryWorkflow(
     MemoryReflectionService reflection, PersistentMemoryService memories, ArtifactAssistant assistant,
     IEnvironmentSecretService secrets, ReminderService reminders)
 {
+
+    #region Methods
+
     /// <summary>Dispatches interactive skills and memory commands without leaking unsafe package contents.</summary>
     public async Task RunAsync(AppCommand command, AppSettings settings, CancellationToken ct)
     {
@@ -79,12 +81,15 @@ public sealed partial class SkillsAndMemoryWorkflow(
 
                 RunSkillCommandAsync(inline, settings, ct).GetAwaiter().GetResult();
                 preferences = store.SettingsAsync(ct).GetAwaiter().GetResult();
+
                 return BuildSkillGroups(preferences, ct).GetAwaiter().GetResult();
             });
+
             if (selected is null)
             {
                 return;
             }
+
             switch (selected.Item.Action)
             {
                 case SkillMenuAction.EnableSkillsAndMemory:
@@ -115,6 +120,10 @@ public sealed partial class SkillsAndMemoryWorkflow(
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds the Skills menu with concise global state labels and complete package details below the commands.</summary>
     private async Task<IReadOnlyList<SkillMenuGroup>> BuildSkillGroups(SkillsAndMemorySettings preferences, CancellationToken ct)
     {
@@ -136,6 +145,7 @@ public sealed partial class SkillsAndMemoryWorkflow(
                 Icon: "📦", InputLabel: text.Text("Lab.Path"))]
             : [];
         var installedCommands = new List<SkillMenuItem>();
+
         if (preferences.Enabled)
         {
             foreach (var skill in skills.List())
@@ -145,14 +155,17 @@ public sealed partial class SkillsAndMemoryWorkflow(
                 var state = skill.UnavailableReason is null
                     ? TerminalTheme.IconPrefix(shell.Options, enabled ? "🟢" : "🔴", enabled ? "+" : "-") + status
                     : status;
+
                 if (skill.UnavailableReason is not null)
                 {
                     installedCommands.Add(new SkillMenuItem(SkillMenuAction.ToggleSkill,
                         skill.Name + " — " + state, skill.Description, skill, skill.Icon, CanExecute: false));
                     continue;
                 }
+
                 installedCommands.Add(new SkillMenuItem(SkillMenuAction.ToggleSkill,
                     skill.Name + " — " + state, skill.Description, skill, skill.Icon));
+
                 if (enabled)
                 {
                     installedCommands.Add(new SkillMenuItem(SkillMenuAction.SelectSkill,
@@ -195,11 +208,14 @@ public sealed partial class SkillsAndMemoryWorkflow(
         var skill = selected.Skill
             ?? throw new InvalidOperationException("A skill command requires a skill.");
         var executionMode = settings.DirectModeEnabled ? CommandExecutionMode.Direct : CommandExecutionMode.Confirm;
+
         if (skill.UnavailableReason is not null)
         {
             shell.RenderWarning(skill.UnavailableReason);
+
             return;
         }
+
         var enabled = await skills.IsEnabledAsync(skill, ct).ConfigureAwait(false);
         switch (selected.Action)
         {
@@ -227,6 +243,7 @@ public sealed partial class SkillsAndMemoryWorkflow(
                 if (skill.Origin == "bundled" && skill.Name == "set_reminder")
                 {
                     await RunRemindersAsync(settings, ct).ConfigureAwait(false);
+
                     return;
                 }
                 if (skill.Origin == "bundled" && skill.Name == "screenshot")
@@ -260,6 +277,7 @@ public sealed partial class SkillsAndMemoryWorkflow(
             var skill = skills.Inspect(staged);
             view.Render(skill.Name, [(text.Text("Lab.Package"), skill.Description + "\n" + skill.Instructions),
                 .. skill.Scripts.Select(script => (script.Key + ".ps1", script.Value))]);
+
             if (view.Confirm(text.Text("Lab.Import")))
             {
                 skills.Import(skill);
@@ -271,4 +289,7 @@ public sealed partial class SkillsAndMemoryWorkflow(
             skills.DiscardStaging(staged);
         }
     }
+
+    #endregion
+
 }

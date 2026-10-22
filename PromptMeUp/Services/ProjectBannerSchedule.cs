@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -26,16 +25,22 @@ namespace PromptMeUp.Services;
 /// <summary>Persists the local day on which the project footer was last shown.</summary>
 public interface IProjectBannerSchedule
 {
+    #region Methods
+
     /// <summary>Returns whether the project footer may be shown and records the current local day when it may.</summary>
     bool TryMarkRenderedToday();
 
     /// <summary>Returns whether the opening tip may be shown and records the current local day when it may.</summary>
     bool TryMarkOpeningTipRenderedToday();
+
+    #endregion
 }
 
 /// <summary>Coordinates independent once-per-local-day opening and footer banners across invocations.</summary>
 public sealed class ProjectBannerSchedule(string statePath, string openingTipStatePath, TimeProvider clock, ILogger<ProjectBannerSchedule> logger) : IProjectBannerSchedule
 {
+    #region Fields
+
     private readonly string _statePath = string.IsNullOrWhiteSpace(statePath)
         ? throw new ArgumentException("A project-banner state path is required.", nameof(statePath))
         : statePath;
@@ -43,11 +48,19 @@ public sealed class ProjectBannerSchedule(string statePath, string openingTipSta
         ? throw new ArgumentException("An opening-tip state path is required.", nameof(openingTipStatePath))
         : openingTipStatePath;
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Records the current local date unless the same date is already stored.</summary>
     public bool TryMarkRenderedToday() => TryMarkToday(_statePath, "project banner");
 
     /// <summary>Records the opening tip separately from the project footer for the current local date.</summary>
     public bool TryMarkOpeningTipRenderedToday() => TryMarkToday(_openingTipStatePath, "opening tip");
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Persists one independent daily marker, allowing rendering when persistence is unavailable.</summary>
     private bool TryMarkToday(string path, string label)
@@ -72,4 +85,6 @@ public sealed class ProjectBannerSchedule(string statePath, string openingTipSta
             return true;
         }
     }
+
+    #endregion
 }

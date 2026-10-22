@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies diagnostic bundle service behavior.</summary>
 public sealed class DiagnosticBundleServiceTests
 {
+
+    #region Methods
+
     /// <summary>Creates an inspectable archive while excluding persistence and redacting credentials and user paths.</summary>
     [Fact]
     public async Task PrepareAsync_CreatesBoundedRedactedArchive()
@@ -113,11 +117,22 @@ public sealed class DiagnosticBundleServiceTests
         Assert.Equal(0, stream.Position);
     }
 
+    #endregion
+
+    #region Types
+
     /// <summary>Simulates a log writer appending data after the reader captures the file length.</summary>
     private sealed class GrowingLogStream : MemoryStream
     {
+
+        #region Fields
+
         private readonly byte[] _addition;
         private bool _appended;
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Creates an expandable stream with a pending concurrent append.</summary>
         /// <param name="initial">Bytes visible when the snapshot begins.</param>
@@ -128,6 +143,10 @@ public sealed class DiagnosticBundleServiceTests
             Position = 0;
             _addition = Encoding.UTF8.GetBytes(addition);
         }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Appends once while preserving the reader's position.</summary>
         /// <param name="buffer">Destination whose size bounds the read.</param>
@@ -144,7 +163,13 @@ public sealed class DiagnosticBundleServiceTests
             }
             return base.ReadAsync(buffer, cancellationToken);
         }
+
+        #endregion
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads a named UTF-8 archive entry for focused content assertions.</summary>
     private static async Task<string> ReadEntryAsync(ZipArchive archive, string name)
@@ -154,4 +179,6 @@ public sealed class DiagnosticBundleServiceTests
         using var reader = new StreamReader(stream);
         return await reader.ReadToEndAsync();
     }
+
+    #endregion
 }

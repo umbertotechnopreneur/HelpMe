@@ -23,12 +23,19 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Displays command help and usage examples.</summary>
 public interface IHelpView
 {
+
+    #region Methods
+
+    /// <summary>Opens section navigation when the terminal supports a disposable fullscreen viewport.</summary>
     void Render(Action? openMemories = null, Action? openGuide = null, string? guidePath = null);
 
-    /// <summary>Prints help in the current buffer when an error or redirected output must remain visible.</summary>
+    /// <summary>Prints every section without hiding errors, entering an alternate buffer, or waiting for input.</summary>
     void RenderStatic() => Render();
+
+    #endregion
 }
 
 /// <summary>Presents the command reference as a keyboard browser or ordinary scrolling output.</summary>
@@ -38,12 +45,16 @@ public sealed class HelpView(
     IConsoleShellView shell,
     IAboutView about) : IHelpView
 {
+
+    #region Methods
+
     /// <summary>Opens section navigation when the terminal supports a disposable fullscreen viewport.</summary>
     public void Render(Action? openMemories = null, Action? openGuide = null, string? guidePath = null)
     {
         if (FullscreenHelpView.CanUse(console))
         {
             var originalOptions = shell.Options;
+
             try
             {
                 shell.Configure(originalOptions with { SuppressFooter = true });
@@ -53,9 +64,12 @@ public sealed class HelpView(
             {
                 shell.Configure(originalOptions);
             }
+
             return;
         }
+
         RenderStatic();
+
         if (openGuide is not null && console.Profile.Capabilities.Interactive && console.Profile.Out.IsTerminal)
         {
             var choice = TerminalChoiceMenu.Select<bool>(console,
@@ -63,6 +77,7 @@ public sealed class HelpView(
                 new TerminalMenuChoice<bool>(false, text.Text("Guide.Finish"), Tone: TerminalMenuTone.Positive),
                 new TerminalMenuChoice<bool>(true, text.Text("Guide.Open"))
             ]);
+
             if (choice) { openGuide(); }
         }
     }
@@ -76,12 +91,18 @@ public sealed class HelpView(
             TerminalTheme.Accent);
         console.Write(HelpCommandLine.CreateDescription(text.Text("Help.Usage"), "hm"));
         console.WriteLine();
+
         foreach (var section in CreateSections())
         {
             RenderGroup(section);
         }
+
         shell.RenderProjectBanner();
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Shares the complete localized command catalog between fullscreen and scrolling help.</summary>
     private IReadOnlyList<HelpSection> CreateSections(Action? openMemories = null, Action? openGuide = null, string? guidePath = null) =>
@@ -225,16 +246,27 @@ public sealed class HelpView(
         console.Write(new Rows(section.Entries.Select(FullscreenHelpView.RenderEntry)));
         console.WriteLine();
     }
+
+    #endregion
 }
 
 
+/// <summary>Displays executable locations and offers supported follow-up actions.</summary>
 public interface IExecutableLocationView
 {
+
+    #region Methods
+
+    /// <summary>Shows the exact executable location and selects a safe next action when input is interactive.</summary>
     ExecutableLocationAction RenderAndSelect(ExecutableLocationInfo location, bool interactive);
 
+    /// <summary>Previews the exact file-manager invocation and requests explicit authorization.</summary>
     bool ConfirmOpen(ExecutableLocationInfo location);
 
+    /// <summary>Reports the authorized file-manager launch or a command that changes the calling terminal manually.</summary>
     void RenderResult(ExecutableLocationInfo location, ExecutableLocationAction action);
+
+    #endregion
 }
 
 /// <summary>Presents the executable location and its reviewed open-folder action.</summary>
@@ -243,6 +275,9 @@ public sealed class ExecutableLocationView(
     ILocalizationService text,
     IConsoleShellView shell) : IExecutableLocationView
 {
+
+    #region Methods
+
     /// <summary>Shows the exact executable location and selects a safe next action when input is interactive.</summary>
     public ExecutableLocationAction RenderAndSelect(ExecutableLocationInfo location, bool interactive)
     {
@@ -256,6 +291,7 @@ public sealed class ExecutableLocationView(
             TerminalTheme.CompactMetric(text.Text("Where.Executable"), location.ExecutablePath),
             TerminalTheme.CompactMetric(text.Text("Where.Directory"), location.DirectoryPath)
         ], preferredPairs: 1, width: console.Profile.Width);
+
         console.Write(locationGrid);
         console.WriteLine();
 
@@ -272,6 +308,7 @@ public sealed class ExecutableLocationView(
         }.Select(action => new TerminalMenuChoice<ExecutableLocationAction>(
             action, ActionLabel(action), Tone: action == ExecutableLocationAction.DoNothing
                 ? TerminalMenuTone.Muted : TerminalMenuTone.Primary)).ToArray();
+
         return TerminalChoiceMenu.Select(console, choices, text.Text("Where.Action"));
     }
 
@@ -284,6 +321,7 @@ public sealed class ExecutableLocationView(
             TerminalTheme.CompactMetric(text.Text("Where.OpenPreview"), location.OpenFolderPreview)
         ], preferredPairs: 1, width: console.Profile.Width));
         console.WriteLine();
+
         return console.Prompt(new ConfirmationPrompt(Markup.Escape(text.Text("Where.Confirm")))
         {
             DefaultValue = false
@@ -294,6 +332,7 @@ public sealed class ExecutableLocationView(
     public void RenderResult(ExecutableLocationInfo location, ExecutableLocationAction action)
     {
         ArgumentNullException.ThrowIfNull(location);
+
         if (action == ExecutableLocationAction.DoNothing)
         {
             return;
@@ -302,12 +341,17 @@ public sealed class ExecutableLocationView(
         if (action == ExecutableLocationAction.OpenContainingFolder)
         {
             console.MarkupLine($"[{TerminalTheme.Success}]{Markup.Escape(text.Text("Where.Opened"))}[/]");
+
             return;
         }
 
         console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Where.ChangeDirectoryHint"))}[/]");
         console.WriteLine(location.ChangeDirectoryCommand);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Converts executable-location actions into localized, intentionally ordered menu labels.</summary>
     private string ActionLabel(ExecutableLocationAction action) => action switch
@@ -317,11 +361,20 @@ public sealed class ExecutableLocationView(
         ExecutableLocationAction.OpenContainingFolder => text.Text("Where.Open"),
         _ => throw new InvalidOperationException("Unsupported executable-location action.")
     };
+
+    #endregion
 }
 
+/// <summary>Displays third-party notices and attribution.</summary>
 public interface IThirdPartyView
 {
+
+    #region Methods
+
+    /// <summary>Opens section navigation when the terminal supports a disposable fullscreen viewport.</summary>
     void Render();
+
+    #endregion
 }
 
 /// <summary>Displays bundled third-party notices without loading external content.</summary>
@@ -330,6 +383,9 @@ public sealed class ThirdPartyView(
     ILocalizationService text,
     IConsoleShellView shell) : IThirdPartyView
 {
+
+    #region Fields
+
     private static readonly (string Package, string Version, string License)[] Packages =
     [
         ("Microsoft.Data.Sqlite", "10.0.12", "MIT"),
@@ -344,6 +400,10 @@ public sealed class ThirdPartyView(
         ("YamlDotNet", "18.1.0", "MIT")
     ];
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Renders direct runtime dependencies and their declared licenses.</summary>
     public void Render()
     {
@@ -354,23 +414,36 @@ public sealed class ThirdPartyView(
         console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("ThirdParty.Subtitle"))}[/]");
         var table = TerminalTable.Create(text.Text("ThirdParty.Package"), text.Text("ThirdParty.Version"),
             text.Text("ThirdParty.License"));
+
         foreach (var package in Packages)
         {
             table.AddRow(Markup.Escape(package.Package), Markup.Escape(package.Version), Markup.Escape(package.License));
         }
+
         console.Write(table);
         console.WriteLine();
         console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("ThirdParty.FullNotices"))}[/]");
     }
+
+    #endregion
 }
 
+/// <summary>Collects and previews executable search-path changes.</summary>
 public interface IPortablePathView
 {
+
+    #region Methods
+
+    /// <summary>Collects an install, remove, or status PATH action.</summary>
     PortablePathAction SelectAction();
 
+    /// <summary>Shows the exact persistent target and asks before a mutating PATH operation.</summary>
     bool PreviewAndConfirm(PortablePathPlan plan, bool preauthorized);
 
+    /// <summary>Reports the authorized file-manager launch or a command that changes the calling terminal manually.</summary>
     void RenderResult(PortablePathResult result);
+
+    #endregion
 }
 
 /// <summary>Presents the portable PATH plan and its confirmed application result.</summary>
@@ -379,6 +452,9 @@ public sealed class PortablePathView(
     ILocalizationService text,
     IConsoleShellView shell) : IPortablePathView
 {
+
+    #region Methods
+
     /// <summary>Collects an install, remove, or status PATH action.</summary>
     public PortablePathAction SelectAction()
     {
@@ -386,6 +462,7 @@ public sealed class PortablePathView(
             console,
             TerminalTheme.IconPrefix(shell.Options, "↔", "<>") + text.Text("Path.Title"),
             TerminalTheme.Accent);
+
         return TerminalChoiceMenu.Select<PortablePathAction>(console,
         [
             new TerminalMenuChoice<PortablePathAction>(PortablePathAction.Status, text.Text("Path.Status")),
@@ -411,6 +488,7 @@ public sealed class PortablePathView(
             TerminalTheme.CompactMetric(text.Text("Path.Directory"), plan.ExecutableDirectory)
         ], preferredPairs: 1, width: console.Profile.Width));
         console.WriteLine();
+
         if (plan.Action == PortablePathAction.Status || !plan.RequiresChange)
         {
             return false;
@@ -427,6 +505,7 @@ public sealed class PortablePathView(
     {
         ArgumentNullException.ThrowIfNull(result);
         var message = result.IsPresent ? text.Text("Path.Present") : text.Text("Path.Missing");
+
         TerminalTheme.WriteRule(
             console,
             TerminalTheme.IconPrefix(shell.Options, result.IsPresent ? "✅" : "⚠", result.IsPresent ? "+" : "!") + text.Text("Path.Title"),
@@ -438,6 +517,10 @@ public sealed class PortablePathView(
             TerminalTheme.CompactMetric(text.Text("Path.Directory"), result.ExecutableDirectory)
         ], preferredPairs: 1, width: console.Profile.Width));
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Returns the localized intent of one portable PATH operation without altering its exact target data.</summary>
     private string PreviewText(PortablePathAction action) => action switch
@@ -451,4 +534,6 @@ public sealed class PortablePathView(
     private string DisplayTarget(string target) => target.Equals("Windows user PATH", StringComparison.Ordinal)
         ? text.Text("Path.WindowsUserTarget")
         : target;
+
+    #endregion
 }

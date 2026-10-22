@@ -23,20 +23,31 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Collects terminal appearance preferences.</summary>
 public interface IThemeView
 {
+
+    #region Methods
+
+    /// <summary>Collects a theme selection and restores the active palette until the application saves it.</summary>
     string? Collect(string current);
+
+    #endregion
 }
 
 /// <summary>Previews catalog palettes without owning settings or filesystem access.</summary>
 public sealed class ThemeView(IAnsiConsole console, ILocalizationService text,
     IConsoleShellView shell, IThemeCatalogService themes) : IThemeView
 {
+
+    #region Methods
+
     /// <summary>Collects a theme selection and restores the active palette until the application saves it.</summary>
     public string? Collect(string current)
     {
         var original = TerminalTheme.Current;
         var selected = current;
+
         try
         {
             if (FullscreenForm.CanUse(console))
@@ -52,6 +63,7 @@ public sealed class ThemeView(IAnsiConsole console, ILocalizationService text,
                 };
                 var saved = new FullscreenForm(console, text, shell.Options).Run("Theme.Title",
                     [new FormPage("Theme.Title", [field])]);
+
                 return saved ? selected : null;
             }
 
@@ -59,9 +71,11 @@ public sealed class ThemeView(IAnsiConsole console, ILocalizationService text,
             var choices = themes.Themes.OrderBy(theme => theme.Id == current ? 0 : 1)
                 .Select(theme => new TerminalMenuChoice<TerminalThemeDefinition>(theme, Name(theme))).ToArray();
             var choice = TerminalChoiceMenu.Select(console, choices, text.Text("Theme.Select"));
+
             TerminalTheme.Apply(choice);
             TerminalTheme.WriteSection(console, text.Text("Theme.Title"), text.Text("Theme.Preview"));
             shell.RenderSuccess(Name(choice));
+
             return console.Prompt(new ConfirmationPrompt(Markup.Escape(text.Text("Setup.Confirm")))
             { DefaultValue = true }) ? choice.Id : null;
         }
@@ -70,6 +84,10 @@ public sealed class ThemeView(IAnsiConsole console, ILocalizationService text,
             TerminalTheme.Apply(original);
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Localizes bundled palette names while preserving custom catalog display names.</summary>
     private string Name(TerminalThemeDefinition theme) => theme.Id switch
@@ -89,4 +107,6 @@ public sealed class ThemeView(IAnsiConsole console, ILocalizationService text,
         "graphite" => text.Text("Theme.Graphite"),
         _ => theme.Name
     };
+
+    #endregion
 }

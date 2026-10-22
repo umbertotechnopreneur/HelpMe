@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text;
 using System.Text.Json;
 using PromptMeUp.Models;
@@ -30,7 +29,13 @@ public sealed class ScriptArtifactService(
     IScriptLanguageCatalog languages,
     ArtifactLimits? limits = null)
 {
+    #region Fields
+
     private readonly ArtifactLimits _limits = limits ?? ArtifactLimits.Default;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Rejects malformed, oversized, or credential-bearing generated artifacts before saving.</summary>
     public ScriptArtifact Parse(string json)
@@ -120,6 +125,10 @@ public sealed class ScriptArtifactService(
     /// <summary>Quotes literal data without permitting interpolation or evaluation by the runner.</summary>
     public static string Quote(string value) => "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Converts a natural-language request into a safe, readable file stem without path separators or reserved Windows names.</summary>
     private static string CreateSafeStem(string request)
     {
@@ -189,4 +198,6 @@ public sealed class ScriptArtifactService(
             throw new InvalidOperationException(text.Text("Script.Invalid"));
         }
     }
+
+    #endregion
 }

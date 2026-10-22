@@ -25,15 +25,25 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Provides the saved-memory browsing and editing workflow.</summary>
 public interface IMemoryManagerView
 {
+
+    #region Methods
+
+    /// <summary>Returns one confirmed inline action without opening a child editor or proposal screen.</summary>
     MemoryManagerSelection Choose(IReadOnlyList<PersistentMemory> memories, MemoryProposalWorkspace proposals,
         string? feedback = null, bool feedbackIsError = false, bool selectProposals = false);
+
+    #endregion
 }
 
 /// <summary>Edits saved and suggested memories inside one numbered master-detail workspace.</summary>
 public sealed class MemoryManagerView : IMemoryManagerView
 {
+
+    #region Fields
+
     private const string CreateKey = "create";
     private const string ProposalsKey = "proposals";
     private readonly IAnsiConsole _console;
@@ -58,6 +68,10 @@ public sealed class MemoryManagerView : IMemoryManagerView
     private string? _error;
     private FullscreenFrame? _lastFrame;
 
+    #endregion
+
+    #region Initialization
+
     /// <summary>Creates a passive inline editor using the shared terminal palette and input primitives.</summary>
     public MemoryManagerView(IAnsiConsole console, ILocalizationService text, IConsoleShellView shell)
     {
@@ -67,19 +81,26 @@ public sealed class MemoryManagerView : IMemoryManagerView
         _inputReader = new(console, text);
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Returns one confirmed inline action without opening a child editor or proposal screen.</summary>
     public MemoryManagerSelection Choose(IReadOnlyList<PersistentMemory> memories, MemoryProposalWorkspace proposals,
         string? feedback = null, bool feedbackIsError = false, bool selectProposals = false)
     {
         ArgumentNullException.ThrowIfNull(memories);
         ArgumentNullException.ThrowIfNull(proposals);
+
         if (selectProposals)
         {
             _selectedKey = ProposalsKey;
         }
+
         _showEmptyProposals = selectProposals || _selectedKey == ProposalsKey;
         ReconcileDrafts(memories, proposals, feedback, feedbackIsError);
         MemoryManagerSelection selection;
+
         try
         {
             selection = FullscreenForm.CanUse(_console)
@@ -90,12 +111,18 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             selection = new(MemoryManagerAction.Close);
         }
+
         if (selection.Action == MemoryManagerAction.Close)
         {
             DiscardSessionDrafts();
         }
+
         return selection;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Discards unsaved editor state when the memory workspace is closed.</summary>
     private void DiscardSessionDrafts()
@@ -118,11 +145,14 @@ public sealed class MemoryManagerView : IMemoryManagerView
     {
         var entries = Entries(memories, proposals);
         var selected = entries.ToList().FindIndex(entry => string.Equals(entry.Key, _selectedKey, StringComparison.Ordinal));
+
         if (selected < 0)
         {
             selected = entries.ToList().FindIndex(entry => entry.Kind == NavigationKind.Memory);
+
             if (selected < 0) selected = 0;
         }
+
         _navigator.Reset(selected, entries.Count, focused: true);
         _selectedKey = entries[selected].Key;
         _focus = EditorFocus.Sections;
@@ -134,10 +164,13 @@ public sealed class MemoryManagerView : IMemoryManagerView
         _lastFrame = null;
         _inputReader.Reset();
         EnsureDraft(entries[selected], memories, proposals);
+
         try
         {
             var result = new MemoryManagerSelection(MemoryManagerAction.Close);
+
             FullscreenViewport.Run(_console, () => result = RunLoop(memories, proposals, entries, feedback, feedbackIsError));
+
             return result;
         }
         finally
@@ -157,23 +190,30 @@ public sealed class MemoryManagerView : IMemoryManagerView
             void Paint() => PaintScreen(memories, proposals, entries, feedback, feedbackIsError);
             Paint();
             var readKey = _inputReader.ReadKey(Paint, _navigator.PendingSelectionDeadline);
+
             if (readKey is null)
             {
                 var before = _navigator.SelectedIndex;
+
                 _navigator.CompletePendingNumber(entries.Count);
+
                 if (_navigator.SelectedIndex != before)
                 {
                     Activate(entries[_navigator.SelectedIndex], memories, proposals);
                 }
+
                 continue;
             }
+
             var key = readKey.Value;
             var entry = entries[_navigator.SelectedIndex];
+
             if (_editing)
             {
                 Edit(entry, proposals, key);
                 continue;
             }
+
             if (key.Key == ConsoleKey.Escape)
             {
                 if (_pending is not null)
@@ -189,23 +229,31 @@ public sealed class MemoryManagerView : IMemoryManagerView
                 {
                     return new(MemoryManagerAction.Close);
                 }
+
                 continue;
             }
+
             if (_console.Profile.Width < 60 || _console.Profile.Height < 20)
             {
                 continue;
             }
+
             var previous = _navigator.SelectedIndex;
+
             if (_navigator.TrySelectNumber(key, entries.Count))
             {
                 if (_navigator.SelectedIndex != previous)
                 {
                     Activate(entries[_navigator.SelectedIndex], memories, proposals);
                 }
+
                 continue;
             }
+
             var actions = Actions(entry, proposals);
+
             _actionIndex = Math.Clamp(_actionIndex, 0, actions.Count - 1);
+
             switch (key.Key)
             {
                 case ConsoleKey.F6:
@@ -296,6 +344,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
                     else
                     {
                         var amount = Math.Max(1, _visibleRows);
+
                         _detailOffset = Math.Clamp(_detailOffset + (key.Key == ConsoleKey.PageUp ? -amount : amount),
                             0, Math.Max(0, _lineCount - _visibleRows));
                     }
@@ -321,22 +370,28 @@ public sealed class MemoryManagerView : IMemoryManagerView
         IReadOnlyList<NavigationEntry> entries, string? feedback, bool feedbackIsError)
     {
         var frame = FullscreenViewport.BeginFrame(_console, _lastFrame);
+
         _lastFrame = frame;
+
         if (frame.Width < 60 || frame.Height < 20)
         {
             _console.Write(new Text(_text.Text("Form.TooSmall"), Style.Parse(TerminalTheme.Warning)));
+
             return;
         }
+
         var height = frame.Height - 1;
         var width = frame.Width - 1;
         var bodyRows = height - FullscreenHeader.Height - FullscreenFooter.Height();
         var sidebarWidth = MemorySidebarWidth(frame.Width);
         var contentWidth = width - sidebarWidth - 4;
         var entry = entries[_navigator.SelectedIndex];
+
         _navigator.IsFocused = _focus == EditorFocus.Sections;
         var renderOptions = new RenderOptions(_console.Profile.Capabilities, new Size(width, height));
         var details = Details(entry, memories, proposals);
         var lines = Segment.SplitLines(details.Render(renderOptions, contentWidth)).ToArray();
+
         _lineCount = lines.Length;
         _visibleRows = Math.Max(1, bodyRows - 2);
         _detailOffset = Math.Clamp(_detailOffset, 0, Math.Max(0, _lineCount - _visibleRows));
@@ -344,6 +399,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
             FullscreenWorkspace.SectionHeading(PageTitle(entry, proposals), _focus == EditorFocus.Editor),
             new MemoryLines(lines.Skip(_detailOffset).Take(_visibleRows).ToArray())));
         var actions = Actions(entry, proposals);
+
         _actionIndex = Math.Clamp(_actionIndex, 0, actions.Count - 1);
         var buttons = TerminalActionBar.Create(actions.Select((action, index) => new TerminalAction(
             _text.Text(action.LabelKey), action.Color, _focus == EditorFocus.Actions && index == _actionIndex)).ToArray());
@@ -356,6 +412,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
             Line(notice.Text, notice.Color),
             buttons,
             FullscreenFooter.Shortcuts(_text.Text(hintKey, entries.Count), _text.Text(hintKey + "Compact"), width - 4));
+
         _console.Write(FullscreenWorkspace.Create(_text.Text("Settings.Memories"), _shell.Options, frame.Width,
             body, _navigator.Render(entries, NavigationLabel, bodyRows, _text.Text("Form.Sections"),
                 _console.Profile.Capabilities.Unicode), footer, FullscreenFooter.NoticeRows,
@@ -401,7 +458,9 @@ public sealed class MemoryManagerView : IMemoryManagerView
         MemoryProposalWorkspace proposals)
     {
         var before = _navigator.SelectedIndex;
+
         _navigator.Move(delta, entries.Count);
+
         if (_navigator.SelectedIndex != before)
         {
             Activate(entries[_navigator.SelectedIndex], memories, proposals);
@@ -414,14 +473,19 @@ public sealed class MemoryManagerView : IMemoryManagerView
         if (entry.Kind == NavigationKind.Create)
         {
             _drafts.TryAdd(CreateKey, string.Empty);
+
             return;
         }
+
         if (entry.Kind == NavigationKind.Memory)
         {
             var memory = memories.Single(item => string.Equals(item.Id, entry.Id, StringComparison.Ordinal));
+
             _drafts.TryAdd(entry.Key, NormalizeEditorText(memory.Text));
+
             return;
         }
+
         if (CurrentProposal(proposals) is { } proposal)
         {
             _drafts.TryAdd(ProposalKey(proposal.Id), NormalizeEditorText(proposal.Text));
@@ -437,21 +501,27 @@ public sealed class MemoryManagerView : IMemoryManagerView
             _drafts.Remove(_submittedKey);
             _dirty.Remove(_submittedKey);
         }
+
         _submittedKey = null;
+
         foreach (var memory in memories)
         {
             var key = MemoryKey(memory.Id);
+
             if (!_dirty.Contains(key))
             {
                 _drafts[key] = NormalizeEditorText(memory.Text);
             }
         }
+
         var validProposals = proposals.Proposals.Select(proposal => ProposalKey(proposal.Id)).ToHashSet(StringComparer.Ordinal);
+
         foreach (var key in _drafts.Keys.Where(key => key.StartsWith("proposal:", StringComparison.Ordinal) && !validProposals.Contains(key)).ToArray())
         {
             _drafts.Remove(key);
             _dirty.Remove(key);
         }
+
         _proposalIndex = Math.Clamp(_proposalIndex, 0, Math.Max(0, proposals.Proposals.Count - 1));
     }
 
@@ -466,6 +536,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
                 new(EditorCommand.Confirm, "Lab.Confirm", TerminalTheme.Error)
             ];
         }
+
         if (entry.Kind == NavigationKind.Create)
         {
             return
@@ -474,6 +545,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
                 new(EditorCommand.Close, "Form.Cancel", TerminalTheme.Warning)
             ];
         }
+
         if (entry.Kind == NavigationKind.Memory)
         {
             return
@@ -483,18 +555,24 @@ public sealed class MemoryManagerView : IMemoryManagerView
                 new(EditorCommand.Close, "Form.Cancel", TerminalTheme.Warning)
             ];
         }
+
         var proposal = CurrentProposal(proposals);
+
         if (!proposals.Enabled || proposal is null)
         {
             return [new(EditorCommand.Close, "Form.Cancel", TerminalTheme.Warning)];
         }
+
         var actions = new List<EditorAction>();
+
         if (proposal.Operation != "flag")
         {
             actions.Add(new(EditorCommand.Approve, "Lab.Approve", TerminalTheme.Success));
         }
+
         actions.Add(new(EditorCommand.Reject, "Lab.Reject", TerminalTheme.Error));
         actions.Add(new(EditorCommand.Close, "Form.Cancel", TerminalTheme.Warning));
+
         return actions;
     }
 
@@ -503,6 +581,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
         IReadOnlyList<PersistentMemory> memories, MemoryProposalWorkspace proposals)
     {
         _error = null;
+
         switch (action.Command)
         {
             case EditorCommand.Cancel:
@@ -528,6 +607,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
                 if (ValidateNote(draft) is { } error)
                 {
                     _error = error;
+
                     return null;
                 }
                 _submittedKey = entry.Key;
@@ -555,8 +635,10 @@ public sealed class MemoryManagerView : IMemoryManagerView
         if (!CanEdit(entry, proposals))
         {
             _focus = EditorFocus.Actions;
+
             return;
         }
+
         _editor.SetText(CurrentDraft(entry, memories, proposals));
         _editing = true;
         _error = null;
@@ -566,27 +648,35 @@ public sealed class MemoryManagerView : IMemoryManagerView
     private void Edit(NavigationEntry entry, MemoryProposalWorkspace proposals, ConsoleKeyInfo key)
     {
         _error = null;
+
         if (key.Key == ConsoleKey.Escape)
         {
             _editing = false;
             _editor.Clear();
+
             return;
         }
+
         if (key.Key == ConsoleKey.Enter && (key.Modifiers & ConsoleModifiers.Control) != 0)
         {
             if (ValidateEditorText(entry, _editor.Text) is { } error)
             {
                 _error = error;
+
                 return;
             }
+
             var keyName = DraftKey(entry, proposals);
+
             _drafts[keyName] = _editor.Text;
             _dirty.Add(keyName);
             _editing = false;
             _editor.Clear();
             _detailOffset = 0;
+
             return;
         }
+
         if (!_editor.Apply(key, multiline: true, PersistentMemoryService.MaximumCharacters))
         {
             _error = _text.Text("Memory.TooLong", PersistentMemoryService.MaximumCharacters);
@@ -600,12 +690,14 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             return;
         }
+
         _proposalIndex = (_proposalIndex + delta + proposals.Proposals.Count) % proposals.Proposals.Count;
         _pending = null;
         _actionIndex = 0;
         _detailOffset = 0;
         _error = null;
         var proposal = proposals.Proposals[_proposalIndex];
+
         _drafts.TryAdd(ProposalKey(proposal.Id), NormalizeEditorText(proposal.Text));
     }
 
@@ -616,11 +708,14 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             return ProposalDetails(proposals);
         }
+
         var rows = new List<IRenderable>();
+
         if (entry.Kind == NavigationKind.Memory)
         {
             var memory = memories.Single(item => string.Equals(item.Id, entry.Id, StringComparison.Ordinal));
             var metadata = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn(new GridColumn().LeftAligned());
+
             AddPair(metadata, "ID", memory.Id);
             AddPair(metadata, _text.Text("MemoryManager.Updated"), memory.UpdatedAt.ToLocalTime().ToString("g", _text.Culture));
             rows.Add(metadata);
@@ -630,13 +725,17 @@ public sealed class MemoryManagerView : IMemoryManagerView
             rows.Add(new Text(_text.Text("Memory.None"), Style.Parse(TerminalTheme.Muted)));
             rows.Add(new Text(" "));
         }
+
         var draft = _editing ? _editor.Text : CurrentDraft(entry, memories, proposals);
+
         rows.Add(Line((_focus == EditorFocus.Editor ? "> " : string.Empty) + _text.Text("Memory.Note"), TerminalTheme.Accent));
         rows.Add(new Text(" "));
+
         if (_editing || entry.Kind == NavigationKind.Create)
         {
             rows.Add(new EditorInput(width => EditorValue(draft, width),
                 Style.Parse((_focus == EditorFocus.Editor ? "bold underline " : string.Empty) + TerminalTheme.FieldValue)));
+
             if (draft.Contains('\n'))
             {
                 rows.Add(new Text(" "));
@@ -647,6 +746,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             rows.Add(new Text(SafeText(draft), Style.Parse(TerminalTheme.Primary)));
         }
+
         return new Rows(rows);
     }
 
@@ -657,11 +757,14 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             return new Text(_text.Text("Lab.Disabled"), Style.Parse(TerminalTheme.Primary));
         }
+
         var proposal = CurrentProposal(workspace);
+
         if (proposal is null)
         {
             return new Text(_text.Text("Lab.None"), Style.Parse(TerminalTheme.Primary));
         }
+
         var reviewed = _editing ? _editor.Text : _drafts.GetValueOrDefault(ProposalKey(proposal.Id), NormalizeEditorText(proposal.Text));
         var before = proposal.Targets.Count == 0 ? _text.Text("Lab.NoPrevious")
             : string.Join("\n\n", proposal.Targets.Select(target => target.Id + " · "
@@ -673,6 +776,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
                     ? ObservationText(observation)
                     : id));
         var metadata = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn(new GridColumn().LeftAligned());
+
         AddPair(metadata, _text.Text("Lab.Operation"), _text.Text("Lab.Operation." + proposal.Operation));
         AddPair(metadata, _text.Text("Lab.Kind"), _text.Text("Lab.Kind." + proposal.Kind));
         var rows = new List<IRenderable>
@@ -695,16 +799,19 @@ public sealed class MemoryManagerView : IMemoryManagerView
             Line(_text.Text("Lab.Sources"), TerminalTheme.Accent),
             new Text(SafeText(sourceText), Style.Parse(TerminalTheme.Primary))
         };
+
         if (proposal.Operation is "merge" or "archive")
         {
             rows.Add(new Text(" "));
             rows.Add(new Text(_text.Text("Lab.ForgetNotice"), Style.Parse(TerminalTheme.Warning)));
         }
+
         if (proposal.Operation == "flag")
         {
             rows.Add(new Text(" "));
             rows.Add(new Text(_text.Text("Lab.FlagNotice"), Style.Parse(TerminalTheme.Warning)));
         }
+
         return new Rows(rows);
     }
 
@@ -724,27 +831,34 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             return (_error, TerminalTheme.Error);
         }
+
         if (_pending is not null)
         {
             var warning = _pending == MemoryManagerAction.Delete
                 ? _text.Text("Lab.ForgetNotice") + " " + _text.Text("MemoryManager.DeleteConfirm")
                 : _text.Text(_pending == MemoryManagerAction.ApproveProposal ? "Lab.Approve" : "Lab.Reject");
+
             return (warning, TerminalTheme.Warning);
         }
+
         if (feedback is not null)
         {
             return (feedback, feedbackIsError ? TerminalTheme.Error : TerminalTheme.Success);
         }
+
         if (entry.Kind == NavigationKind.Proposals && !proposals.Enabled)
         {
             return (_text.Text("Lab.Disabled"), TerminalTheme.Muted);
         }
+
         if (entry.Kind == NavigationKind.Proposals && proposals.Proposals.Count == 0)
         {
             return (_text.Text("MemoryManager.NoProposalsHint"), TerminalTheme.Muted);
         }
+
         var key = entry.Kind == NavigationKind.Proposals ? "Lab.Proposals"
             : width < 100 ? "MemoryManager.NoteHelpCompact" : "MemoryManager.NoteHelp";
+
         return (_text.Text(key), TerminalTheme.Muted);
     }
 
@@ -752,6 +866,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
     private string CurrentDraft(NavigationEntry entry, IReadOnlyList<PersistentMemory> memories, MemoryProposalWorkspace proposals)
     {
         EnsureDraft(entry, memories, proposals);
+
         return _drafts.GetValueOrDefault(DraftKey(entry, proposals), string.Empty);
     }
 
@@ -796,10 +911,12 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             return SafeSingleLine(value);
         }
+
         if (width < 3)
         {
             return "|";
         }
+
         var sourceCaret = Math.Clamp(_editor.Caret, 0, _editor.Text.Length);
         var beforeCaret = SafeSingleLine(_editor.Text[..sourceCaret]);
         var afterCaret = SafeSingleLine(_editor.Text[sourceCaret..]);
@@ -808,7 +925,9 @@ public sealed class MemoryManagerView : IMemoryManagerView
         var budget = Math.Max(1, width - 3);
         var start = Math.Max(0, caret - budget / 2);
         var end = Math.Min(safe.Length, start + budget);
+
         start = Math.Max(0, end - budget);
+
         return (start > 0 ? "…" : string.Empty) + safe[start..Math.Min(caret, end)] + "|"
             + safe[Math.Min(caret, end)..end] + (end < safe.Length ? "…" : string.Empty);
     }
@@ -822,47 +941,60 @@ public sealed class MemoryManagerView : IMemoryManagerView
             _console.Write(new Text(feedback, Style.Parse(feedbackIsError ? TerminalTheme.Error : TerminalTheme.Success)));
             _console.WriteLine();
         }
+
         while (true)
         {
             TerminalTheme.WriteSection(_console, _text.Text("Settings.Memories"), _text.Text("MemoryManager.Help"));
             var choices = new List<MenuChoice> { new(CreateKey, _text.Text("MemoryManager.Create")) };
+
             if (proposals.Proposals.Count > 0 || _showEmptyProposals)
             {
                 choices.Add(new(ProposalsKey, _text.Text("Lab.ReviewButton") + $" ({proposals.Proposals.Count})"));
             }
+
             choices.AddRange(memories.Select(memory => new MenuChoice(MemoryKey(memory.Id), PreviewLabel(memory.Text))));
             choices.Add(new("close", _text.Text("Help.Browse.Close")));
             var selected = Prompt(_text.Text("MemoryManager.Choose"), choices);
+
             if (selected.Id == "close")
             {
                 return new(MemoryManagerAction.Close);
             }
+
             if (selected.Id == CreateKey)
             {
                 var value = ReadNoteScrolling(string.Empty);
+
                 if (value is not null)
                 {
                     return new(MemoryManagerAction.Create, Text: value);
                 }
+
                 continue;
             }
+
             if (selected.Id == ProposalsKey)
             {
                 if (ChooseProposalScrolling(proposals) is { } proposalSelection)
                 {
                     return proposalSelection;
                 }
+
                 continue;
             }
+
             var id = selected.Id["memory:".Length..];
             var memory = memories.Single(item => string.Equals(item.Id, id, StringComparison.Ordinal));
+
             _console.Write(Details(new(NavigationKind.Memory, selected.Id, memory.Text, "📚", id), memories, proposals));
             _console.WriteLine();
             var action = Prompt(_text.Text("MemoryManager.Choose"),
                 [new("back", _text.Text("Form.Back")), new("edit", _text.Text("MemoryManager.Edit")), new("delete", _text.Text("MemoryManager.Delete"))]);
+
             if (action.Id == "edit")
             {
                 var value = ReadNoteScrolling(NormalizeEditorText(memory.Text));
+
                 if (value is not null)
                 {
                     return new(MemoryManagerAction.Edit, memory.Id, value);
@@ -883,51 +1015,65 @@ public sealed class MemoryManagerView : IMemoryManagerView
         {
             _console.Write(new Text(_text.Text(workspace.Enabled ? "Lab.None" : "Lab.Disabled"), Style.Parse(TerminalTheme.Muted)));
             _console.WriteLine();
+
             return null;
         }
+
         var choices = workspace.Proposals.Select(proposal => new MenuChoice(proposal.Id,
             _text.Text("Lab.Operation." + proposal.Operation) + " — " + PreviewLabel(proposal.Text)))
             .Prepend(new("back", _text.Text("Form.Back"))).ToArray();
         var selected = Prompt(_text.Text("Lab.Proposals"), choices);
+
         if (selected.Id == "back")
         {
             return null;
         }
+
         var proposal = workspace.Proposals.Single(item => string.Equals(item.Id, selected.Id, StringComparison.Ordinal));
+
         _proposalIndex = workspace.Proposals.ToList().IndexOf(proposal);
         _drafts.TryAdd(ProposalKey(proposal.Id), NormalizeEditorText(proposal.Text));
         _console.Write(ProposalDetails(workspace));
         _console.WriteLine();
         var actions = new List<MenuChoice> { new("back", _text.Text("Form.Back")), new("reject", _text.Text("Lab.Reject")) };
+
         if (CanEditProposal(proposal))
         {
             actions.Add(new("edit", _text.Text("Lab.Edit")));
         }
+
         if (proposal.Operation != "flag")
         {
             actions.Add(new("approve", _text.Text("Lab.Approve")));
         }
+
         var action = Prompt(_text.Text("MemoryManager.Choose"), actions);
+
         if (action.Id == "edit")
         {
             var edited = ReadNoteScrolling(_drafts[ProposalKey(proposal.Id)]);
+
             if (edited is null)
             {
                 return null;
             }
+
             _drafts[ProposalKey(proposal.Id)] = edited;
             action = Prompt(_text.Text("MemoryManager.Choose"),
                 [new("back", _text.Text("Form.Back")), new("reject", _text.Text("Lab.Reject")), new("approve", _text.Text("Lab.Approve"))]);
         }
+
         if (action.Id is not ("approve" or "reject"))
         {
             return null;
         }
+
         if (Prompt(_text.Text(action.Id == "approve" ? "Lab.Approve" : "Lab.Reject"),
             [new("cancel", _text.Text("Lab.Cancel")), new("confirm", _text.Text("Lab.Confirm"))]).Id != "confirm")
         {
             return null;
         }
+
         return new(action.Id == "approve" ? MemoryManagerAction.ApproveProposal : MemoryManagerAction.RejectProposal,
             proposal.Id, _drafts[ProposalKey(proposal.Id)]);
     }
@@ -941,10 +1087,12 @@ public sealed class MemoryManagerView : IMemoryManagerView
             .Validate(candidate => candidate.Length > PersistentMemoryService.MaximumCharacters
                 ? ValidationResult.Error(Markup.Escape(_text.Text("Memory.TooLong", PersistentMemoryService.MaximumCharacters)))
                 : ValidationResult.Success()));
+
         if (value.Length == 0)
         {
             return current.Length == 0 ? null : current;
         }
+
         return value;
     }
 
@@ -958,6 +1106,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
     private static string PreviewLabel(string value)
     {
         var flattened = SafeSingleLine(value);
+
         return flattened.Length <= 32 ? flattened : flattened[..31] + "…";
     }
 
@@ -996,6 +1145,11 @@ public sealed class MemoryManagerView : IMemoryManagerView
     private static MemoryLine Line(string value, string foreground, string? background = null) =>
         new(value, Style.Parse(background is null ? foreground : $"{foreground} on {background}"));
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Identifies a destination in the memory browser.</summary>
     private enum NavigationKind
     {
         Create,
@@ -1003,6 +1157,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
         Memory
     }
 
+    /// <summary>Identifies the focused field or action in the memory editor.</summary>
     private enum EditorFocus
     {
         Sections,
@@ -1010,6 +1165,7 @@ public sealed class MemoryManagerView : IMemoryManagerView
         Actions
     }
 
+    /// <summary>Identifies an action requested from the memory editor.</summary>
     private enum EditorCommand
     {
         Save,
@@ -1021,15 +1177,21 @@ public sealed class MemoryManagerView : IMemoryManagerView
         Confirm
     }
 
+    /// <summary>Pairs a memory-browser destination with its displayed text.</summary>
     private sealed record NavigationEntry(NavigationKind Kind, string Key, string Label, string Icon, string? Id = null);
 
+    /// <summary>Describes the memory-editor action and its optional result.</summary>
     private sealed record EditorAction(EditorCommand Command, string LabelKey, string Color);
 
+    /// <summary>Pairs a memory menu action with its displayed label.</summary>
     private sealed record MenuChoice(string Id, string Label);
 
     /// <summary>Renders a bracketed textbox whose active value follows the caret window.</summary>
     private sealed class EditorInput(Func<int, string> value, Style style) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Accepts the full central editor width.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => new(0, Math.Max(0, maxWidth));
 
@@ -1040,25 +1202,37 @@ public sealed class MemoryManagerView : IMemoryManagerView
             {
                 return [];
             }
+
             var content = "[ " + value(Math.Max(0, maxWidth - 4)) + " ]";
+
             return Segment.SplitOverflow(new Segment(content, style), Overflow.Ellipsis, maxWidth);
         }
+
+        #endregion
     }
 
     /// <summary>Clips sidebar and heading labels without wrapping into neighboring controls.</summary>
     private sealed class MemoryLine(string value, Style style) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Accepts the assigned width without requiring text wrapping.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => new(0, Math.Min(new Segment(value).CellCount(), Math.Max(0, maxWidth)));
 
         /// <summary>Preserves complete terminal cells while indicating clipped text.</summary>
         public IEnumerable<Segment> Render(RenderOptions options, int maxWidth) =>
             maxWidth > 0 ? Segment.SplitOverflow(new Segment(value, style), Overflow.Ellipsis, maxWidth) : [];
+
+        #endregion
     }
 
     /// <summary>Shows the scrollable slice of the complete central editor content.</summary>
     private sealed class MemoryLines(IReadOnlyList<SegmentLine> lines) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Lets the shared workspace assign the editor width.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => new(0, Math.Max(0, maxWidth));
 
@@ -1071,8 +1245,13 @@ public sealed class MemoryManagerView : IMemoryManagerView
                 {
                     yield return segment;
                 }
+
                 yield return Segment.LineBreak;
             }
         }
+
+        #endregion
     }
+
+    #endregion
 }

@@ -27,8 +27,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies app guide workflow behavior.</summary>
 public sealed class AppGuideWorkflowTests
 {
+
+    #region Methods
+
     /// <summary>Keeps localized query envelopes bounded for escaped instructions, including oversized selections retained by older versions.</summary>
     [Theory]
     [InlineData("en", false)]
@@ -251,6 +255,10 @@ public sealed class AppGuideWorkflowTests
         Assert.Equal(30L, await fixture.ScalarAsync("SELECT SUM(input_tokens) FROM ai_requests;"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds real guide and provider services around isolated storage and scripted passive views.</summary>
     private static AiConversationWorkflow CreateWorkflow(
         RegressionFixture fixture,
@@ -321,10 +329,22 @@ public sealed class AppGuideWorkflowTests
         usage = new { input_tokens = index * 20, output_tokens = 1, total_tokens = index * 20 + 1 }
     });
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Supplies synthetic provider responses and records request activity for guide tests.</summary>
     private sealed class GuideHttpHandler(Func<int, string> response, Func<int, HttpStatusCode>? status = null) : HttpMessageHandler
     {
+
+        #region Properties
+
         public List<string> RequestBodies { get; } = [];
         public List<string> ConversationRequestBodies { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures request payloads and supplies only local synthetic replies without making network calls.</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -345,5 +365,9 @@ public sealed class AppGuideWorkflowTests
                 Content = new StringContent(response(index))
             };
         }
+
+        #endregion
     }
+
+    #endregion
 }

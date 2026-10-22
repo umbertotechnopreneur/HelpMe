@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -32,6 +31,9 @@ public sealed class ArtifactAssistant(
     ILocalizationService text,
     ArtifactLimits? limits = null)
 {
+
+    #region Methods
+
     /// <summary>Creates one bounded artifact request with an audited lifecycle, leaving visible summaries to the completed workflow.</summary>
     public async Task<AiResponse> SendAsync(
         string promptId,
@@ -47,6 +49,7 @@ public sealed class ArtifactAssistant(
         var response = await shell.RunWithStatusAsync(text.Text("Status.Thinking"),
             () => openAi.SendAsync(promptId, session.Id, [new ChatMessage("user", request)], settings, settings.Language, cancellationToken)).ConfigureAwait(false);
         session.Outcome = AuditSessionOutcome.Completed;
+
         return response;
     }
 
@@ -54,12 +57,15 @@ public sealed class ArtifactAssistant(
     public bool RenderSummaryAfterVisibleTurn(AiResponse response, AppSettings settings, decimal? runningCost = null)
     {
         var snapshot = AiConversationWorkflow.CreateTurnSnapshot(response, settings, runningCost ?? response.EstimatedCostUsd ?? 0m);
+
         if (SessionSummaryPolicy.ShouldRender(settings, SessionSummaryTiming.AfterVisibleTurn)
             || AiConversationWorkflow.IsContextWarning(snapshot))
         {
             shell.RenderRuntimeStatus(snapshot);
+
             return true;
         }
+
         return false;
     }
 
@@ -76,6 +82,10 @@ public sealed class ArtifactAssistant(
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds and renders one provider-confirmed usage snapshot without inferring undisclosed usage.</summary>
     private void RenderSummary(AiResponse response, AppSettings settings, decimal? runningCost)
     {
@@ -84,4 +94,7 @@ public sealed class ArtifactAssistant(
         shell.RenderRuntimeStatus(AiConversationWorkflow.CreateTurnSnapshot(
             response, settings, runningCost ?? response.EstimatedCostUsd ?? 0m));
     }
+
+    #endregion
+
 }

@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the complete six-language Lenna command catalog.</summary>
     private static void AddLennaEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -60,4 +62,6 @@ internal static partial class UiTextCatalog
             Spanish: "El terminal es demasiado pequeño para mostrar Lenna con claridad. Amplía la ventana y ejecuta hm lenna de nuevo.",
             Vietnamese: "Cửa sổ dòng lệnh quá nhỏ để hiển thị rõ ảnh Lenna. Hãy mở rộng cửa sổ và chạy lại hm lenna."));
     }
+
+    #endregion
 }

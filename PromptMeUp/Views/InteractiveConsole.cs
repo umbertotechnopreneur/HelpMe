@@ -25,17 +25,29 @@ namespace PromptMeUp.Views;
 /// <summary>Signals that an interactive terminal flow was cancelled with the Escape key.</summary>
 internal sealed class InteractiveFlowCanceledException : OperationCanceledException
 {
+
+    #region Initialization
+
     /// <summary>Creates the signal raised when Escape cancels only the active interactive flow.</summary>
     public InteractiveFlowCanceledException()
         : base("The current interactive flow was cancelled.")
     {
     }
+
+    #endregion
 }
 
 /// <summary>Wraps console output and converts Escape input into a flow-level cancellation.</summary>
 internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
 {
+
+    #region Fields
+
     private readonly IAnsiConsole _inner;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates a console facade whose input supports Escape and application shutdown cancellation.</summary>
     public EscapeAwareAnsiConsole(IAnsiConsole inner, CancellationToken shutdownToken)
@@ -43,6 +55,10 @@ internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         Input = new EscapeAwareConsoleInput(inner.Input, shutdownToken);
     }
+
+    #endregion
+
+    #region Properties
 
     public Profile Profile => _inner.Profile;
 
@@ -53,6 +69,10 @@ internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
     public IExclusivityMode ExclusivityMode => _inner.ExclusivityMode;
 
     public RenderPipeline Pipeline => _inner.Pipeline;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Intentionally ignores clear requests so every application flow preserves terminal scrollback.</summary>
     public void Clear(bool home)
@@ -65,13 +85,22 @@ internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
 
     /// <summary>Writes ANSI instructions through the wrapped console.</summary>
     public void WriteAnsi(Action<AnsiWriter> action) => _inner.WriteAnsi(action);
+
+    #endregion
 }
 
 /// <summary>Wraps terminal input and exposes Escape as a cancellation signal to the active view.</summary>
 internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
 {
+
+    #region Fields
+
     private readonly IAnsiConsoleInput _inner;
     private readonly CancellationToken _shutdownToken;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates an input facade that separates flow cancellation from application shutdown.</summary>
     public EscapeAwareConsoleInput(IAnsiConsoleInput inner, CancellationToken shutdownToken)
@@ -79,6 +108,10 @@ internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _shutdownToken = shutdownToken;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reports whether a key is ready without consuming it.</summary>
     public bool IsKeyAvailable() => _inner.IsKeyAvailable();
@@ -91,6 +124,7 @@ internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
     public async Task<ConsoleKeyInfo?> ReadKeyAsync(bool intercept, CancellationToken cancellationToken)
     {
         var key = await ReadRawKeyAsync(intercept, cancellationToken).ConfigureAwait(false);
+
         return EnsureNotEscape(key);
     }
 
@@ -100,6 +134,7 @@ internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             _shutdownToken);
+
         return await _inner.ReadKeyAsync(intercept, linkedCancellation.Token).ConfigureAwait(false);
     }
 
@@ -113,4 +148,6 @@ internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
 
         return key;
     }
+
+    #endregion
 }

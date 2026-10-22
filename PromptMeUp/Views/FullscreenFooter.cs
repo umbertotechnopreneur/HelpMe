@@ -25,14 +25,22 @@ namespace PromptMeUp.Views;
 /// <summary>Gives fullscreen views consistent notice, action, and shortcut rows without enclosing frames.</summary>
 internal static class FullscreenFooter
 {
+
+    #region Fields
+
     internal const int NoticeRows = 2;
     internal const int ActionsRows = 2;
     internal const int HintRows = 2;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reserves the shared footer rows while allowing a notice to use additional space.</summary>
     internal static int Height(int noticeRows = NoticeRows)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(noticeRows, NoticeRows);
+
         return checked(noticeRows + ActionsRows + HintRows);
     }
 
@@ -47,6 +55,7 @@ internal static class FullscreenFooter
         ArgumentNullException.ThrowIfNull(actions);
         ArgumentNullException.ThrowIfNull(hints);
         _ = Height(noticeRows);
+
         return new Layout("fullscreen-footer").SplitRows(
             new Layout("notice", new Rows(new Text(" "), Inset(notice))).Size(noticeRows),
             new Layout("actions", new Rows(
@@ -58,6 +67,7 @@ internal static class FullscreenFooter
     internal static IRenderable Shortcuts(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
+
         return new ShortcutLine(value);
     }
 
@@ -66,15 +76,27 @@ internal static class FullscreenFooter
     {
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(compactValue);
+
         return new ShortcutLine(new Segment(value).CellCount() > availableWidth ? compactValue : value);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Matches the horizontal margins of shared fullscreen headings and form fields.</summary>
     private static Padder Inset(IRenderable content) => new(content, new Padding(2, 0, 2, 0));
 
+    #endregion
+
+    #region Types
+
     /// <summary>Keeps literal shortcut descriptions on one terminal row with distinct label and action styles.</summary>
     private sealed class ShortcutLine(string value) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Measures the complete shortcut row within the available terminal width.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) =>
             new(0, Math.Min(new Segment(value).CellCount(), Math.Max(0, maxWidth)));
@@ -87,11 +109,13 @@ internal static class FullscreenFooter
             var action = Style.Parse($"bold {TerminalTheme.Info}");
             var segments = new List<Segment>();
             var start = 0;
+
             while (start < value.Length)
             {
                 var separator = value.IndexOf('|', start);
                 var end = separator < 0 ? value.Length : separator;
                 var colon = value.IndexOf(':', start, end - start);
+
                 if (colon < 0)
                 {
                     segments.Add(new Segment(value[start..end], label));
@@ -102,13 +126,20 @@ internal static class FullscreenFooter
                     segments.Add(new Segment(":", divider));
                     segments.Add(new Segment(value[(colon + 1)..end], action));
                 }
+
                 if (separator >= 0)
                 {
                     segments.Add(new Segment("|", divider));
                 }
+
                 start = end + 1;
             }
+
             return maxWidth > 0 ? Segment.Truncate(segments, maxWidth) : [];
         }
+
+        #endregion
     }
+
+    #endregion
 }

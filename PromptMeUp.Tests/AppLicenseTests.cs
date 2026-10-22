@@ -7,8 +7,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies app license behavior.</summary>
 public sealed class AppLicenseTests
 {
+
+    #region Methods
+
     /// <summary>Checks the last three days, partial days, and the exact expiration boundary.</summary>
     [Theory]
     [InlineData(72, 3)]
@@ -116,4 +120,6 @@ public sealed class AppLicenseTests
         TerminalSession.For(console).License = () => service.Current;
         return new AppLicenseGuard(service, console, text);
     }
+
+    #endregion
 }

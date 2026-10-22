@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies privacy regression behavior.</summary>
 public sealed class PrivacyRegressionTests
 {
+
+    #region Methods
+
     /// <summary>Verifies credential values in shell assignments and quoted JSON are fully redacted without damaging adjacent data.</summary>
     [Theory]
     [InlineData("{\"password\":\"synthetic value\",\"safe\":\"keep\"}")]
@@ -114,4 +118,6 @@ public sealed class PrivacyRegressionTests
         Assert.Equal(settings.CustomInstruction, await fixture.ScalarAsync("SELECT custom_instruction FROM app_settings;"));
         Assert.Equal(settings.CustomInstruction, (await fixture.Database.LoadSettingsAsync(default)).CustomInstruction);
     }
+
+    #endregion
 }

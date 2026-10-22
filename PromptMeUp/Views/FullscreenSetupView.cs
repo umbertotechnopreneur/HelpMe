@@ -28,6 +28,9 @@ namespace PromptMeUp.Views;
 /// <summary>Edits setup preferences in a temporary fullscreen form while preserving the main terminal buffer.</summary>
 public sealed class FullscreenSetupView : ISetupView
 {
+
+    #region Fields
+
     private readonly IAnsiConsole _console;
     private readonly ILocalizationService _text;
     private readonly IConsoleShellView _shell;
@@ -36,6 +39,10 @@ public sealed class FullscreenSetupView : ISetupView
     private readonly IThemeCatalogService _themes;
     private readonly IAboutView _about;
     private readonly IScriptLanguageCatalog _scriptLanguages;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates settings forms that collect drafts without persisting preferences or credentials.</summary>
     public FullscreenSetupView(
@@ -58,6 +65,10 @@ public sealed class FullscreenSetupView : ISetupView
         _scriptLanguages = scriptLanguages ?? throw new ArgumentNullException(nameof(scriptLanguages));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Collects the complete setup draft and restores the current language and palette on every exit.</summary>
     public SetupSubmission? Collect(SetupViewState state)
     {
@@ -68,6 +79,7 @@ public sealed class FullscreenSetupView : ISetupView
         {
             TestConnection = !state.Settings.SetupCompleted
         };
+
         try
         {
             TerminalTheme.Apply(_themes.Resolve(draft.Settings.Theme));
@@ -79,11 +91,14 @@ public sealed class FullscreenSetupView : ISetupView
                 _ => "Settings." + state.InitialSection
             };
             var initialPage = pages.ToList().FindIndex(page => page.TitleKey == initialTitleKey);
+
             if (initialPage < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(state), "Unsupported settings section.");
             }
+
             var (saved, selectedPage) = CollectPages(pages, initialPage, draft);
+
             if (!saved)
             {
                 return null;
@@ -96,6 +111,7 @@ public sealed class FullscreenSetupView : ISetupView
                 CustomInstruction = _protection.Protect(draft.Settings.CustomInstruction).SanitizedText,
                 UpdatedAt = DateTimeOffset.UtcNow
             };
+
             return new SetupSubmission(
                 settings,
                 draft.ApiKey,
@@ -114,6 +130,10 @@ public sealed class FullscreenSetupView : ISetupView
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Collects a validated settings draft and records the section that initiated its explicit save.</summary>
     private (bool Saved, int SelectedPage) CollectPages(IReadOnlyList<FormPage> pages, int initialPage, SetupDraft draft)
     {
@@ -121,11 +141,14 @@ public sealed class FullscreenSetupView : ISetupView
         {
             var form = new FullscreenForm(_console, _text, _shell.Options);
             var saved = form.Run("Settings.Title", pages, () => ValidatePages(pages) ?? ValidateFeatures(draft), initialPage);
+
             return (saved, form.SelectedPageIndex);
         }
+
         _shell.RenderNotice(_text.Text("Form.Unavailable"));
         var promptForm = new SettingsPromptForm(_console, _text, _shell.Options);
         var savedDraft = promptForm.Run(pages, initialPage, () => ValidatePages(pages) ?? ValidateFeatures(draft));
+
         return (savedDraft, promptForm.SelectedPageIndex);
     }
 
@@ -147,6 +170,7 @@ public sealed class FullscreenSetupView : ISetupView
             Toggle("Setup.AiEnabled", () => draft.Settings.AiEnabled,
                 value => draft.Settings = draft.Settings with { AiEnabled = value })
         };
+
         ai.AddRange(CreateModelFields(draft));
         ai.Add(Toggle("Direct.RequireConfirmation", () => !draft.Settings.DirectModeEnabled,
             value => draft.Settings = draft.Settings with { DirectModeEnabled = !value }) with
@@ -159,10 +183,12 @@ public sealed class FullscreenSetupView : ISetupView
             value => draft.Settings = draft.Settings with { ShowSessionSummaryDuringWork = value }) with
         { HelpKey = "Settings.SessionSummaryHelp" });
         var context = CreateContextFields(draft).ToArray();
+
         if (state.ContextBudgetOverridden)
         {
             context[0] = context[0] with { HelpKey = "AiSettings.ContextOverride" };
         }
+
         return AddSaveNotice(
         [
             new("Settings.General",
@@ -288,6 +314,7 @@ public sealed class FullscreenSetupView : ISetupView
             new Text(_text.Text("MemoryManager.SavedCount", memories.Count), Style.Parse("bold " + TerminalTheme.Accent)),
             new Text(" ")
         };
+
         if (memories.Count == 0)
         {
             rows.Add(new Text(_text.Text("Memory.None"), Style.Parse(TerminalTheme.Muted)));
@@ -300,12 +327,14 @@ public sealed class FullscreenSetupView : ISetupView
             var table = showUpdated
                 ? TerminalTable.Create("#", _text.Text("Memory.Note"), _text.Text("MemoryManager.Updated"))
                 : TerminalTable.Create("#", _text.Text("Memory.Note"));
+
             for (var index = 0; index < Math.Min(5, memories.Count); index++)
             {
                 var memory = memories[index];
                 var number = new Text((index + 1).ToString(_text.Culture), Style.Parse(TerminalTheme.Accent));
                 var note = new Text(TerminalText.Clip(TerminalText.Safe(memory.Text).ReplaceLineEndings(" ↵ "), previewWidth),
                     Style.Parse(TerminalTheme.Primary));
+
                 if (showUpdated)
                 {
                     table.AddRow(number, note,
@@ -316,14 +345,18 @@ public sealed class FullscreenSetupView : ISetupView
                     table.AddRow(number, note);
                 }
             }
+
             rows.Add(table);
+
             if (memories.Count > 5)
             {
                 rows.Add(new Text(_text.Text("MemoryManager.MoreCount", memories.Count - 5), Style.Parse(TerminalTheme.Muted)));
             }
         }
+
         rows.Add(new Text(" "));
         rows.Add(new Text(_text.Text("Settings.SavedMemoriesNotice"), Style.Parse(TerminalTheme.Warning)));
+
         return new Rows(rows);
     }
 
@@ -334,9 +367,11 @@ public sealed class FullscreenSetupView : ISetupView
         {
             return pages;
         }
+
         return pages.Select(page =>
         {
             var overview = page.Overview;
+
             return page with
             {
                 Overview = () => overview is null
@@ -357,21 +392,25 @@ public sealed class FullscreenSetupView : ISetupView
         {
             return _about.CreateContent(renderInstallationCard: true);
         }
+
         var costs = state.Costs;
         var unavailable = _text.Text("Costs.Unavailable");
         var status = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn();
+
         AddOverviewMetric(status, "Status.Setup", _text.Text(state.Settings.SetupCompleted ? "Status.Completed" : "Status.Required"));
         AddOverviewMetric(status, "Setup.AiEnabled", _text.Text(draft.Settings.AiEnabled ? "Common.Yes" : "Common.No"));
         AddOverviewMetric(status, "Status.Model", draft.Settings.Model);
         AddOverviewMetric(status, "Status.ApiKey", _text.Text(HasApiKey(draft, state) ? "Status.Ready" : "Status.Missing"));
         AddOverviewMetric(status, "Status.AdminKey", _text.Text(state.AdminKeyConfigured || draft.AdminKey is not null ? "Status.Ready" : "Status.Missing"));
         var usage = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn();
+
         AddOverviewMetric(usage, "Costs.TodayEstimate", costs is null ? unavailable : $"${costs.EstimatedCostTodayUsd.ToString("0.########", _text.Culture)}");
         AddOverviewMetric(usage, "Costs.MonthEstimate", costs is null ? unavailable : $"${costs.EstimatedCostCurrentMonthUsd.ToString("0.########", _text.Culture)}");
         AddOverviewMetric(usage, "Costs.ApiCost", costs?.ActualOrganizationCostCurrentMonthUsd is { } actual ? $"${actual.ToString("0.########", _text.Culture)}" : unavailable);
         AddOverviewMetric(usage, "Costs.Requests", costs?.RequestsToday.ToString("N0", _text.Culture) ?? unavailable);
         AddOverviewMetric(usage, "Costs.Tokens", costs?.TotalTokensToday.ToString("N0", _text.Culture) ?? unavailable);
         AddOverviewMetric(usage, "Costs.LastSync", costs?.LastPricingSync?.ToLocalTime().ToString("g", _text.Culture) ?? unavailable);
+
         return new VibeWareBrand(_console, new Rows(
             new Text(TerminalTheme.IconPrefix(_shell.Options, "🪞", "=") + _text.Text("Settings.DraftStatus"), Style.Parse("bold " + TerminalTheme.Accent)),
             status, new Text(" "),
@@ -383,6 +422,7 @@ public sealed class FullscreenSetupView : ISetupView
     private IReadOnlyList<FormField> CreateSkillsFields(SetupDraft draft)
     {
         if (draft.FeatureSettings is null) return [];
+
         var fields = new List<FormField>
         {
             FeatureMaster(draft),
@@ -390,6 +430,7 @@ public sealed class FullscreenSetupView : ISetupView
                 value => draft.FeatureSettings = draft.FeatureSettings! with { AutomaticSkills = value },
                 () => draft.FeatureSettings!.Enabled) with { HelpKey = "Settings.SkillsHelp" }
         };
+
         foreach (var item in draft.Skills)
         {
             fields.Add(Toggle("Settings.FeatureSkills", () => item.Enabled, value => item.Enabled = value,
@@ -403,7 +444,9 @@ public sealed class FullscreenSetupView : ISetupView
                     : [new("false", _text.Text("Common.No"))]
             });
         }
+
         fields.Add(ClearLearningConsent(draft));
+
         return fields;
     }
 
@@ -411,6 +454,7 @@ public sealed class FullscreenSetupView : ISetupView
     private IReadOnlyList<FormField> CreateMemoryFields(SetupDraft draft)
     {
         if (draft.FeatureSettings is null) return [];
+
         return
         [
             FeatureMaster(draft),
@@ -446,8 +490,10 @@ public sealed class FullscreenSetupView : ISetupView
     private IRenderable CreateFeaturePageNotice(SetupDraft draft, bool skills)
     {
         if (draft.FeatureSettings is null) return new Text(_text.Text("Costs.Unavailable"), Style.Parse(TerminalTheme.Warning));
+
         if (skills && draft.FeatureOverview!.CatalogUnavailable)
             return new Text(_text.Text("Settings.SkillCatalogUnavailable"), Style.Parse(TerminalTheme.Warning));
+
         return new Text(_text.Text(draft.FeatureSettings.Enabled ? skills ? "Settings.SkillsHelp" : "Settings.LearningHelp"
             : "Settings.FeatureEnableFirst"), Style.Parse(TerminalTheme.Muted));
     }
@@ -462,13 +508,16 @@ public sealed class FullscreenSetupView : ISetupView
             new Text(SafePreview(HasRepeatedSkillIntroduction(skill)
                 ? skill.Instructions : skill.Description + "\n\n" + skill.Instructions), Style.Parse(TerminalTheme.Primary))
         };
+
         foreach (var script in skill.Scripts)
         {
             rows.Add(new Text(SafePreview(script.Key + ".ps1"), Style.Parse(TerminalTheme.Accent)));
             rows.Add(new Text(SafePreview(script.Value), Style.Parse(TerminalTheme.Primary)));
         }
+
         if (skill.UnavailableReason is not null)
             rows.Add(new Text(SafePreview(skill.UnavailableReason), Style.Parse(TerminalTheme.Warning)));
+
         return new Rows(rows);
     }
 
@@ -476,9 +525,12 @@ public sealed class FullscreenSetupView : ISetupView
     private static bool HasRepeatedSkillIntroduction(SkillDefinition skill)
     {
         var lines = skill.Instructions.ReplaceLineEndings("\n").Split('\n').SkipWhile(string.IsNullOrWhiteSpace);
+
         if (lines.FirstOrDefault()?.StartsWith("# ", StringComparison.Ordinal) == true)
             lines = lines.Skip(1).SkipWhile(string.IsNullOrWhiteSpace);
+
         var introduction = string.Join('\n', lines.TakeWhile(line => !string.IsNullOrWhiteSpace(line))).Trim();
+
         return string.Equals(introduction, skill.Description.ReplaceLineEndings("\n").Trim(), StringComparison.Ordinal);
     }
 
@@ -487,6 +539,7 @@ public sealed class FullscreenSetupView : ISetupView
     {
         var key = "Lab.SkillName." + skill.Name;
         var label = skill.Origin == "bundled" ? _text.Text(key) : skill.Name;
+
         return string.Equals(label, key, StringComparison.Ordinal) ? skill.Name : label;
     }
 
@@ -498,6 +551,7 @@ public sealed class FullscreenSetupView : ISetupView
             new Text(_text.Text("Lab.StartCapture"), Style.Parse("bold " + TerminalTheme.Primary)),
             new Text(" ")
         };
+
         foreach (var (titleKey, icon, keys) in new[]
         {
             ("Settings.PrivacyLocal", "💻", new[] { "Settings.CaptureLocalInfo" }),
@@ -509,14 +563,17 @@ public sealed class FullscreenSetupView : ISetupView
             guide.Add(new Text(TerminalTheme.IconPrefix(_shell.Options, icon, "-") + _text.Text(titleKey),
                 Style.Parse("bold " + TerminalTheme.Accent)));
             var points = new Grid().AddColumn(new GridColumn().NoWrap()).AddColumn();
+
             foreach (var key in keys)
             {
                 points.AddRow(new Text("-", Style.Parse(TerminalTheme.Accent)),
                     new Text(_text.Text(key), Style.Parse(TerminalTheme.Primary)));
             }
+
             guide.Add(points);
             guide.Add(new Text(" "));
         }
+
         return new Rows(guide);
     }
 
@@ -541,6 +598,7 @@ public sealed class FullscreenSetupView : ISetupView
             new Text(_text.Text("Settings.PrivacyHelp"), Style.Parse(TerminalTheme.Muted)),
             new Text(" ")
         };
+
         foreach (var (key, icon) in new[]
         {
             ("Local", "💻"), ("Provider", "📤"), ("Learning", "🧠"), ("Skills", "🌐"), ("Control", "🗑️")
@@ -551,6 +609,7 @@ public sealed class FullscreenSetupView : ISetupView
             guide.Add(new Text(_text.Text("Settings.Privacy" + key + "Info"), Style.Parse(TerminalTheme.Primary)));
             guide.Add(new Text(" "));
         }
+
         return new Rows(guide);
     }
 
@@ -559,7 +618,9 @@ public sealed class FullscreenSetupView : ISetupView
     {
         var language = _text.Language;
         var theme = TerminalTheme.Current;
+
         _shell.RenderNotice(_text.Text("Settings.SavedMemoriesNotice"));
+
         try
         {
             open();
@@ -580,9 +641,11 @@ public sealed class FullscreenSetupView : ISetupView
     private IRenderable CreateThemeOverview(SetupDraft draft, bool showDetails)
     {
         var rows = new List<IRenderable>();
+
         if (showDetails)
         {
             var theme = _themes.Resolve(draft.Settings.Theme);
+
             rows.Add(new ThemeSeparator(_text.Text("Settings.ThemeDetails")));
             AddThemeMetadata(rows, "Theme.Metadata.Author", theme.Author);
             AddThemeMetadata(rows, "Theme.Metadata.Website", theme.Website, link: theme.Website);
@@ -590,12 +653,14 @@ public sealed class FullscreenSetupView : ISetupView
             AddThemeMetadata(rows, "Theme.Metadata.Path", theme.SourcePath);
             rows.Add(new ThemeSeparator(_text.Text("Settings.ThemePreview")));
         }
+
         foreach (var (key, color) in new[] { ("Success", TerminalTheme.Success), ("Warning", TerminalTheme.Warning), ("Error", TerminalTheme.Error) })
         {
             rows.Add(new TerminalFormRow(
                 new Text(_text.Text("Theme.Semantic." + key), Style.Parse("bold " + color)),
                 _ => new Text(_text.Text("Theme.Semantic." + key + "Help"), Style.Parse(TerminalTheme.Primary))));
         }
+
         return new Rows(rows);
     }
 
@@ -606,15 +671,27 @@ public sealed class FullscreenSetupView : ISetupView
             : new string(value.Select(character => char.IsControl(character) ? ' ' : character).ToArray());
         IRenderable renderedValue = link is null ? new Text(display, Style.Parse(TerminalTheme.FieldValue))
             : new ThemeLink(display, link);
+
         rows.Add(new TerminalFormRow(new Text(_text.Text(labelKey) + ":", Style.Parse(TerminalTheme.Muted)), _ => renderedValue));
         rows.Add(new Text(" "));
     }
 
+    #endregion
+
+    #region Types
+
     /// <summary>Attaches a validated hyperlink while retaining literal, wrapped website text.</summary>
     private sealed class ThemeLink(string value, string url) : IRenderable
     {
+
+        #region Fields
+
         private readonly IRenderable _value = new Text(value, Style.Parse("underline " + TerminalTheme.Info));
         private readonly Link _link = new(url);
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Measures website text using the same wrapping rules as other metadata.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => _value.Measure(options, maxWidth);
@@ -628,7 +705,13 @@ public sealed class FullscreenSetupView : ISetupView
                     : new Segment(segment.Text, segment.Style, _link);
             }
         }
+
+        #endregion
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Builds the shared model, supported reasoning, and answer detail selectors.</summary>
     private IReadOnlyList<FormField> CreateModelFields(SetupDraft draft) =>
@@ -707,6 +790,7 @@ public sealed class FullscreenSetupView : ISetupView
         try
         {
             _ = PreferredNamePolicy.Normalize(value, _redactor);
+
             return null;
         }
         catch (ArgumentException)
@@ -719,14 +803,17 @@ public sealed class FullscreenSetupView : ISetupView
     private string? ValidatePreamble(string value)
     {
         var result = _protection.Protect(value);
+
         if (!string.Equals(result.SanitizedText, _redactor.Redact(result.SanitizedText), StringComparison.Ordinal))
         {
             return _text.Text("Setup.PreambleSecret");
         }
+
         if (!result.IsWithinWordLimit)
         {
             return _text.Text("Setup.PreambleTooLong", result.WordCount, PromptInjectionProtectionService.MaximumPreambleWords);
         }
+
         return result.IsSafe ? null : _text.Text("Setup.PreambleUnsafe");
     }
 
@@ -737,16 +824,19 @@ public sealed class FullscreenSetupView : ISetupView
         {
             var value = field.Read();
             var error = field.Validate?.Invoke(value);
+
             if (error is null && field.Choices is not null
                 && !field.Choices().Any(choice => string.Equals(choice.Value, value, StringComparison.Ordinal)))
             {
                 error = _text.Text("Cli.Invalid");
             }
+
             if (error is not null)
             {
                 return FullscreenForm.FieldLabel(field, _text) + ": " + error;
             }
         }
+
         return null;
     }
 
@@ -761,6 +851,7 @@ public sealed class FullscreenSetupView : ISetupView
     private void SetTheme(SetupDraft draft, string value)
     {
         var theme = _themes.Resolve(value);
+
         TerminalTheme.Apply(theme);
         draft.Settings = draft.Settings with { Theme = theme.Id };
     }
@@ -772,12 +863,21 @@ public sealed class FullscreenSetupView : ISetupView
         var reasoning = model.ReasoningEfforts.Contains(draft.Settings.ReasoningEffort, StringComparer.Ordinal)
             ? draft.Settings.ReasoningEffort
             : model.ReasoningEfforts[0];
+
         draft.Settings = draft.Settings with { Model = model.Id, ReasoningEffort = reasoning };
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Shows the same flag, native language name, and code in choices and the setup review.</summary>
     internal static string LanguageLabel(SupportedLanguage language, ConsoleRenderOptions options) =>
         TerminalTheme.IconPrefix(options, language.Flag, "@") + language.NativeName + " (" + language.Code + ")";
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Resolves the three supported answer-detail labels without inventing an unknown choice.</summary>
     private string DetailName(string value) => _text.Text(value switch
@@ -810,9 +910,16 @@ public sealed class FullscreenSetupView : ISetupView
     /// <summary>Checks whether an invocation has a previously configured key or a new local replacement.</summary>
     private static bool HasApiKey(SetupDraft draft, SetupViewState state) => state.ApiKeyConfigured || draft.ApiKey is not null;
 
+    #endregion
+
+    #region Types
+
     /// <summary>Collects unsaved setup values until the user confirms or cancels the form.</summary>
     private sealed class SetupDraft
     {
+
+        #region Initialization
+
         /// <summary>Starts a local settings draft without reading or copying stored secret values.</summary>
         public SetupDraft(AppSettings settings, SettingsFeatureOverview? overview = null)
         {
@@ -822,24 +929,41 @@ public sealed class FullscreenSetupView : ISetupView
             Skills = overview is { CatalogUnavailable: false } ? overview.Skills.Select(item => new SkillDraft(item)).ToArray() : [];
         }
 
+        #endregion
+
+        #region Properties
+
         public AppSettings Settings { get; set; }
+
         public SettingsFeatureOverview? FeatureOverview { get; }
+
         public SkillsAndMemorySettings? FeatureSettings { get; set; }
+
         public IReadOnlyList<SkillDraft> Skills { get; }
+
         public bool CaptureConsent { get; set; }
+
         public bool ClearLearningConsent { get; set; }
+
         public bool NeedsCaptureConsent => FeatureSettings is { Enabled: true, CaptureObservations: true }
             && FeatureOverview?.Settings is not { Enabled: true, CaptureObservations: true };
         public bool NeedsClearConsent => FeatureOverview is { } original && FeatureSettings is { } current
             && ((original.Settings.Enabled && !current.Enabled) || (original.Settings.CaptureObservations && !current.CaptureObservations));
         public string? ApiKey { get; set; }
+
         public string? AdminKey { get; set; }
+
         public bool TestConnection { get; set; }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Changes the shared master gate and invalidates earlier acknowledgements without persisting anything.</summary>
         public void SetMaster(bool enabled)
         {
             var current = FeatureSettings!;
+
             FeatureSettings = current with { Enabled = enabled, CaptureObservations = enabled && !current.Enabled ? false : current.CaptureObservations };
             CaptureConsent = false;
             ClearLearningConsent = false;
@@ -858,18 +982,28 @@ public sealed class FullscreenSetupView : ISetupView
         {
             if (FeatureOverview is null || FeatureSettings is null
                 || FeatureSettings == FeatureOverview.Settings && Skills.All(item => item.Enabled == item.State.Enabled)) return null;
+
             return new(FeatureOverview.Settings, FeatureSettings, Skills.Select(item =>
                 new SettingsSkillChange(item.State.Skill, item.State.Enabled, item.Enabled)
                 {
                     ExpectedApprovalFingerprint = item.State.ApprovalFingerprint
                 }).ToArray(), CaptureConsent, ClearLearningConsent);
         }
+
+        #endregion
     }
 
     /// <summary>Keeps each inspected package and its unsaved approval separate from the supplied snapshot.</summary>
     private sealed class SkillDraft(SettingsSkillState state)
     {
+
+        #region Properties
+
         public SettingsSkillState State { get; } = state;
         public bool Enabled { get; set; } = state.Enabled;
+
+        #endregion
     }
+
+    #endregion
 }

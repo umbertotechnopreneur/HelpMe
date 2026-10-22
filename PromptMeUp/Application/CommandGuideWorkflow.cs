@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Services;
@@ -28,7 +27,14 @@ namespace PromptMeUp.Application;
 public sealed class CommandGuideWorkflow(CommandGuideService guide, IConsoleShellView shell,
     ILocalizationService text, ILogger<CommandGuideWorkflow> logger)
 {
+
+    #region Properties
+
     public string DocumentPath => guide.DocumentPath;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Opens the bundled guide on request while keeping failures visible and onboarding complete.</summary>
     public void Open()
@@ -44,4 +50,7 @@ public sealed class CommandGuideWorkflow(CommandGuideService guide, IConsoleShel
             shell.RenderWarning(text.Text(exception is FileNotFoundException ? "Guide.Missing" : "Guide.OpenFailed", DocumentPath));
         }
     }
+
+    #endregion
+
 }

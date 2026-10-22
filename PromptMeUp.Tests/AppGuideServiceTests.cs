@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies app guide service behavior.</summary>
 public sealed class AppGuideServiceTests
 {
+
+    #region Methods
+
     /// <summary>Checks that every packaged pair is localized and fits the guide allowance with its versioned wrapper.</summary>
     [Fact]
     public async Task LoadAsync_PackagedChapterPairs_FitEverySupportedLanguage()
@@ -170,12 +174,24 @@ public sealed class AppGuideServiceTests
         await Assert.ThrowsAsync<InvalidDataException>(() => service.LoadAsync(["settings"], "en", CancellationToken.None));
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Supplies packaged guide prompts to tests without a provider connection.</summary>
     private sealed class GuideCatalog : IPromptCatalogService
     {
+
+        #region Properties
+
         public int ReadCount { get; private set; }
 
         public PromptDefinition Chapter { get; init; } = new("app-guide-settings", 1, "Settings", [],
             new Dictionary<string, string> { ["en"] = "Choose Save to apply preferences." }, new Dictionary<string, string>());
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Returns controlled guide data while recording whether validation allowed a lookup.</summary>
         public Task<PromptDefinition> GetAsync(string id, CancellationToken cancellationToken)
@@ -187,5 +203,9 @@ public sealed class AppGuideServiceTests
         /// <summary>Rejects catalog enumeration because guide retrieval must use an exact known identifier.</summary>
         public Task<IReadOnlyList<PromptDefinition>> ListAsync(CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+
+        #endregion
     }
+
+    #endregion
 }

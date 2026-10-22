@@ -26,6 +26,9 @@ namespace PromptMeUp.Views;
 /// <summary>Resolves the shared terminal palette from the active theme definition.</summary>
 internal static class TerminalTheme
 {
+
+    #region Properties
+
     internal static TerminalThemeDefinition Current { get; private set; } = TerminalThemeDefinition.Default;
 
     internal static string Background => Current.Colors.Background;
@@ -33,8 +36,18 @@ internal static class TerminalTheme
     internal static string AccentSecondary => Current.Colors.AccentSecondary;
     internal static string Info => Current.Colors.Info;
     internal static string Primary => Current.Colors.Primary;
+
+    #endregion
+
+    #region Fields
+
     internal const string FieldValue = "#F5F5F5";
     internal const string White = "#FFFFFF";
+
+    #endregion
+
+    #region Properties
+
     internal static string Muted => Current.Colors.Muted;
     internal static string Divider => Current.Colors.Divider;
     internal static string Success => Current.Colors.Success;
@@ -42,6 +55,10 @@ internal static class TerminalTheme
     internal static string Error => Current.Colors.Error;
     internal static string SelectionBackground => Current.Colors.SelectionBackground;
     internal static string SelectionForeground => Current.Colors.SelectionForeground;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Applies a validated catalog theme to subsequent terminal rendering.</summary>
     internal static void Apply(TerminalThemeDefinition definition)
@@ -57,6 +74,7 @@ internal static class TerminalTheme
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(icon);
         ArgumentException.ThrowIfNullOrWhiteSpace(fallback);
+
         return options.NoEmoji ? fallback : icon switch
         {
             // Text-default symbols can occupy an emoji cell and visually consume the following space.
@@ -86,6 +104,7 @@ internal static class TerminalTheme
         var responsivePairs = width >= 112 ? 3 : width >= 72 ? 2 : 1;
         var pairs = preservePairCount ? preferredPairs : Math.Min(preferredPairs, responsivePairs);
         var grid = new Grid();
+
         for (var pair = 0; pair < pairs; pair++)
         {
             grid.AddColumn(new GridColumn { Width = pair == 0 ? firstLabelWidth : null }.RightAligned().NoWrap());
@@ -95,11 +114,13 @@ internal static class TerminalTheme
         for (var offset = 0; offset < metrics.Count; offset += pairs)
         {
             var row = new IRenderable[pairs * 2];
+
             for (var pair = 0; pair < pairs; pair++)
             {
                 if (offset + pair < metrics.Count)
                 {
                     var metric = metrics[offset + pair];
+
                     row[pair * 2] = new Markup($"[{Muted}]{Markup.Escape(metric.Label)}:[/]");
                     row[(pair * 2) + 1] = new Markup($"[bold {metric.ValueColor}]{Markup.Escape(metric.Value)}[/]");
                 }
@@ -122,6 +143,7 @@ internal static class TerminalTheme
         ArgumentNullException.ThrowIfNull(console);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         var targetWidth = Math.Max(1, (int)Math.Floor(console.Profile.Width * 0.8d));
+
         console.WriteLine();
         console.Write(new ThemeSeparator(title, color, targetWidth));
         console.WriteLine();
@@ -134,6 +156,7 @@ internal static class TerminalTheme
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(content);
         WriteRule(console, title, color);
+
         foreach (var line in content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
         {
             console.MarkupLine($"  [{Primary}]{Markup.Escape(line)}[/]");
@@ -149,6 +172,7 @@ internal static class TerminalTheme
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentNullException.ThrowIfNull(content);
         console.MarkupLine($"[bold {color ?? Info}]{Markup.Escape(label)}[/]");
+
         foreach (var line in content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
         {
             console.MarkupLine($"  [{Primary}]{Markup.Escape(line)}[/]");
@@ -156,6 +180,9 @@ internal static class TerminalTheme
 
         console.WriteLine();
     }
+
+    #endregion
 }
 
+/// <summary>Pairs a compact status metric with its display styling.</summary>
 internal sealed record CompactTerminalMetric(string Label, string Value, string ValueColor);

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -29,6 +28,9 @@ internal sealed class SetupCommandHandler(
     InstallationWorkflow installation,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Runs one setup or installation command with the required terminal authorization.</summary>
     internal async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
@@ -53,6 +55,10 @@ internal sealed class SetupCommandHandler(
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Opens the shared settings screen at the requested section in an interactive terminal.</summary>
     private async Task<int> RunSetupAsync(
         AppSettings current,
@@ -60,6 +66,10 @@ internal sealed class SetupCommandHandler(
         SettingsSection initialSection = SettingsSection.General)
     {
         CommandPreconditions.RequireInteractive(text);
+
         return await setup.RunAsync(current, cancellationToken, initialSection).ConfigureAwait(false);
     }
+
+    #endregion
+
 }

@@ -27,11 +27,19 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies settings feature view behavior.</summary>
 public sealed class SettingsFeatureViewTests
 {
+
+    #region Fields
+
     private const int SectionCount = 11;
     private const int PersonalizationFieldCount = 5;
     private const int SkillsSectionIndex = 6;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Theme attribution is opt-in and viewing it never changes the saved preferences.</summary>
     [Theory]
@@ -230,6 +238,10 @@ public sealed class SettingsFeatureViewTests
         Assert.Contains(skill.UnavailableReason, rendered, StringComparison.Ordinal);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Renders one passive preview without terminal navigation, filesystem reads, or executing package instructions.</summary>
     private static string RenderSkillOverview(SkillDefinition skill)
     {
@@ -246,6 +258,10 @@ public sealed class SettingsFeatureViewTests
         console.Write(overview);
         return Plain(harness.Output).ReplaceLineEndings("\n");
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Only bundled package names are translated; local package identities stay literal.</summary>
     [Theory]
@@ -355,6 +371,10 @@ public sealed class SettingsFeatureViewTests
         Assert.Empty(harness.Keys);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a local settings snapshot with no credential or provider work.</summary>
     private static SetupViewState State(SettingsSection section, SettingsFeatureOverview? overview) =>
         new(AppSettings.Default with { AiEnabled = false }, false, false) { InitialSection = section, FeatureOverview = overview };
@@ -412,5 +432,12 @@ public sealed class SettingsFeatureViewTests
     /// <summary>Removes rendering escapes while preserving human-readable output.</summary>
     private static string Plain(StringWriter output) => Regex.Replace(output.ToString(), @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty, RegexOptions.CultureInvariant);
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Collects an isolated view and its controlled input and output collaborators.</summary>
     private sealed record Harness(FullscreenSetupView View, LocalizationService Text, StringWriter Output, Queue<ConsoleKeyInfo> Keys);
+
+    #endregion
 }

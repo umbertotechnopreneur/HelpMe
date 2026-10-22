@@ -27,6 +27,9 @@ namespace PromptMeUp.Views;
 /// <summary>Draws a responsive theme separator using the same three color stops on every surface.</summary>
 internal sealed class ThemeSeparator(string? title = null, string? titleColor = null, int? width = null) : IRenderable
 {
+
+    #region Methods
+
     /// <summary>Reserves only the available width for the single separator row.</summary>
     public Measurement Measure(RenderOptions options, int maxWidth) =>
         new(0, Math.Max(0, Math.Min(width ?? maxWidth, maxWidth)));
@@ -35,6 +38,7 @@ internal sealed class ThemeSeparator(string? title = null, string? titleColor = 
     public IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {
         var available = Math.Max(0, Math.Min(width ?? maxWidth, maxWidth));
+
         if (available == 0)
         {
             yield break;
@@ -43,12 +47,14 @@ internal sealed class ThemeSeparator(string? title = null, string? titleColor = 
         if (!string.IsNullOrEmpty(title))
         {
             var heading = new Segment(title + " ", Style.Parse("bold " + (titleColor ?? TerminalTheme.Info)));
+
             if (heading.CellCount() >= available)
             {
                 foreach (var segment in Segment.Truncate([heading], available))
                 {
                     yield return segment;
                 }
+
                 yield break;
             }
 
@@ -58,6 +64,7 @@ internal sealed class ThemeSeparator(string? title = null, string? titleColor = 
 
         var character = options.Capabilities.Unicode ? "─" : "-";
         var stops = GradientStops();
+
         for (var index = 0; index < available; index++)
         {
             yield return new Segment(character, new Style(GradientColor(index, available, stops)));
@@ -70,13 +77,20 @@ internal sealed class ThemeSeparator(string? title = null, string? titleColor = 
         ArgumentOutOfRangeException.ThrowIfNegative(width);
         var result = new StringBuilder(width * 15);
         var stops = GradientStops();
+
         for (var index = 0; index < width; index++)
         {
             var color = GradientColor(index, width, stops);
+
             result.Append($"[#{color.R:X2}{color.G:X2}{color.B:X2}]─[/]");
         }
+
         return result.ToString();
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads the three active theme stops once per rendered separator.</summary>
     private static Color[] GradientStops() =>
@@ -93,6 +107,7 @@ internal sealed class ThemeSeparator(string? title = null, string? titleColor = 
         var fraction = position - stop;
         var first = stops[stop];
         var second = stops[stop + 1];
+
         return new Color(
             (byte)Math.Round(first.R * (1d - fraction) + second.R * fraction),
             (byte)Math.Round(first.G * (1d - fraction) + second.G * fraction),
@@ -104,4 +119,6 @@ internal sealed class ThemeSeparator(string? title = null, string? titleColor = 
         byte.Parse(value.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
         byte.Parse(value.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
         byte.Parse(value.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+
+    #endregion
 }

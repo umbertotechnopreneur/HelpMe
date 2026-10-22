@@ -2,6 +2,14 @@
 
 Add a `Public update:` line to a completed task only when it changes something readers can use. `scripts/Generate-Changelog.ps1` copies those lines into the public `CHANGELOG.md`; keep internal validation and plans out of them.
 
+## 2026-10-23 — Make C# source easier to navigate and read
+
+- Review all 325 tracked C# files across the application and tests. Add missing English XML summaries to types and methods, and group members into Fields, Initialization, Properties, Methods, Implementation, and Types regions where applicable. Leave files without type declarations unchanged.
+- Separate logical steps with whitespace. Use named intermediate values and concise logic comments in conversation and authorization workflows, plan verification, command output handling, credential redaction, terminal input, forms, and complex test setup.
+- Preserve declaration order, runtime strings, translations, and intended behavior. Token comparison against the original source isolates executable-code edits to 17 deliberately reviewed readability changes; other differences consist of comments, regions, and whitespace.
+
+Validation: preflight, XML method-summary check, folder-based .NET whitespace verification, and diff checks passed. Roslyn source inspection covered 568 types and 2,108 methods/constructors with no missing summaries, syntax errors, or member-region placement issues. Windows conditional source also parsed without errors. No local dependency restore, application build, automated tests, CLI smoke tests, packaging, or installation was performed. Git delivery uses a focused review branch; CI results are recorded on its pull request.
+
 ## 2026-10-19 — Build and install the command-output fix locally
 
 - Compile the current repository source as a self-contained Debug win-x64 application, including the countdown and output-stream changes. Keep the existing 1.0.7 source version; derive MSIX version 1.0.7.0 from the built executable.

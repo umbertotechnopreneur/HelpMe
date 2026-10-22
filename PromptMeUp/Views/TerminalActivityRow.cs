@@ -29,6 +29,9 @@ internal enum TerminalActivityState { Ready, Working, NeedsInput, Completed, Can
 internal sealed class TerminalActivityRow(string label, TerminalActivityState state,
     TimeSpan? elapsed = null, bool useSymbols = true) : IRenderable
 {
+
+    #region Methods
+
     /// <summary>Lets the parent allocate a single row at the available terminal width.</summary>
     public Measurement Measure(RenderOptions options, int maxWidth) => new(Math.Min(1, Math.Max(0, maxWidth)), Math.Max(0, maxWidth));
 
@@ -36,11 +39,15 @@ internal sealed class TerminalActivityRow(string label, TerminalActivityState st
     public IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
     {
         if (maxWidth <= 0) return [];
+
         var duration = elapsed is { } time ? " · " + Duration(time) : string.Empty;
         var symbol = Symbol(state, useSymbols && options.Unicode);
         var prefix = symbol + " ";
+
         if (TerminalText.Width(prefix + duration) >= maxWidth) duration = string.Empty;
+
         var title = TerminalText.Clip(label, Math.Max(0, maxWidth - TerminalText.Width(prefix + duration)));
+
         return Segment.Truncate([
             new Segment(prefix, Style.Parse(Color(state))),
             new Segment(title, Style.Parse(TerminalTheme.Primary)),
@@ -74,4 +81,6 @@ internal sealed class TerminalActivityRow(string label, TerminalActivityState st
     internal static string Duration(TimeSpan elapsed) => elapsed.TotalSeconds < 1
         ? $"{elapsed.TotalMilliseconds:0} ms"
         : elapsed.TotalMinutes < 1 ? $"{elapsed.TotalSeconds:0.0} s" : $"{(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}";
+
+    #endregion
 }

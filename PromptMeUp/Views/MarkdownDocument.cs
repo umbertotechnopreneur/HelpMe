@@ -25,10 +25,22 @@ namespace PromptMeUp.Views;
 /// <summary>Retains parsed blocks for display and history without retaining another source-text copy.</summary>
 public sealed class MarkdownDocument : IRenderable
 {
+
+    #region Fields
+
     private readonly IRenderable _content;
 
+    #endregion
+
+    #region Properties
+
     internal IReadOnlyList<MarkdownBlock> Blocks { get; }
+
     internal int SourceLength { get; }
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Captures parsed blocks using the theme active when the answer was received.</summary>
     /// <param name="blocks">Sanitized blocks and their animation settings.</param>
@@ -40,6 +52,10 @@ public sealed class MarkdownDocument : IRenderable
         _content = new Rows(blocks.Select(block => block.Content));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Measures the shared content at the caller's available width.</summary>
     /// <param name="options">Terminal capabilities and dimensions.</param>
     /// <param name="maxWidth">Available width in terminal cells.</param>
@@ -49,6 +65,8 @@ public sealed class MarkdownDocument : IRenderable
     /// <param name="options">Terminal capabilities and dimensions.</param>
     /// <param name="maxWidth">Available width in terminal cells.</param>
     public IEnumerable<Segment> Render(RenderOptions options, int maxWidth) => _content.Render(options, maxWidth);
+
+    #endregion
 }
 
 /// <summary>Keeps a block's animation setting beside its formatted content.</summary>

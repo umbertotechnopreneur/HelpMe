@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using PromptMeUp.Infrastructure;
@@ -29,15 +28,31 @@ public enum DesktopLauncherResult { Created, AlreadyExists }
 /// <summary>Creates an optional current-user desktop launcher without changing terminal or shell preferences.</summary>
 public interface IDesktopLauncherService
 {
+    #region Properties
+
     bool IsAvailable { get; }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Creates the requested instance or local integration using the supplied configuration.</summary>
     DesktopLauncherResult Create();
+
+    #endregion
 }
 
 /// <summary>Uses a stable execution alias so the desktop shortcut survives MSIX version updates.</summary>
 public sealed class DesktopLauncherService(AppPaths paths) : IDesktopLauncherService
 {
+    #region Properties
+
     public bool IsAvailable => OperatingSystem.IsWindows() && File.Exists(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WindowsApps", "hm.exe"));
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Creates a shortcut only when the Windows execution alias is installed.</summary>
     public DesktopLauncherResult Create()
@@ -48,6 +63,10 @@ public sealed class DesktopLauncherService(AppPaths paths) : IDesktopLauncherSer
         }
         return CreateWindowsShortcut();
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Writes only the requested user's shortcut and its managed launcher assets.</summary>
     [SupportedOSPlatform("windows")]
@@ -91,4 +110,6 @@ public sealed class DesktopLauncherService(AppPaths paths) : IDesktopLauncherSer
             if (shell is not null) { Marshal.FinalReleaseComObject(shell); }
         }
     }
+
+    #endregion
 }

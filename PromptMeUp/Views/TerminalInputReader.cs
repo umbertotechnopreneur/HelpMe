@@ -22,17 +22,25 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Carries one keyboard action or a bounded bracketed-paste result.</summary>
 internal sealed record TerminalInputEvent(ConsoleKeyInfo? Key = null, string? Paste = null, bool PasteTooLong = false);
 
 /// <summary>Reads keys and bracketed paste input while preserving a bounded, testable event stream.</summary>
 internal sealed class TerminalInputReader
 {
+
+    #region Fields
+
     private const string PasteEnd = "\u001b[201~";
     private readonly IAnsiConsoleInput _input;
     private readonly int _maximumPasteCharacters;
     private readonly bool _win32Encoding;
     private readonly Queue<ConsoleKeyInfo> _pendingKeys = new();
     private bool _literalPaste;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates a reader that separates terminal paste blocks from deliberate keyboard actions.</summary>
     internal TerminalInputReader(IAnsiConsoleInput input, int maximumPasteCharacters, bool win32Encoding = false)
@@ -43,6 +51,10 @@ internal sealed class TerminalInputReader
         _win32Encoding = win32Encoding;
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Reads one keyboard action or one complete paste without submitting pasted line endings.</summary>
     internal TerminalInputEvent Read() => ReadAsync().GetAwaiter().GetResult();
 
@@ -52,9 +64,11 @@ internal sealed class TerminalInputReader
         var key = await ReadRawAsync(CancellationToken.None).ConfigureAwait(false)
             ?? throw new InteractiveFlowCanceledException();
         var sequenceKind = '\0';
+
         if (key.Key == ConsoleKey.Escape || key.KeyChar == '\u001b')
         {
             var next = await ReadPrefixKeyAsync().ConfigureAwait(false);
+
             if (next?.KeyChar is not ('[' or 'O'))
             {
                 throw new InteractiveFlowCanceledException();
@@ -74,21 +88,25 @@ internal sealed class TerminalInputReader
         }
 
         var sequence = new StringBuilder();
+
         while (sequence.Length < 32)
         {
             var next = await ReadPrefixKeyAsync().ConfigureAwait(false);
+
             if (next is null)
             {
                 return new TerminalInputEvent();
             }
 
             var character = next.Value.KeyChar;
+
             if (character is < ' ' or > '~')
             {
                 return new TerminalInputEvent();
             }
 
             sequence.Append(character);
+
             if (character is >= '@' and <= '~')
             {
                 if (sequenceKind == '[' && sequence.ToString() == "200~")
@@ -102,6 +120,10 @@ internal sealed class TerminalInputReader
 
         return new TerminalInputEvent();
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads without the general Escape cancellation wrapper while retaining application shutdown.</summary>
     private Task<ConsoleKeyInfo?> ReadInputAsync(CancellationToken cancellationToken) =>
@@ -118,7 +140,9 @@ internal sealed class TerminalInputReader
             {
                 return pending;
             }
+
             var first = await ReadInputAsync(cancellationToken).ConfigureAwait(false);
+
             if (!_win32Encoding || _literalPaste || first?.KeyChar != '\u001b')
             {
                 return first;
@@ -126,17 +150,22 @@ internal sealed class TerminalInputReader
 
             var prefix = new List<ConsoleKeyInfo>();
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
             timeout.CancelAfter(TimeSpan.FromMilliseconds(150));
+
             try
             {
                 while (prefix.Count < 64)
                 {
                     var next = await ReadInputAsync(timeout.Token).ConfigureAwait(false);
+
                     if (next is null)
                     {
                         break;
                     }
+
                     prefix.Add(next.Value);
+
                     if (prefix.Count == 1 ? next.Value.KeyChar != '[' : next.Value.KeyChar is >= '@' and <= '~')
                     {
                         break;
@@ -147,27 +176,34 @@ internal sealed class TerminalInputReader
             {
                 // A standalone Escape still belongs to the normal cancellation path.
             }
+
             var sequence = new string(prefix.Select(key => key.KeyChar).ToArray());
+
             if (sequence.StartsWith('[') && sequence.EndsWith('_'))
             {
                 var (key, repeats) = DecodeWin32Key(sequence[1..^1]);
+
                 if (key is { } decoded)
                 {
                     for (var repeat = 1; repeat < repeats; repeat++)
                     {
                         _pendingKeys.Enqueue(decoded);
                     }
+
                     return decoded;
                 }
+
                 continue;
             }
 
             // Raw bracketed paste remains literal even if it contains text resembling key records.
             _literalPaste = sequence == "[200~";
+
             foreach (var key in prefix)
             {
                 _pendingKeys.Enqueue(key);
             }
+
             return first;
         }
     }
@@ -176,12 +212,17 @@ internal sealed class TerminalInputReader
     private static (ConsoleKeyInfo? Key, int Repeats) DecodeWin32Key(string sequence)
     {
         var fields = sequence.Split(';');
+
         if (fields.Length != 6)
         {
             return (null, 0);
         }
+
         var values = new int[6];
+
+        // Windows records omit default-valued fields; an omitted repeat count means one key press.
         values[5] = 1;
+
         for (var index = 0; index < fields.Length; index++)
         {
             if (fields[index].Length != 0 && (!int.TryParse(fields[index], out values[index]) || values[index] < 0 || values[index] > ushort.MaxValue))
@@ -189,19 +230,31 @@ internal sealed class TerminalInputReader
                 return (null, 0);
             }
         }
-        if (values[0] > 255 || values[0] is 16 or 17 or 18 || values[3] != 1 || values[5] == 0)
+
+        var virtualKey = values[0];
+        var isModifierOnly = virtualKey is 16 or 17 or 18;
+        var isKeyDown = values[3] == 1;
+        var repeatCount = values[5];
+
+        if (virtualKey > 255 || isModifierOnly || !isKeyDown || repeatCount == 0)
         {
             return (null, 0);
         }
+
         var modifiers = values[4];
-        return (new ConsoleKeyInfo((char)values[2], (ConsoleKey)values[0],
-            (modifiers & 16) != 0, (modifiers & 3) != 0, (modifiers & 12) != 0), values[5]);
+        var shift = (modifiers & 16) != 0;
+        var alt = (modifiers & 3) != 0;
+        var control = (modifiers & 12) != 0;
+        var key = new ConsoleKeyInfo((char)values[2], (ConsoleKey)virtualKey, shift, alt, control);
+
+        return (key, repeatCount);
     }
 
     /// <summary>Bounds the wait for a terminal prefix so a standalone Escape still cancels promptly.</summary>
     private async Task<ConsoleKeyInfo?> ReadPrefixKeyAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+
         try
         {
             return await ReadRawAsync(timeout.Token).ConfigureAwait(false)
@@ -220,17 +273,23 @@ internal sealed class TerminalInputReader
         var candidate = new StringBuilder(PasteEnd.Length);
         var previousWasCarriageReturn = false;
         var tooLong = false;
+
         while (true)
         {
             var key = await ReadRawAsync(CancellationToken.None).ConfigureAwait(false)
                 ?? throw new InteractiveFlowCanceledException();
+
             foreach (var character in GetPasteCharacters(key))
             {
                 candidate.Append(character);
+
+                // Keep a possible end-marker prefix pending; flush only characters that cannot belong to it.
                 while (!PasteEnd.StartsWith(candidate.ToString(), StringComparison.Ordinal))
                 {
                     var literal = candidate[0];
+
                     candidate.Remove(0, 1);
+
                     if (literal == '\n' && previousWasCarriageReturn)
                     {
                         previousWasCarriageReturn = false;
@@ -238,8 +297,10 @@ internal sealed class TerminalInputReader
                     }
 
                     previousWasCarriageReturn = literal == '\r';
+
                     if (text.Length == _maximumPasteCharacters)
                     {
+                        // Drain the rest of this paste before accepting another deliberate keyboard action.
                         tooLong = true;
                     }
                     else if (!tooLong)
@@ -251,6 +312,7 @@ internal sealed class TerminalInputReader
                 if (candidate.Length == PasteEnd.Length)
                 {
                     _literalPaste = false;
+
                     return tooLong
                         ? new TerminalInputEvent(PasteTooLong: true)
                         : new TerminalInputEvent(Paste: text.ToString());
@@ -302,6 +364,7 @@ internal sealed class TerminalInputReader
             >= '\u0001' and <= '\u001a' => ConsoleKey.A + key.KeyChar - 1,
             _ => key.Key
         };
+
         return new ConsoleKeyInfo(
             key.KeyChar,
             normalized,
@@ -316,6 +379,7 @@ internal sealed class TerminalInputReader
     {
         var final = sequence[^1];
         var parameters = sequence[..^1].Split(';');
+
         if (kind == '[' && (final == 'u' && parameters.Length == 2 && parameters[0] == "13"
             || final == '~' && parameters.Length == 3 && parameters[0] == "27" && parameters[2] == "13"))
         {
@@ -323,10 +387,14 @@ internal sealed class TerminalInputReader
             {
                 return null;
             }
+
             var enterFlags = enterModifier - 1;
+
             return new ConsoleKeyInfo('\r', ConsoleKey.Enter, (enterFlags & 1) != 0, (enterFlags & 2) != 0, (enterFlags & 4) != 0);
         }
+
         var modifier = 1;
+
         if (parameters.Length > 2 || (parameters.Length == 2
                 && (!int.TryParse(parameters[1], out modifier) || modifier is < 1 or > 8)))
         {
@@ -362,12 +430,14 @@ internal sealed class TerminalInputReader
             },
             _ => (ConsoleKey)0
         };
+
         if (key == 0 || (final != '~' && parameters[0] is not ("" or "1")))
         {
             return null;
         }
 
         var flags = modifier - 1;
+
         return new ConsoleKeyInfo(
             key == ConsoleKey.Tab ? '\t' : '\0',
             key,
@@ -375,4 +445,6 @@ internal sealed class TerminalInputReader
             (flags & 2) != 0,
             (flags & 4) != 0);
     }
+
+    #endregion
 }

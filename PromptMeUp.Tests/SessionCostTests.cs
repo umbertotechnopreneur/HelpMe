@@ -21,8 +21,12 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies session cost behavior.</summary>
 public sealed class SessionCostTests
 {
+
+    #region Methods
+
     /// <summary>Verifies all priced calls, including a billed failure, contribute once and other sessions remain separate.</summary>
     [Fact]
     public async Task GetSessionAccountingAsync_PricedCalls_SumsOnlyRequestedSession()
@@ -88,6 +92,10 @@ public sealed class SessionCostTests
         Assert.Equal(0, accounting.Usage.TotalTokens);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds a synthetic request ledger row with explicit charge, outcome, and usage for session aggregation.</summary>
     private static AiRequestLog CreateRequest(string sessionId, decimal? cost, bool succeeded = true, long totalTokens = 12)
     {
@@ -98,4 +106,6 @@ public sealed class SessionCostTests
             new AiUsageMetrics(totalTokens, 0, 0, 0, 0, totalTokens), cost,
             succeeded || totalTokens > 0 ? 200 : 503, 1, null, null, succeeded, succeeded ? null : "synthetic_error");
     }
+
+    #endregion
 }

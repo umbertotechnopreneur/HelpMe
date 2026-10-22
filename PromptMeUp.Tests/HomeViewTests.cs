@@ -24,8 +24,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies home view behavior.</summary>
 public sealed class HomeViewTests
 {
+
+    #region Methods
+
     /// <summary>Accepts each destination immediately, including digits typed with Shift on international keyboards.</summary>
     [Theory]
     [InlineData('1', HomeAction.Chat, false)]
@@ -60,6 +64,10 @@ public sealed class HomeViewTests
         Assert.Empty(keys);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Provides deterministic keyboard input without opening a terminal or allowing an implicit Enter.</summary>
     private static HomeView CreateView(Queue<ConsoleKeyInfo> keys)
     {
@@ -81,4 +89,6 @@ public sealed class HomeViewTests
             : throw new InvalidOperationException("Unexpected shell operation: " + method.Name));
         return new HomeView(wrapped, text, shell);
     }
+
+    #endregion
 }

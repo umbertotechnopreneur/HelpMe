@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using PromptMeUp.Models;
 
@@ -25,7 +24,13 @@ namespace PromptMeUp.Services;
 /// <summary>Validates imported model pricing data before it is stored or shown to the user.</summary>
 internal static class ModelPricingPolicy
 {
+    #region Fields
+
     private const long LongContextInputThreshold = 272_000;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Resolves documented model families and dated snapshots to their applicable standard pricing band.</summary>
     internal static (string Model, string ContextWindow)? Resolve(string model, long inputTokens)
@@ -45,4 +50,6 @@ internal static class ModelPricingPolicy
         var hasLongBand = descriptor.Id is "gpt-5.6-sol" or "gpt-5.6-terra" or "gpt-5.6-luna" or "gpt-5.5" or "gpt-5.4";
         return (descriptor.Id, hasLongBand && inputTokens > LongContextInputThreshold ? "long" : "short");
     }
+
+    #endregion
 }

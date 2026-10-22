@@ -30,13 +30,29 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Owns isolated persistence and synthetic collaborators for regression scenarios.</summary>
 internal sealed class RegressionFixture : IDisposable
 {
+
+    #region Fields
+
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "PromptMeUp.Tests", Guid.NewGuid().ToString("N"));
+
+    #endregion
+
+    #region Properties
+
     public AppPaths Paths { get; }
+
     public SqliteDatabaseService Database { get; }
+
     public ActivityAuditService Audit { get; }
+
     public IEnvironmentSecretService Secrets { get; }
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates isolated persistence and synthetic collaborators that never access real credentials or the network.</summary>
     internal RegressionFixture()
@@ -44,9 +60,11 @@ internal sealed class RegressionFixture : IDisposable
         Directory.CreateDirectory(_directory);
         Paths = new AppPaths(_directory, Path.Combine(_directory, "test.db"), _directory,
             Path.Combine(_directory, "test.log"), Path.Combine(AppContext.BaseDirectory, "prompt"));
+
         Database = new SqliteDatabaseService(Paths, NullLogger<SqliteDatabaseService>.Instance,
             new PromptInjectionProtectionService(), new SensitiveDataRedactor());
         Audit = new ActivityAuditService(Database, new SensitiveDataRedactor());
+
         Secrets = TestProxy.Create<IEnvironmentSecretService>((method, _) => method.Name switch
         {
             "Load" => "sk-" + new string('x', 32),
@@ -54,6 +72,10 @@ internal sealed class RegressionFixture : IDisposable
             _ => throw new NotSupportedException(method.Name)
         });
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reads packaged prompts without creating data directories or accessing user settings.</summary>
     internal static IPromptCatalogService CreatePackagedPrompts() => new YamlPromptCatalogService(
@@ -80,12 +102,15 @@ internal sealed class RegressionFixture : IDisposable
             Pooling = false
         }.ToString());
         await connection.OpenAsync();
+
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
+
         foreach (var parameter in parameters)
         {
             command.Parameters.AddWithValue(parameter.Name, parameter.Value);
         }
+
         return await command.ExecuteScalarAsync();
     }
 
@@ -135,7 +160,10 @@ internal sealed class RegressionFixture : IDisposable
     internal static bool IsDisplayIntentRequest(string body)
     {
         using var request = JsonDocument.Parse(body);
-        return request.RootElement.GetProperty("text").TryGetProperty("format", out var format)
+        var textConfiguration = request.RootElement.GetProperty("text");
+
+        // Only display classification requests declare the session-summary response field.
+        return textConfiguration.TryGetProperty("format", out var format)
                && format.GetProperty("schema").GetProperty("properties").TryGetProperty("session_summary", out _);
     }
 
@@ -180,33 +208,57 @@ internal sealed class RegressionFixture : IDisposable
         SqliteTestPool.Clear(Paths.DatabasePath);
         Directory.Delete(_directory, recursive: true);
     }
+
+    #endregion
 }
 
+/// <summary>Routes interface calls to explicit test behavior without invoking real services.</summary>
 public class TestProxy : DispatchProxy
 {
+
+    #region Fields
+
     private Func<MethodInfo, object?[], object?> _handler = null!;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Creates an explicit interface fake that rejects any unexpected collaborator call.</summary>
     internal static T Create<T>(Func<MethodInfo, object?[], object?> handler) where T : class
     {
         var instance = Create<T, TestProxy>();
-        ((TestProxy)(object)instance)._handler = handler;
+        var proxy = (TestProxy)(object)instance;
+        proxy._handler = handler;
+
         return instance;
     }
 
     /// <summary>Routes the invocation to the test's explicit behavior.</summary>
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) => _handler(targetMethod!, args ?? []);
+
+    #endregion
 }
 
+/// <summary>Returns configured in-memory HTTP responses without network access.</summary>
 internal sealed class SyntheticHttpHandler(Func<HttpResponseMessage> response) : HttpMessageHandler
 {
+
+    #region Methods
+
     /// <summary>Returns only in-memory content without opening a network connection.</summary>
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
         Task.FromResult(response());
+
+    #endregion
 }
 
+/// <summary>Models a delayed response body with cancellation-aware serialization.</summary>
 internal sealed class DelayedHttpContent(string body, TimeSpan delay) : HttpContent
 {
+
+    #region Methods
+
     /// <summary>Delegates serialization to the cancellation-aware implementation.</summary>
     protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
         SerializeToStreamAsync(stream, context, CancellationToken.None);
@@ -215,7 +267,9 @@ internal sealed class DelayedHttpContent(string body, TimeSpan delay) : HttpCont
     protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
     {
         await Task.Delay(delay, cancellationToken);
-        await stream.WriteAsync(Encoding.UTF8.GetBytes(body), cancellationToken);
+
+        var bodyBytes = Encoding.UTF8.GetBytes(body);
+        await stream.WriteAsync(bodyBytes, cancellationToken);
     }
 
     /// <summary>Models a chunked response without a declared content length.</summary>
@@ -224,4 +278,6 @@ internal sealed class DelayedHttpContent(string body, TimeSpan delay) : HttpCont
         length = 0;
         return false;
     }
+
+    #endregion
 }

@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies AI cost calculator behavior.</summary>
 public sealed class AiCostCalculatorTests
 {
+
+    #region Methods
+
     /// <summary>Verifies separate standard, cached, cache-write, and output token pricing.</summary>
     [Fact]
     public void CalculateBreakdown_MixedUsage_UsesEachPricingBand()
@@ -50,4 +54,6 @@ public sealed class AiCostCalculatorTests
         Assert.Equal(4m, result.OutputUsd);
         Assert.Equal(5.75m, result.TotalUsd);
     }
+
+    #endregion
 }

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Infrastructure;
@@ -25,48 +24,73 @@ using PromptMeUp.Services.Sqlite;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Persists settings, session accounting, audit events, and cached provider pricing.</summary>
 public interface IDatabaseService
 {
+    #region Methods
+
+    /// <summary>Creates or migrates the local database schema before use.</summary>
     Task InitializeAsync(CancellationToken cancellationToken);
 
+    /// <summary>Resets the local database using the supported reset workflow.</summary>
     Task ResetAsync(CancellationToken cancellationToken);
 
+    /// <summary>Loads persisted application settings from the local database.</summary>
     Task<AppSettings> LoadSettingsAsync(CancellationToken cancellationToken);
 
+    /// <summary>Saves validated application settings to the local database.</summary>
     Task SaveSettingsAsync(AppSettings settings, CancellationToken cancellationToken);
 
+    /// <summary>Appends provider request accounting and response metadata.</summary>
     Task AppendAiRequestAsync(AiRequestLog request, CancellationToken cancellationToken);
 
+    /// <summary>Replaces cached model prices for the specified provider.</summary>
     Task ReplaceModelPricesAsync(string provider, IReadOnlyList<AiModelPrice> prices, CancellationToken cancellationToken);
 
+    /// <summary>Lists cached model prices for the specified provider.</summary>
     Task<IReadOnlyList<AiModelPrice>> ListModelPricesAsync(string provider, CancellationToken cancellationToken);
 
+    /// <summary>Finds the cached price for a provider and model.</summary>
     Task<AiModelPrice?> FindModelPriceAsync(string provider, string model, long inputTokens, CancellationToken cancellationToken);
 
+    /// <summary>Returns the most recent successful model-price synchronization time.</summary>
     Task<DateTimeOffset?> GetLatestModelPriceSyncAsync(string provider, CancellationToken cancellationToken);
 
+    /// <summary>Replaces cached organization costs with the supplied provider data.</summary>
     Task ReplaceOrganizationCostsAsync(DateTimeOffset from, DateTimeOffset to, IReadOnlyList<OrganizationCost> costs, CancellationToken cancellationToken);
 
+    /// <summary>Returns the most recent organization-cost synchronization time.</summary>
     Task<DateTimeOffset?> GetLastOrganizationCostSyncAsync(CancellationToken cancellationToken);
 
+    /// <summary>Summarizes recorded provider requests over the requested period.</summary>
     Task<AiRequestSummary> GetAiRequestSummaryAsync(CancellationToken cancellationToken);
 
+    /// <summary>Returns typed token usage and cost accounting for a session.</summary>
     Task<AiSessionAccounting> GetSessionAccountingAsync(string sessionId, CancellationToken cancellationToken);
 
+    /// <summary>Returns cached organization costs for the current month.</summary>
     Task<decimal?> GetOrganizationCostCurrentMonthAsync(CancellationToken cancellationToken);
 
+    /// <summary>Creates the AI session ledger entry if it does not already exist.</summary>
     Task EnsureAiSessionAsync(AiSessionRecord session, CancellationToken cancellationToken);
 
+    /// <summary>Records completion of the AI session ledger entry.</summary>
     Task CloseAiSessionAsync(string sessionId, string status, DateTimeOffset endedAt, CancellationToken cancellationToken);
 
+    /// <summary>Appends an event to the AI session ledger.</summary>
     Task AppendAiSessionEventAsync(AiSessionEventRecord sessionEvent, CancellationToken cancellationToken);
 
+    /// <summary>Appends a sanitized activity entry to the local audit ledger.</summary>
     Task AppendActivityAuditAsync(ActivityAuditRecord audit, CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Owns SQLite initialization and the application's typed local data access operations.</summary>
 public sealed class SqliteDatabaseService : IDatabaseService
 {
+    #region Fields
+
     internal const string AiRequestSummarySql = """
         SELECT
             COALESCE(SUM(CASE WHEN occurred_unix >= $today AND occurred_unix < $tomorrow THEN estimated_cost_microusd ELSE 0 END), 0),
@@ -85,6 +109,10 @@ public sealed class SqliteDatabaseService : IDatabaseService
     private readonly IPromptInjectionProtectionService _promptProtection;
     private readonly ISensitiveDataRedactor _redactor;
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the serialized SQLite gateway for local settings, usage, sessions, and audit data.</summary>
     public SqliteDatabaseService(
@@ -106,6 +134,10 @@ public sealed class SqliteDatabaseService : IDatabaseService
             Pooling = true
         }.ToString();
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Creates the versioned schema and singleton default settings row.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -726,6 +758,10 @@ public sealed class SqliteDatabaseService : IDatabaseService
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Opens one pooled connection with foreign keys and a bounded busy timeout enabled.</summary>
     /// <param name="cancellationToken">Cancels connection acquisition and setup.</param>
     /// <exception cref="OperationCanceledException">Acquisition or setup was cancelled.</exception>
@@ -1145,4 +1181,6 @@ public sealed class SqliteDatabaseService : IDatabaseService
     /// <summary>Adds either a scalar value or database null to a SQLite command.</summary>
     private static void AddNullable(SqliteCommand command, string name, object? value) =>
         command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+
+    #endregion
 }

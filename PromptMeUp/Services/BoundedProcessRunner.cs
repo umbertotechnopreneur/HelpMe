@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Diagnostics;
 using System.Text;
 using PromptMeUp.Models;
@@ -26,6 +25,8 @@ namespace PromptMeUp.Services;
 /// <summary>Runs a child process with bounded output, cancellation, and timeout handling.</summary>
 internal static class BoundedProcessRunner
 {
+    #region Methods
+
     /// <summary>Runs a caller-approved process with one deadline for input, exit, and bounded output collection.</summary>
     /// <param name="startInfo">The process and argument list to launch.</param>
     /// <param name="displayCommand">The command retained in the result.</param>
@@ -40,12 +41,16 @@ internal static class BoundedProcessRunner
         ProcessStartInfo startInfo, string displayCommand, TimeSpan timeout, CancellationToken cancellationToken,
         string? standardInput = null, Action<CommandOutputUpdate>? output = null, CancellationToken stopToken = default)
     {
-        if (timeout != Timeout.InfiniteTimeSpan && (timeout <= TimeSpan.Zero || timeout.TotalMilliseconds > uint.MaxValue - 1))
+        var hasFiniteTimeout = timeout != Timeout.InfiniteTimeSpan;
+        var isTimeoutOutOfRange = timeout <= TimeSpan.Zero || timeout.TotalMilliseconds > uint.MaxValue - 1;
+        if (hasFiniteTimeout && isTimeoutOutOfRange)
         {
             throw new ArgumentOutOfRangeException(nameof(timeout));
         }
+
         cancellationToken.ThrowIfCancellationRequested();
         stopToken.ThrowIfCancellationRequested();
+
         startInfo.UseShellExecute = false;
         startInfo.CreateNoWindow = true;
         startInfo.RedirectStandardInput = true;
@@ -54,28 +59,41 @@ internal static class BoundedProcessRunner
         startInfo.StandardInputEncoding = new UTF8Encoding(false);
         startInfo.StandardOutputEncoding = Encoding.UTF8;
         startInfo.StandardErrorEncoding = Encoding.UTF8;
+
         using var process = new Process { StartInfo = startInfo };
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopToken);
         deadline.CancelAfter(timeout);
         var stopwatch = Stopwatch.StartNew();
+
         if (!process.Start())
         {
             throw new InvalidOperationException("The requested process could not be started.");
         }
+
         var outputGate = new object();
         Action<CommandOutputUpdate>? publish = output is null ? null : update =>
         {
-            lock (outputGate) output(update);
+            lock (outputGate)
+            {
+                output(update);
+            }
         };
+
+        // Drain both pipes concurrently so a full stderr buffer cannot block stdout or process exit.
         var outputTask = ReadBoundedAsync(process.StandardOutput.BaseStream, false, publish, deadline);
         var errorTask = ReadBoundedAsync(process.StandardError.BaseStream, true, publish, deadline);
         var inputTask = WriteInputAsync(process.StandardInput, standardInput, deadline);
         var timedOut = false;
+
         try
         {
             await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
             // A descendant retaining a pipe must not keep the UI waiting after the launched process exits.
-            if (timeout == Timeout.InfiniteTimeSpan) deadline.CancelAfter(TimeSpan.FromSeconds(2));
+            if (timeout == Timeout.InfiniteTimeSpan)
+            {
+                deadline.CancelAfter(TimeSpan.FromSeconds(2));
+            }
+
             await Task.WhenAll(inputTask, outputTask, errorTask).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             timedOut = deadline.IsCancellationRequested && !stopToken.IsCancellationRequested;
@@ -99,20 +117,35 @@ internal static class BoundedProcessRunner
                 await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             }
         }
+
         await Task.WhenAll(outputTask, errorTask).ConfigureAwait(false);
         var capturedOutput = await outputTask.ConfigureAwait(false);
         var error = await errorTask.ConfigureAwait(false);
-        try { await inputTask.ConfigureAwait(false); }
-        catch (OperationCanceledException) when (deadline.IsCancellationRequested) { }
+        try
+        {
+            await inputTask.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        {
+            // Cancellation already determines the result; input shutdown adds no separate failure.
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
         var cancelled = stopToken.IsCancellationRequested;
-        return new CommandExecutionResult(displayCommand, timedOut || cancelled ? null : process.ExitCode,
-            capturedOutput.Text, error.Text, timedOut, capturedOutput.Truncated || error.Truncated, stopwatch.ElapsedMilliseconds)
+        int? exitCode = timedOut || cancelled ? null : process.ExitCode;
+        var outputTruncated = capturedOutput.Truncated || error.Truncated;
+
+        return new CommandExecutionResult(displayCommand, exitCode,
+            capturedOutput.Text, error.Text, timedOut, outputTruncated, stopwatch.ElapsedMilliseconds)
         {
             Cancelled = cancelled,
             OutputWasStreamed = publish is not null
         };
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Transmits large approved source without command-line length limits or temporary source files.</summary>
     /// <param name="writer">The child process input stream.</param>
@@ -163,10 +196,21 @@ internal static class BoundedProcessRunner
                 if (firstCharacters && count > 0)
                 {
                     firstCharacters = false;
-                    if (characters[0] == '\uFEFF') start = 1;
+                    if (characters[0] == '\uFEFF')
+                    {
+                        start = 1;
+                    }
                 }
-                if (count > start) capture.Append(characters.AsSpan(start, count - start));
-                if (read == 0) break;
+
+                if (count > start)
+                {
+                    capture.Append(characters.AsSpan(start, count - start));
+                }
+
+                if (read == 0)
+                {
+                    break;
+                }
             }
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested)
@@ -186,9 +230,18 @@ internal static class BoundedProcessRunner
     /// <param name="tasks">Outstanding input/output operations.</param>
     private static async Task ObserveCompletionAsync(params Task[] tasks)
     {
-        try { await Task.WhenAll(tasks).ConfigureAwait(false); }
-        catch (OperationCanceledException) { }
-        catch (IOException) { }
+        try
+        {
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is expected after the execution deadline or application shutdown.
+        }
+        catch (IOException)
+        {
+            // Closing a terminated process's pipes may fail after the original error was captured.
+        }
     }
 
     /// <summary>Stops the started process tree when a deadline, cancellation, or I/O failure interrupts execution.</summary>
@@ -208,5 +261,12 @@ internal static class BoundedProcessRunner
         }
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Contains captured stream text and whether bounded retention omitted any output.</summary>
     private sealed record CapturedStream(string Text, bool Truncated);
+
+    #endregion
 }

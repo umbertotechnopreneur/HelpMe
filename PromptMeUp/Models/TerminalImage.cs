@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Collections.Immutable;
 
 namespace PromptMeUp.Models;
@@ -24,7 +23,14 @@ namespace PromptMeUp.Models;
 /// <summary>Stores a bounded, immutable RGB image independently of terminal rendering.</summary>
 public sealed class TerminalImage
 {
+
+    #region Fields
+
     private const int MaximumDimension = 1024;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Copies a complete row-major RGB8 image after validating its dimensions.</summary>
     public TerminalImage(int width, int height, ReadOnlySpan<byte> pixels)
@@ -33,6 +39,7 @@ public sealed class TerminalImage
         ArgumentOutOfRangeException.ThrowIfGreaterThan(width, MaximumDimension);
         ArgumentOutOfRangeException.ThrowIfLessThan(height, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(height, MaximumDimension);
+
         if (pixels.Length != checked(width * height * 3))
         {
             throw new ArgumentException("Pixel data must contain exactly three bytes per image pixel.", nameof(pixels));
@@ -43,9 +50,16 @@ public sealed class TerminalImage
         Pixels = ImmutableArray.Create(pixels.ToArray());
     }
 
+    #endregion
+
+    #region Properties
+
     public int Width { get; }
 
     public int Height { get; }
 
     public ImmutableArray<byte> Pixels { get; }
+
+    #endregion
+
 }

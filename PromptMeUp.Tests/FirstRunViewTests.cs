@@ -24,8 +24,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies first run view behavior.</summary>
 public sealed class FirstRunViewTests
 {
+
+    #region Methods
+
     /// <summary>Renders the real welcome and first selection, including the formerly invalid untitled divider.</summary>
     [Theory]
     [InlineData("it")]
@@ -70,4 +74,6 @@ public sealed class FirstRunViewTests
         Assert.Empty(keys);
         Assert.Contains(text.Text("Oobe.Welcome"), output.ToString(), StringComparison.Ordinal);
     }
+
+    #endregion
 }

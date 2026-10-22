@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Identifies the application action selected by command-line parsing.</summary>
 public enum AppCommand
 {
     Main,
@@ -55,6 +55,7 @@ public enum AppCommand
     About
 }
 
+/// <summary>Contains parsed command arguments and explicit invocation flags.</summary>
 public sealed record CommandLineOptions(
     AppCommand Command,
     string? Query,
@@ -72,7 +73,14 @@ public sealed record CommandLineOptions(
     string? Pattern = null,
     bool ResetAll = false);
 
+/// <summary>Carries either valid invocation options or a parsing error.</summary>
 public sealed record CommandLineParseResult(CommandLineOptions? Options, string? Error)
 {
+
+    #region Properties
+
     public bool Succeeded => Options is not null && Error is null;
+
+    #endregion
+
 }

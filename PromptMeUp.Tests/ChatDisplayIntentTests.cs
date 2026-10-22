@@ -24,8 +24,12 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies chat display intent behavior.</summary>
 public sealed class ChatDisplayIntentTests
 {
+
+    #region Methods
+
     /// <summary>Preserves independent global and chat-only preference changes while distinguishing pure preferences from mixed chat requests.</summary>
     [Theory]
     [InlineData("hide", "hide", "require", false, false, false, true)]
@@ -137,6 +141,10 @@ public sealed class ChatDisplayIntentTests
         Assert.DoesNotContain("Current working directory", instructions, StringComparison.Ordinal);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates the standalone classifier prompt without chat or guide capabilities.</summary>
     private static PromptDefinition CreatePrompt() => new(
         "chat-display-intent",
@@ -149,4 +157,6 @@ public sealed class ChatDisplayIntentTests
             ["response-format"] = "promptmeup-chat-display-intent-v2",
             ["max-output-tokens"] = "500"
         });
+
+    #endregion
 }

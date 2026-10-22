@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies sensitive data structure regression behavior.</summary>
 public sealed class SensitiveDataStructureRegressionTests
 {
+
+    #region Methods
+
     /// <summary>Preserves safe duplicate JSON properties and their original formatting without materialization failures.</summary>
     [Fact]
     public void Redact_DuplicateSafeFields_PreservesOriginalJson()
@@ -134,4 +138,6 @@ public sealed class SensitiveDataStructureRegressionTests
         Assert.Contains("[redacted-credential]", result, StringComparison.Ordinal);
         Assert.Equal(result, redactor.Redact(result));
     }
+
+    #endregion
 }

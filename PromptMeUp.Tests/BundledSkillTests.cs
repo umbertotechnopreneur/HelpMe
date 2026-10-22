@@ -23,13 +23,21 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies bundled skill behavior.</summary>
 public sealed class BundledSkillTests
 {
+
+    #region Fields
+
     private static readonly string[] ExpectedNames =
     [
         "git", "filesystem", "concat-files", "clipboard", "screenshot", "system_info",
         "http_request", "web_search", "timezone_convert", "set_reminder"
     ];
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Loads the actual packaged catalog and verifies its exact scope without enabling any skill.</summary>
     [Fact]
@@ -164,8 +172,14 @@ public sealed class BundledSkillTests
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a read-only catalog over packaged files and the fixture's isolated local package directory.</summary>
     private static SkillCatalogService Catalog(RegressionFixture fixture, LocalizationService text) =>
         new(fixture.Paths, new SkillsAndMemoryStore(fixture.Paths, new SensitiveDataRedactor(), text), text,
             new YamlPromptCatalogService(fixture.Paths, NullLogger<YamlPromptCatalogService>.Instance));
+
+    #endregion
 }

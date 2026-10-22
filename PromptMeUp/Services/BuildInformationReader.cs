@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -27,6 +26,8 @@ namespace PromptMeUp.Services;
 /// <summary>Reads the immutable build identity embedded in the application assembly.</summary>
 public static class BuildInformationReader
 {
+    #region Methods
+
     /// <summary>Loads compiler-generated metadata without consulting the runtime machine or clock.</summary>
     public static BuildInformation Read()
     {
@@ -49,6 +50,10 @@ public static class BuildInformationReader
         return new BuildInformation(version, machineName, builtAtLocal, gitCommit);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Rejects missing, empty, or duplicate metadata rather than substituting runtime information.</summary>
     private static string GetRequiredValue(AssemblyMetadataAttribute[] metadata, string key)
     {
@@ -59,4 +64,6 @@ public static class BuildInformationReader
         }
         return matches[0].Value!;
     }
+
+    #endregion
 }

@@ -16,12 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services.OpenAi;
 
 /// <summary>Defines the structured response formats requested for supported AI-assisted features.</summary>
 internal static class FeatureResponseFormats
 {
+    #region Methods
+
     /// <summary>Limits memory reflection to evidence-linked advisory suggestions with no execution fields.</summary>
     internal static object MemoryReflection(bool dream) => new
     {
@@ -150,4 +151,6 @@ internal static class FeatureResponseFormats
             additionalProperties = false
         }
     };
+
+    #endregion
 }

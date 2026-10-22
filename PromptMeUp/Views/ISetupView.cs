@@ -19,7 +19,14 @@
 
 namespace PromptMeUp.Views;
 
+/// <summary>Collects settings and credential changes from the setup interface.</summary>
 public interface ISetupView
 {
+
+    #region Methods
+
+    /// <summary>Collects a theme selection and restores the active palette until the application saves it.</summary>
     SetupSubmission? Collect(SetupViewState state);
+
+    #endregion
 }

@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies network skill behavior.</summary>
 public sealed class NetworkSkillTests
 {
+
+    #region Methods
+
     /// <summary>Compiles each production transport and checks its address and URL guardrails without making any network request.</summary>
     [Theory]
     [InlineData("http_request", "PromptMeUpHttpSkill")]
@@ -83,4 +87,6 @@ public sealed class NetworkSkillTests
         Assert.True(process.ExitCode == 0, await errors);
         Assert.Contains("validated-offline", await output);
     }
+
+    #endregion
 }

@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies localization behavior.</summary>
 public sealed class LocalizationTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that every advertised language contains every product UI key.</summary>
     [Fact]
     public void Catalogs_AllSupportedLanguages_AreComplete()
@@ -38,4 +42,6 @@ public sealed class LocalizationTests
             }
         }
     }
+
+    #endregion
 }

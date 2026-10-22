@@ -28,6 +28,9 @@ namespace PromptMeUp.Views;
 /// <summary>Shares the cached model price comparison between costs and AI settings.</summary>
 internal static class ModelPricingTable
 {
+
+    #region Methods
+
     /// <summary>Creates a responsive price table and retains supported models whose cached prices are unavailable.</summary>
     internal static IRenderable Create(
         ILocalizationService text,
@@ -45,12 +48,17 @@ internal static class ModelPricingTable
                 && string.Equals(price.ServiceTier, "standard", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(price.ContextWindow, "short", StringComparison.OrdinalIgnoreCase))))
             : prices.Select(price => new PriceEntry(price.Model, price));
+
         return new PricingContent(text, options, entries
             .OrderBy(entry => Classify(entry.Price))
             .ThenBy(entry => entry.Price is { } price ? price.InputUsdPerMillionTokens + price.OutputUsdPerMillionTokens : decimal.MaxValue)
             .ThenBy(entry => entry.Model, StringComparer.OrdinalIgnoreCase)
             .ToArray(), selectedModel);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Assigns a semantic band from the input-plus-output price per million tokens.</summary>
     private static CostBand Classify(AiModelPrice? price)
@@ -61,6 +69,7 @@ internal static class ModelPricingTable
         }
 
         var total = price.InputUsdPerMillionTokens + price.OutputUsdPerMillionTokens;
+
         return total switch
         {
             <= 2m => CostBand.Cheap,
@@ -70,6 +79,10 @@ internal static class ModelPricingTable
         };
     }
 
+    #endregion
+
+    #region Types
+
     /// <summary>Renders the same supplied price rows within the actual available terminal width.</summary>
     private sealed class PricingContent(
         ILocalizationService text,
@@ -77,6 +90,9 @@ internal static class ModelPricingTable
         IReadOnlyList<PriceEntry> entries,
         string? selectedModel) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Allows the comparison to shrink to the width allocated by its parent view.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) =>
             new(Math.Min(1, Math.Max(0, maxWidth)), Math.Max(0, maxWidth));
@@ -93,18 +109,26 @@ internal static class ModelPricingTable
             var body = entries.Count == 0
                 ? (IRenderable)new Markup($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Costs.Unavailable"))}[/]")
                 : maxWidth >= 48 ? CreateTable(maxWidth >= 72) : CreateStackedPrices(maxWidth);
+
             return ((IRenderable)new Rows(title, body)).Render(options, maxWidth);
         }
+
+        #endregion
+
+        #region Implementation
 
         /// <summary>Builds an open table without fixed or nonwrapping columns.</summary>
         private IRenderable CreateTable(bool separateTier)
         {
             var table = TerminalTable.Create(showBorder: false);
+
             table.AddColumn(Header("Costs.Model"));
+
             if (separateTier)
             {
                 table.AddColumn(Header("Costs.Tier").Centered());
             }
+
             table.AddColumn(Header("Costs.Input").RightAligned());
             table.AddColumn(Header("Costs.Cached").RightAligned());
             table.AddColumn(Header("Costs.Output").RightAligned());
@@ -117,6 +141,7 @@ internal static class ModelPricingTable
                 IRenderable[] cells = separateTier
                     ? [model, band, values[0], values[1], values[2]]
                     : [new Rows(model, band), values[0], values[1], values[2]];
+
                 table.AddRow(cells);
             }
 
@@ -127,12 +152,14 @@ internal static class ModelPricingTable
         private IRenderable CreateStackedPrices(int width)
         {
             var rows = new List<IRenderable>();
+
             foreach (var entry in entries)
             {
                 rows.Add(ModelLabel(entry.Model));
                 rows.Add(CostLabel(Classify(entry.Price)));
                 var values = PriceValues(entry.Price);
                 string[] labels = ["Costs.Input", "Costs.Cached", "Costs.Output"];
+
                 if (width < 24)
                 {
                     for (var index = 0; index < labels.Length; index++)
@@ -143,14 +170,18 @@ internal static class ModelPricingTable
                 else
                 {
                     var grid = new Grid();
+
                     grid.AddColumn(new GridColumn().RightAligned());
                     grid.AddColumn(new GridColumn().LeftAligned());
+
                     for (var index = 0; index < labels.Length; index++)
                     {
                         grid.AddRow(Header(labels[index]).Header, values[index]);
                     }
+
                     rows.Add(grid);
                 }
+
                 rows.Add(new Text(" "));
             }
 
@@ -167,6 +198,7 @@ internal static class ModelPricingTable
             var selected = string.Equals(model, selectedModel, StringComparison.OrdinalIgnoreCase);
             var marker = selected ? "> " : string.Empty;
             var color = selected ? TerminalTheme.Accent : TerminalTheme.Primary;
+
             return new Markup($"[bold {color}]{marker}{Markup.Escape(model)}[/]");
         }
 
@@ -185,6 +217,7 @@ internal static class ModelPricingTable
                 CostBand.Premium => ("◆", "*", "Costs.Premium", TerminalTheme.Accent),
                 _ => ("⚠", "!", "Costs.Extreme", TerminalTheme.Error)
             };
+
             return new Markup($"[bold {color}]{Markup.Escape(TerminalTheme.IconPrefix(renderOptions, icon, fallback))}{Markup.Escape(text.Text(key))}[/]");
         }
 
@@ -199,10 +232,14 @@ internal static class ModelPricingTable
         /// <summary>Uses an invariant dollar amount or an unavailable-rate marker.</summary>
         private static IRenderable PriceValue(decimal? value, string color) =>
             new Markup($"[{color}]{Markup.Escape(value.HasValue ? "$" + value.Value.ToString("0.########", CultureInfo.InvariantCulture) : "—")}[/]");
+
+        #endregion
     }
 
+    /// <summary>Holds the model pricing values shown in one table row.</summary>
     private sealed record PriceEntry(string Model, AiModelPrice? Price);
 
+    /// <summary>Identifies the price range used to emphasize a model's cost.</summary>
     private enum CostBand
     {
         Cheap,
@@ -211,4 +248,6 @@ internal static class ModelPricingTable
         Extreme,
         Unavailable
     }
+
+    #endregion
 }

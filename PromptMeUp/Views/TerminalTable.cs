@@ -24,6 +24,9 @@ namespace PromptMeUp.Views;
 /// <summary>Shares the theme and spacing of data tables while leaving cell content and alignment to each view.</summary>
 internal static class TerminalTable
 {
+
+    #region Methods
+
     /// <summary>Creates an open table, with optional rounded borders and row separators for denser comparisons.</summary>
     internal static Table Create(bool showBorder = false, bool separateRows = false)
     {
@@ -39,6 +42,7 @@ internal static class TerminalTable
     internal static TableColumn Column(string label, int cellPadding = 1)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(cellPadding);
+
         return new TableColumn(new Text(label, Style.Parse($"bold {TerminalTheme.Accent}")))
         {
             Padding = new Padding(cellPadding, 0)
@@ -49,10 +53,14 @@ internal static class TerminalTable
     internal static Table Create(params string[] headings)
     {
         var table = Create(showBorder: false);
+
         foreach (var heading in headings)
         {
             table.AddColumn(Column(heading));
         }
+
         return table;
     }
+
+    #endregion
 }

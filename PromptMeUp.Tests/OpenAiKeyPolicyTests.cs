@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies OpenAI key policy behavior.</summary>
 public sealed class OpenAiKeyPolicyTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that a sufficiently long synthetic key with the expected prefix is accepted locally.</summary>
     [Fact]
     public void IsPlausible_WellFormedSyntheticValue_ReturnsTrue()
@@ -45,4 +49,6 @@ public sealed class OpenAiKeyPolicyTests
         Assert.False(OpenAiKeyPolicy.IsPlausible(padded));
         Assert.False(OpenAiKeyPolicy.IsPlausible(embeddedWhitespace));
     }
+
+    #endregion
 }

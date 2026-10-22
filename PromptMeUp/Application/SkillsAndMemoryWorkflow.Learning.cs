@@ -16,14 +16,17 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates global skills, memory learning, and reminder actions.</summary>
 public sealed partial class SkillsAndMemoryWorkflow
 {
+
+    #region Methods
+
     /// <summary>Manages explicit observation consent, retained evidence, reminders, and manually invoked reflection.</summary>
     public async Task RunLearningAsync(AppSettings settings, CancellationToken ct)
     {
@@ -34,6 +37,7 @@ public sealed partial class SkillsAndMemoryWorkflow
             var observations = await store.ObservationsAsync(ct).ConfigureAwait(false);
             var groups = await BuildLearningGroups(preferences, observations, ct).ConfigureAwait(false);
             var selected = view.ChooseSkills(text.Text("Lab.Learning"), groups);
+
             if (selected is null)
             {
                 return;
@@ -74,6 +78,10 @@ public sealed partial class SkillsAndMemoryWorkflow
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds one compact Memory workspace that uses the shared skills navigation and footer conventions.</summary>
     private async Task<IReadOnlyList<SkillMenuGroup>> BuildLearningGroups(SkillsAndMemorySettings preferences,
         IReadOnlyList<LearningObservation> observations, CancellationToken ct)
@@ -109,8 +117,13 @@ public sealed partial class SkillsAndMemoryWorkflow
                 text.Text("Lab.Heartbeat") + " — " + await LastReflectionAsync(false, ct).ConfigureAwait(false),
                 text.Text("Lab.Heartbeat"), Icon: "💓")
         };
+
         return [new SkillMenuGroup(text.Text("Lab.Learning"), text.Text("Lab.Retention"), commands, "🧠")];
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Loads current suggestions and exact evidence for the shared inline memory editor.</summary>
     public async Task<MemoryProposalWorkspace> LoadProposalWorkspaceAsync(CancellationToken ct)
@@ -119,6 +132,7 @@ public sealed partial class SkillsAndMemoryWorkflow
         {
             return MemoryProposalWorkspace.Disabled;
         }
+
         return new(true,
             await store.ProposalsAsync(ct).ConfigureAwait(false),
             await store.ObservationsAsync(ct).ConfigureAwait(false));
@@ -128,27 +142,34 @@ public sealed partial class SkillsAndMemoryWorkflow
     public async Task ApplyProposalReviewAsync(string proposalId, string? reviewed, bool approve, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+
         if (!(await store.SettingsAsync(ct).ConfigureAwait(false)).Enabled)
         {
             throw new InvalidOperationException(text.Text("Lab.Disabled"));
         }
+
         var proposal = (await store.ProposalsAsync(ct).ConfigureAwait(false))
             .SingleOrDefault(item => string.Equals(item.Id, proposalId, StringComparison.Ordinal))
             ?? throw new InvalidOperationException(text.Text("Lab.Invalid"));
         var evidence = await store.ObservationsAsync(ct).ConfigureAwait(false);
+
         if (proposal.SourceIds.Any(id => !evidence.Any(item => string.Equals(item.Id, id, StringComparison.Ordinal))))
         {
             throw new InvalidOperationException(text.Text("Lab.Invalid"));
         }
+
         if (!approve)
         {
             await store.RejectAsync(proposal, ct).ConfigureAwait(false);
+
             return;
         }
+
         if (proposal.Operation == "flag")
         {
             throw new InvalidOperationException(text.Text("Lab.Invalid"));
         }
+
         var finalText = reflection.ValidateReviewedText(proposal.Operation is "add" or "merge"
             ? reviewed ?? string.Empty
             : proposal.Text);
@@ -162,14 +183,19 @@ public sealed partial class SkillsAndMemoryWorkflow
         {
             return;
         }
+
         var preferences = await store.SettingsAsync(ct).ConfigureAwait(false);
+
         if (dream && !preferences.CaptureObservations)
         {
             shell.RenderNotice(text.Text("Lab.CaptureRequired"));
+
             return;
         }
+
         var revision = await store.RevisionAsync(ct).ConfigureAwait(false);
         MemoryReflectionBatch batch;
+
         if (dream)
         {
             var observations = await store.ObservationsAsync(ct).ConfigureAwait(false);
@@ -178,11 +204,14 @@ public sealed partial class SkillsAndMemoryWorkflow
         else
         {
             var saved = await memories.ListAsync(ct).ConfigureAwait(false);
+
             if (saved.Count == 0)
             {
                 shell.RenderNotice(text.Text("Lab.None"));
+
                 return;
             }
+
             var local = reflection.FindDuplicates(saved);
             var count = await store.SaveProposalsAsync(local, ct, revision).ConfigureAwait(false);
             await MarkReflectionAsync(false, ct).ConfigureAwait(false);
@@ -190,26 +219,32 @@ public sealed partial class SkillsAndMemoryWorkflow
             shell.RenderNotice(text.Text("Lab.ReviewCount", count));
             batch = reflection.HeartbeatBatch(saved, settings.MaxMessageCharacters);
         }
+
         if (!ConfirmReflection(dream, batch))
         {
             return;
         }
+
         if (!settings.SetupCompleted || !settings.AiEnabled)
         {
             throw new InvalidOperationException(text.Text("Error.SetupRequired"));
         }
+
         if (!secrets.IsConfigured(settings.ApiKeyVariable))
         {
             throw new InvalidOperationException(PromptMeUpApplication.AppendKeyRestartHint(
                 text.Text("Error.ApiKeyMissing", settings.ApiKeyVariable), text, OperatingSystem.IsWindows()));
         }
+
         ct.ThrowIfCancellationRequested();
         var current = await store.SettingsAsync(ct).ConfigureAwait(false);
+
         if (!current.Enabled || (dream && !current.CaptureObservations)
             || await store.RevisionAsync(ct).ConfigureAwait(false) != revision)
         {
             throw new InvalidOperationException(text.Text("Lab.Invalid"));
         }
+
         var response = await assistant.SendAsync(dream ? "memory-dream" : "memory-heartbeat", batch.Request, settings, ct).ConfigureAwait(false);
         var proposals = reflection.Parse(response.Text, batch);
         var added = await store.SaveProposalsAsync(proposals, ct, revision).ConfigureAwait(false);
@@ -218,14 +253,20 @@ public sealed partial class SkillsAndMemoryWorkflow
         assistant.RenderSummaryAtEnd(response, settings);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Reviews a retained observation in full and allows explicit removal with its derived suggestions.</summary>
     private async Task ReviewObservationAsync(IReadOnlyList<LearningObservation> observations, CancellationToken ct)
     {
         if (observations.Count == 0)
         {
             shell.RenderNotice(text.Text("Lab.None"));
+
             return;
         }
+
         var selected = view.ChooseSkills(text.Text("Lab.Observations"),
         [
             new SkillMenuGroup(text.Text("Lab.Observations"), text.Text("Lab.Retention"),
@@ -233,17 +274,21 @@ public sealed partial class SkillsAndMemoryWorkflow
                     item.CreatedAt.ToString("u", CultureInfo.InvariantCulture) + " — " + ProposalLabel(item.Text),
                     ObservationText(item), Icon: "📋", ActionName: item.Id)).ToArray(), "🧠")
         ]);
+
         if (selected?.Item.ActionName is not { } id)
         {
             return;
         }
+
         var observation = observations.Single(item => string.Equals(item.Id, id, StringComparison.Ordinal));
+
         if (ConfirmLearningAction(text.Text("Lab.ForgetObservation"), ObservationText(observation)))
         {
             if (!await store.ForgetObservationAsync(observation.Id, ct).ConfigureAwait(false))
             {
                 throw new InvalidOperationException(text.Text("Lab.Invalid"));
             }
+
             shell.RenderSuccess(text.Text("Lab.Saved"));
         }
     }
@@ -255,7 +300,9 @@ public sealed partial class SkillsAndMemoryWorkflow
         {
             return true;
         }
+
         shell.RenderNotice(text.Text("Lab.Disabled"));
+
         return false;
     }
 
@@ -275,6 +322,7 @@ public sealed partial class SkillsAndMemoryWorkflow
     {
         var count = dream ? batch.Observations.Count : batch.Memories.Count;
         var description = text.Text("Lab.EvidenceSummary", count, batch.OmittedCount);
+
         return ConfirmLearningAction(text.Text(dream ? "Lab.Dream" : "Lab.Heartbeat"),
             description + " " + text.Text("Lab.Share"));
     }
@@ -287,14 +335,17 @@ public sealed partial class SkillsAndMemoryWorkflow
     private async Task<string> LastReflectionAsync(bool dream, CancellationToken ct)
     {
         var value = await store.GetAsync(dream ? "last-dream" : "last-heartbeat", ct).ConfigureAwait(false);
+
         if (value is null)
         {
             return text.Text("Lab.Never");
         }
+
         if (!DateTimeOffset.TryParseExact(value, "O", CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
         {
             throw new InvalidOperationException(text.Text("Lab.Invalid"));
         }
+
         return timestamp.ToString("u", CultureInfo.InvariantCulture);
     }
 
@@ -304,4 +355,7 @@ public sealed partial class SkillsAndMemoryWorkflow
 
     /// <summary>Bounds list labels only; the subsequent review always renders the full content.</summary>
     private static string ProposalLabel(string value) => value.Length <= 100 ? value.Replace('\n', ' ') : value[..100].Replace('\n', ' ') + "…";
+
+    #endregion
+
 }

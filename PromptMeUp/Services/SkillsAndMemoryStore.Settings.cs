@@ -16,14 +16,16 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Persists global skills, learning settings, and memory-management state.</summary>
 public sealed partial class SkillsAndMemoryStore
 {
+    #region Methods
+
     /// <summary>Rejects malformed drafts and missing capture or clearing acknowledgements before opening a write transaction.</summary>
     internal void ValidateFeatureChanges(SettingsFeatureChanges changes)
     {
@@ -103,6 +105,10 @@ public sealed partial class SkillsAndMemoryStore
         await transaction.CommitAsync(ct).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Identifies a reviewed transition that discards global learning evidence without normalizing unrelated flags.</summary>
     private static bool ClearsLearning(SettingsFeatureChanges changes) =>
         (changes.Expected.Enabled && !changes.Settings.Enabled)
@@ -111,4 +117,6 @@ public sealed partial class SkillsAndMemoryStore
     /// <summary>Accepts only exact content fingerprints or the distinct missing and explicitly disabled approval states.</summary>
     private static bool ValidApproval(string? value, bool required) =>
         (!required && string.IsNullOrEmpty(value)) || (value is { Length: 64 } && value.All(Uri.IsHexDigit));
+
+    #endregion
 }

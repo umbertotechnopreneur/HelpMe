@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Stores model pricing and token-cost units used for local estimates.</summary>
 public sealed record AiModelPrice(
     string Provider,
     string Model,
@@ -32,6 +32,7 @@ public sealed record AiModelPrice(
     string SourceUrl,
     DateTimeOffset RetrievedAt);
 
+/// <summary>Records provider-reported organization costs for a billing interval.</summary>
 public sealed record OrganizationCost(
     string Id,
     DateTimeOffset BucketStart,
@@ -42,6 +43,7 @@ public sealed record OrganizationCost(
     string? ProjectId,
     DateTimeOffset RetrievedAt);
 
+/// <summary>Reports the outcome and timing of a pricing refresh.</summary>
 public sealed record PricingRefreshResult(
     int PriceRows,
     int OrganizationCostRows,
@@ -49,6 +51,7 @@ public sealed record PricingRefreshResult(
     bool OrganizationCostsAvailable,
     DateTimeOffset CompletedAt);
 
+/// <summary>Combines usage totals, estimated costs, and available provider billing data.</summary>
 public sealed record CostOverview(
     DateTimeOffset? LastPricingSync,
     DateTimeOffset? LastOrganizationCostSync,
@@ -61,6 +64,7 @@ public sealed record CostOverview(
     long TotalTokensToday,
     IReadOnlyList<AiModelPrice> Prices);
 
+/// <summary>Summarizes request counts, token usage, and costs for local reporting.</summary>
 public sealed record AiRequestSummary(
     decimal EstimatedCostTodayUsd,
     decimal EstimatedCostCurrentMonthUsd,

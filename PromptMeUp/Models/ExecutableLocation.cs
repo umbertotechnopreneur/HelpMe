@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Identifies the requested executable-location action.</summary>
 public enum ExecutableLocationAction
 {
     DoNothing,
@@ -26,6 +26,7 @@ public enum ExecutableLocationAction
     OpenContainingFolder
 }
 
+/// <summary>Describes the running executable and the paths used to locate it.</summary>
 public sealed record ExecutableLocationInfo(
     string ExecutablePath,
     string DirectoryPath,

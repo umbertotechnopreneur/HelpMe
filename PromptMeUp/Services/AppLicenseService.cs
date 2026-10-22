@@ -8,18 +8,39 @@ using Windows.Services.Store;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Reads the application license state used by commercial feature guards.</summary>
 public interface IAppLicenseService
 {
+    #region Properties
+
     AppLicense Current { get; }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Refreshes the current application license state.</summary>
     Task RefreshAsync(CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Reads the packaged Windows app license; source and Debug builds have no commercial trial.</summary>
 public sealed class AppLicenseService(ILogger<AppLicenseService> logger, TimeProvider clock) : IAppLicenseService
 {
+    #region Fields
+
     private AppLicense _license = new(AppLicenseState.Unavailable);
 
+    #endregion
+
+    #region Properties
+
     public AppLicense Current => _license.At(clock.GetUtcNow());
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Uses the Store's cached entitlement and expiration, failing closed when licensing is unavailable.</summary>
     public async Task RefreshAsync(CancellationToken cancellationToken)
@@ -75,6 +96,10 @@ public sealed class AppLicenseService(ILogger<AppLicenseService> logger, TimePro
 #endif
     }
 
+    #endregion
+
+    #region Properties
+
     private static bool IsDevelopmentBuild
     {
         get
@@ -87,7 +112,11 @@ public sealed class AppLicenseService(ILogger<AppLicenseService> logger, TimePro
         }
     }
 
+    #endregion
+
 #if WINDOWS
+    #region Implementation
+
     /// <summary>Checks package identity without reading a manifest or using executable location as entitlement.</summary>
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern int GetCurrentPackageFullName(ref uint packageFullNameLength, IntPtr packageFullName);
@@ -95,5 +124,7 @@ public sealed class AppLicenseService(ILogger<AppLicenseService> logger, TimePro
     /// <summary>Obtains this process's console owner for the desktop Store API.</summary>
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern IntPtr GetConsoleWindow();
+
+    #endregion
 #endif
 }

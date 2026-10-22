@@ -26,10 +26,18 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies plan workflow behavior.</summary>
 public sealed class PlanWorkflowTests : IDisposable
 {
+
+    #region Fields
+
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "hm-plan-tests-" + Guid.NewGuid().ToString("N"));
     private readonly LocalizationService _text = new();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Stops after a failed action and never starts a later plan command.</summary>
     [Fact]
@@ -174,6 +182,10 @@ public sealed class PlanWorkflowTests : IDisposable
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a workflow with deterministic command outcomes and passive collaborators.</summary>
     private Fixture CreateFixture(IEnumerable<CommandExecutionResult?> outcomes)
     {
@@ -201,23 +213,47 @@ public sealed class PlanWorkflowTests : IDisposable
     /// <summary>Creates a passive interface proxy for collaborators outside the state-machine assertion.</summary>
     private static T Proxy<T>() where T : class => DispatchProxy.Create<T, NoOpProxy>();
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Collects the plan workflow and collaborators needed for each test scenario.</summary>
     private sealed record Fixture(PlanWorkflow Workflow, StubCommands Commands, RecordingShellProxy Shell);
 
+    /// <summary>Returns configured plan decisions without prompting the user.</summary>
     private sealed class StubPlanView : IPlanView
     {
+
+        #region Methods
+
         /// <summary>Suppresses rendering in state-machine tests.</summary>
         public void Render(ExecutionPlan plan) { }
         /// <summary>Accepts the plan-level guidance gate.</summary>
         public bool ConfirmStart() => true;
         /// <summary>Confirms the declared outcome after a successful verification result.</summary>
         public bool ConfirmOutcome(PlanStep step) => true;
+
+        #endregion
     }
 
+    /// <summary>Returns configured command outcomes without starting processes.</summary>
     private sealed class StubCommands(IEnumerable<CommandExecutionResult?> outcomes) : IAuthorizedCommandWorkflow
     {
+
+        #region Fields
+
         private readonly Queue<CommandExecutionResult?> _outcomes = new(outcomes);
+
+        #endregion
+
+        #region Properties
+
         public List<string> Seen { get; } = [];
         public List<CommandExecutionMode> Modes { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Returns deterministic outcomes while recording the exact command order.</summary>
         public Task<CommandExecutionResult?> RunForResultAsync(string sessionId, string command, AppSettings settings, CancellationToken cancellationToken,
@@ -232,11 +268,21 @@ public sealed class PlanWorkflowTests : IDisposable
         public Task<string?> RunAsync(string sessionId, string command, AppSettings settings, CancellationToken cancellationToken,
             CommandExecutionMode executionMode = CommandExecutionMode.Confirm) =>
             throw new NotSupportedException();
+
+        #endregion
     }
 
+    /// <summary>Records shell interactions while supplying controlled workflow behavior.</summary>
     public class RecordingShellProxy : NoOpProxy
     {
+
+        #region Properties
+
         public List<ShellRuntimeStatus> Statuses { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures rendered session summaries while leaving the remaining plan shell output passive.</summary>
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -248,10 +294,16 @@ public sealed class PlanWorkflowTests : IDisposable
             }
             return base.Invoke(targetMethod, args);
         }
+
+        #endregion
     }
 
+    /// <summary>Supplies inert interface implementations for unrelated test collaborators.</summary>
     public class NoOpProxy : DispatchProxy
     {
+
+        #region Methods
+
         /// <summary>Returns completed tasks, default values, and no-op void calls for passive collaborators.</summary>
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
@@ -269,5 +321,9 @@ public sealed class PlanWorkflowTests : IDisposable
             }
             return targetMethod?.ReturnType.IsValueType == true ? Activator.CreateInstance(targetMethod.ReturnType) : null;
         }
+
+        #endregion
     }
+
+    #endregion
 }

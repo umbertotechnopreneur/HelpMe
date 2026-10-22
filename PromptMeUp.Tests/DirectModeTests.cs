@@ -26,8 +26,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies direct mode behavior.</summary>
 public sealed class DirectModeTests
 {
+
+    #region Methods
+
     /// <summary>Parses direct requests while preserving normal argument, source, and secret validation.</summary>
     [Fact]
     public void Parser_Direct_RequiresOneNonSecretRequest()
@@ -208,49 +212,78 @@ public sealed class DirectModeTests
             ContextBudgetTokens = budget
         }));
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds a command workflow with no network, process, terminal, or persistent effects.</summary>
-    private static AuthorizedCommandWorkflow CreateWorkflow(CommandRiskAssessment assessment, List<string> calls, Action? onApproval = null) => new(
-        TestProxy.Create<ICommandRiskAssessmentService>((_, args) =>
+    private static AuthorizedCommandWorkflow CreateWorkflow(CommandRiskAssessment assessment, List<string> calls, Action? onApproval = null)
+    {
+        var riskService = TestProxy.Create<ICommandRiskAssessmentService>((_, args) =>
         {
             Assert.Equal("direct-test", args[0]);
             calls.Add($"risk:{args[2]}");
             return Task.FromResult(assessment);
-        }),
-        TestProxy.Create<ICommandExecutionService>((_, args) =>
+        });
+
+        var executionService = TestProxy.Create<ICommandExecutionService>((_, args) =>
         {
             calls.Add("execute");
-            return Task.FromResult(new CommandExecutionResult(((ApprovedCommand)args[0]!).Text, 0, "password=synthetic-secret", "", false, false, 1));
-        }),
-        TestProxy.Create<IActivityAuditService>((method, args) =>
+            var approvedCommand = (ApprovedCommand)args[0]!;
+            var result = new CommandExecutionResult(approvedCommand.Text, 0, "password=synthetic-secret", "", false, false, 1);
+
+            return Task.FromResult(result);
+        });
+
+        var auditService = TestProxy.Create<IActivityAuditService>((method, args) =>
         {
             calls.Add((string)args[1]!);
             return Task.CompletedTask;
-        }),
-        new SensitiveDataRedactor(),
-        TestProxy.Create<ICommandAuthorizationView>((method, args) =>
+        });
+
+        var redactor = new SensitiveDataRedactor();
+        var authorizationView = TestProxy.Create<ICommandAuthorizationView>((method, args) =>
         {
             if (method.Name == "BeginExecution")
             {
                 return TestProxy.Create<ICommandOutputSession>((member, _) =>
                     member.Name == "get_StopToken" ? CancellationToken.None : null);
             }
+
             if (method.Name == "AuthorizeAsync")
             {
                 calls.Add($"authorize:{args[0]}");
                 onApproval?.Invoke();
                 return Task.FromResult(true);
             }
+
             calls.Add(method.Name == "RenderPreview" ? "preview" : "result");
             return null;
-        }),
-        TestProxy.Create<IConsoleShellView>((method, args) =>
+        });
+
+        var shellView = TestProxy.Create<IConsoleShellView>((method, args) =>
         {
             if (method.Name == "RunWithStatusAsync")
             {
-                return ((Delegate)args[1]!).DynamicInvoke();
+                // Execute the supplied operation so the fake preserves the real workflow order.
+                var operation = (Delegate)args[1]!;
+                return operation.DynamicInvoke();
             }
+
             calls.Add("warning");
             return null;
-        }),
-        new LocalizationService(), RegressionFixture.CreatePackagedPrompts());
+        });
+
+        return new AuthorizedCommandWorkflow(
+            riskService,
+            executionService,
+            auditService,
+            redactor,
+            authorizationView,
+            shellView,
+            new LocalizationService(),
+            RegressionFixture.CreatePackagedPrompts());
+    }
+
+    #endregion
 }

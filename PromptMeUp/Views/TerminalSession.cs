@@ -26,18 +26,32 @@ namespace PromptMeUp.Views;
 /// <summary>Holds ephemeral presentation state shared by views on the same console, without persisting conversation data.</summary>
 internal sealed class TerminalSession
 {
+
+    #region Fields
+
     private static readonly ConditionalWeakTable<IAnsiConsole, TerminalSession> Sessions = new();
     private readonly Stopwatch _elapsed = Stopwatch.StartNew();
+
+    #endregion
+
+    #region Properties
 
     internal ConsoleRenderOptions Options { get; private set; } = new(false, false);
     internal TimeSpan Elapsed => _elapsed.Elapsed;
     internal string ModeKey { get; set; } = "Terminal.Mode.Chat";
     internal TerminalActivityState State { get; set; } = TerminalActivityState.Ready;
     internal ShellRuntimeStatus? LastStatus { get; set; }
+
     internal Func<PromptMeUp.Models.AppLicense>? License { get; set; }
+
     internal TerminalTranscript History { get; } = new();
     internal bool HasPromptDock { get; set; }
+
     internal int ChatIndent => ModeKey == "Terminal.Mode.Chat" && HasPromptDock ? 2 : 0;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Finds the console-local presentation state without coupling views to application services.</summary>
     internal static TerminalSession For(IAnsiConsole console) => Sessions.GetValue(console, _ => new TerminalSession());
@@ -46,7 +60,9 @@ internal sealed class TerminalSession
     internal void SetMode(ConversationDisplayMode mode, bool hasPromptDock = false)
     {
         var next = "Terminal.Mode." + mode;
+
         if (ModeKey != next) LastStatus = null;
+
         ModeKey = next;
         HasPromptDock = hasPromptDock;
     }
@@ -62,4 +78,6 @@ internal sealed class TerminalSession
         History.Clear();
         _elapsed.Restart();
     }
+
+    #endregion
 }

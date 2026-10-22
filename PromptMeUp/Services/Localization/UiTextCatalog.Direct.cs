@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds direct-mode status, countdown and refusal messages in all six supported languages.</summary>
     private static void AddDirectEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -109,4 +111,6 @@ internal static partial class UiTextCatalog
             Spanish: "Modo directo detenido tras 8 comandos para esta solicitud. Revisa los resultados antes de enviar otro mensaje.",
             Vietnamese: "Chế độ direct dừng sau 8 lệnh cho yêu cầu này. Kiểm tra kết quả trước khi gửi tin nhắn tiếp theo."));
     }
+
+    #endregion
 }

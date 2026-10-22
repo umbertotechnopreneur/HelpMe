@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies persistent memory behavior.</summary>
 public sealed class PersistentMemoryTests
 {
+
+    #region Methods
+
     /// <summary>Explicit notes survive reopening as global regardless of the legacy flag and avoid duplicate records.</summary>
     [Fact]
     public async Task Remember_ReopenedStore_UsesGlobalStorageAndDeduplicates()
@@ -202,6 +206,10 @@ public sealed class PersistentMemoryTests
         Assert.Equal(count, (await service.ListAsync(default)).Count);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates the actual memory service using isolated persistence and the production redaction policy.</summary>
     private static PersistentMemoryService CreateService(RegressionFixture fixture) => new(
         fixture.Paths, new SensitiveDataRedactor(), new LocalizationService(), NullLogger<PersistentMemoryService>.Instance);
@@ -214,4 +222,6 @@ public sealed class PersistentMemoryTests
         INSERT INTO persistent_memories (id, scope_key, body, updated_unix)
         SELECT printf('%032x', number), 'global', 'Synthetic note ' || number, number FROM notes;
         """, ("$count", count));
+
+    #endregion
 }

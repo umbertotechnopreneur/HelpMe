@@ -25,8 +25,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies global memory view behavior.</summary>
 public sealed class GlobalMemoryViewTests
 {
+
+    #region Methods
+
     /// <summary>The fullscreen shortcut range follows the visible entries instead of leaking a format placeholder.</summary>
     [Fact]
     public void FullscreenFooter_UsesTheMemoryEntryCount()
@@ -103,6 +107,10 @@ public sealed class GlobalMemoryViewTests
         Assert.Empty(deletion.Keys);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Provides deterministic legacy and current note data without creating or modifying storage.</summary>
     private static PersistentMemory Note(bool global) => new(new string('a', 32), "Prefer concise answers.", global,
         new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero));
@@ -155,6 +163,13 @@ public sealed class GlobalMemoryViewTests
     /// <summary>Creates one ordinary navigation or confirmation event.</summary>
     private static ConsoleKeyInfo Key(ConsoleKey key) => new(key == ConsoleKey.Enter ? '\r' : '\0', key, false, false, false);
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Collects an isolated view and its controlled input and output collaborators.</summary>
     private sealed record Harness(IAnsiConsole Console, ILocalizationService Text, ConsoleShellView Shell,
         StringWriter Output, Queue<ConsoleKeyInfo> Keys);
+
+    #endregion
 }

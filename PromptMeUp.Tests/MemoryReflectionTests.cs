@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies memory reflection behavior.</summary>
 public sealed class MemoryReflectionTests
 {
+
+    #region Methods
+
     /// <summary>Counts the serialized envelope and escapes while retaining complete evidence from separate sessions.</summary>
     [Fact]
     public void DreamBatch_RespectsSerializedLimitAndPreservesCompleteObservations()
@@ -196,6 +200,10 @@ public sealed class MemoryReflectionTests
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a deterministic local reflection service with no network or filesystem dependencies.</summary>
     private static MemoryReflectionService Create() => new(new SensitiveDataRedactor(), new LocalizationService());
 
@@ -210,4 +218,6 @@ public sealed class MemoryReflectionTests
     {
         proposals = new[] { new { kind = "preference", operation, text = "Prefer concise output.", rationale = "Supported by supplied evidence.", source_ids = sourceIds, target_ids = targetIds } }
     });
+
+    #endregion
 }

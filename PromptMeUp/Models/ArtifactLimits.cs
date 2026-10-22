@@ -16,14 +16,25 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Defines the per-request limits that keep generated artifacts bounded.</summary>
 public sealed class ArtifactLimits
 {
+
+    #region Fields
+
     public const int Mebibyte = 1024 * 1024;
+
+    #endregion
+
+    #region Properties
+
     public static ArtifactLimits Default { get; } = new();
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Defines byte limits independently of chat message and model context budgets.</summary>
     public ArtifactLimits(int maxScriptBytes = Mebibyte, int maxPlanBytes = 8 * Mebibyte, int maxOutputTokens = 16_384)
@@ -39,9 +50,17 @@ public sealed class ArtifactLimits
         MaxOutputTokens = maxOutputTokens;
     }
 
+    #endregion
+
+    #region Properties
+
     public int MaxScriptBytes { get; }
     public int MaxPlanBytes { get; }
     public int MaxOutputTokens { get; }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reserves JSON escaping and envelope space for a complete script and revision request.</summary>
     public int ScriptRequestBytes(int requestCharacters) => checked((MaxScriptBytes + requestCharacters) * 6 + 65_536);
@@ -53,4 +72,7 @@ public sealed class ArtifactLimits
         "plan-system" => (long)MaxPlanBytes * 2 + Mebibyte,
         _ => 2 * Mebibyte
     };
+
+    #endregion
+
 }

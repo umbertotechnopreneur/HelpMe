@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -35,6 +34,9 @@ public sealed class InstallationWorkflow(
     IConsoleShellView shell,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Runs the persistent PATH status or mutation flow after displaying its exact target.</summary>
     public async Task<int> RunPathAsync(CommandLineOptions options, CancellationToken cancellationToken)
     {
@@ -43,15 +45,18 @@ public sealed class InstallationWorkflow(
             : ParsePathAction(options.PathAction);
         var plan = pathService.CreatePlan(action);
         var confirmed = pathView.PreviewAndConfirm(plan, options.Yes);
+
         if (action != PortablePathAction.Status && plan.RequiresChange && !(confirmed || options.Yes))
         {
             await activity.TryRecordAsync("path", "cancelled", null, new { action, plan.ExecutableDirectory }).ConfigureAwait(false);
+
             return 0;
         }
 
         var result = await pathService.ApplyAsync(plan, cancellationToken).ConfigureAwait(false);
         pathView.RenderResult(result);
         await activity.TryRecordAsync("path", "completed", null, new { action, result.Changed, result.IsPresent, result.ExecutableDirectory }).ConfigureAwait(false);
+
         return 0;
     }
 
@@ -60,9 +65,11 @@ public sealed class InstallationWorkflow(
     {
         var location = executableLocation.Resolve();
         var action = executableLocationView.RenderAndSelect(location, isInteractive);
+
         if (action == ExecutableLocationAction.DoNothing)
         {
             await activity.TryRecordAsync("where", "cancelled", null, new { location.ExecutablePath }).ConfigureAwait(false);
+
             return 0;
         }
 
@@ -72,6 +79,7 @@ public sealed class InstallationWorkflow(
             {
                 executableLocationView.RenderResult(location, ExecutableLocationAction.ShowChangeDirectoryCommand);
                 await activity.TryRecordAsync("where", "cancelled", null, new { location.ExecutablePath }).ConfigureAwait(false);
+
                 return 0;
             }
 
@@ -81,6 +89,7 @@ public sealed class InstallationWorkflow(
 
         executableLocationView.RenderResult(location, action);
         await activity.TryRecordAsync("where", "completed", null, new { action, location.ExecutablePath }).ConfigureAwait(false);
+
         return 0;
     }
 
@@ -90,6 +99,7 @@ public sealed class InstallationWorkflow(
         if (!fontView.PreviewAndConfirm(options.DryRun, options.Yes || options.DryRun))
         {
             await activity.TryRecordAsync("font", "cancelled", null, new { options.DryRun }).ConfigureAwait(false);
+
             return 0;
         }
 
@@ -98,8 +108,13 @@ public sealed class InstallationWorkflow(
             () => fontInstaller.InstallAsync(options.DryRun, cancellationToken)).ConfigureAwait(false);
         fontView.RenderResult(result);
         await activity.TryRecordAsync("font", "completed", null, new { result.FontName, result.Changed, result.DryRun }).ConfigureAwait(false);
+
         return 0;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Maps a CLI PATH verb to the portable service action.</summary>
     private static PortablePathAction ParsePathAction(string action) => action switch
@@ -108,4 +123,7 @@ public sealed class InstallationWorkflow(
         "remove" => PortablePathAction.Remove,
         _ => PortablePathAction.Status
     };
+
+    #endregion
+
 }

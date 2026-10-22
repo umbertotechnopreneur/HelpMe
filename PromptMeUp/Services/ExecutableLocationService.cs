@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
@@ -24,16 +23,25 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Resolves the running executable and opens its containing folder.</summary>
 public interface IExecutableLocationService
 {
+    #region Methods
+
+    /// <summary>Resolves the requested value using the supported application configuration.</summary>
     ExecutableLocationInfo Resolve();
 
+    /// <summary>Opens the folder containing the resolved application executable.</summary>
     void OpenContainingFolder(ExecutableLocationInfo location);
+
+    #endregion
 }
 
 /// <summary>Resolves the installed executable location and opens its containing folder on request.</summary>
 public sealed class ExecutableLocationService : IExecutableLocationService
 {
+    #region Methods
+
     /// <summary>Resolves the running hm binary and prepares exact, platform-appropriate action previews.</summary>
     public ExecutableLocationInfo Resolve()
     {
@@ -86,6 +94,10 @@ public sealed class ExecutableLocationService : IExecutableLocationService
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Prefers the packaged hm app host and falls back to the entry assembly or current process.</summary>
     private static string ResolveExecutablePath()
     {
@@ -115,4 +127,6 @@ public sealed class ExecutableLocationService : IExecutableLocationService
 
     /// <summary>Quotes one literal path for a POSIX-compatible shell command.</summary>
     private static string QuoteForPosixShell(string value) => "'" + value.Replace("'", "'\"'\"'", StringComparison.Ordinal) + "'";
+
+    #endregion
 }

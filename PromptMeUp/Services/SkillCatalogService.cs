@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -34,13 +33,24 @@ namespace PromptMeUp.Services;
 /// <summary>Adapts CLI-Intelligence's package model with bounded parsing and content-bound activation.</summary>
 public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore store, ILocalizationService text, IPromptCatalogService prompts)
 {
+    #region Fields
+
     internal const int MaximumContextTokens = 1800;
     private static readonly JsonSerializerOptions ContextJson = new() { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
     private const int MaximumFiles = 128;
     private const int MaximumFileBytes = 65_536;
     private const int MaximumPackageBytes = 1_048_576;
+
+    #endregion
+
+    #region Properties
+
     private string LocalRoot => Path.Combine(paths.DataDirectory, "skills");
     private string BundledRoot => Path.Combine(AppContext.BaseDirectory, "skills");
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Loads bundled then local packages, preserving local precedence and reporting incompatibilities.</summary>
     public IReadOnlyList<SkillDefinition> List()
@@ -85,6 +95,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
             throw Invalid();
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Validates package structure and reads strict metadata from a bounded UTF-8 snapshot.</summary>
     private SkillDefinition InspectCore(string directory, string origin)
@@ -193,6 +207,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
         { Icon = icon, Color = color.ToUpperInvariant() };
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Records the exact inspected content as enabled, or removes its activation.</summary>
     public async Task EnableAsync(SkillDefinition skill, bool enabled, CancellationToken ct)
     {
@@ -286,6 +304,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
         return selected;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Ranks a manual selection first, then uses description matches only when automatic selection is enabled.</summary>
     /// <param name="skill">Freshly inspected package to rank.</param>
     /// <param name="explicitName">Optional package chosen explicitly by the user.</param>
@@ -306,6 +328,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
         return words.Count(word => description.Contains(word, StringComparison.OrdinalIgnoreCase));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Builds exactly the localized context used during selection, without rewriting its approved instructions.</summary>
     internal async Task<string> ContextAsync(IReadOnlyList<SkillDefinition> selected, CancellationToken ct)
     {
@@ -316,6 +342,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
         var template = (await prompts.GetAsync("skill-context", ct).ConfigureAwait(false)).ResolveText(text.Language);
         return SerializeContext(selected, template);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Explains oversized instructions before activation or manual selection can appear to succeed.</summary>
     private async Task EnsureContextFitsAsync(SkillDefinition skill, CancellationToken ct)
@@ -337,6 +367,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
     /// <summary>Uses the same JSON escaping and wrapper for admission checks and provider-bound context.</summary>
     private static string SerializeContext(IEnumerable<SkillDefinition> selected, string template) =>
         template.Replace("{skills}", JsonSerializer.Serialize(selected.Select(skill => new { skill.Name, instructions = skill.Instructions }), ContextJson), StringComparison.Ordinal);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Inspects a bounded ZIP into an isolated staging directory; importing never executes scripts.</summary>
     public string StageZip(string path)
@@ -468,6 +502,10 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
             Directory.Delete(parent, true);
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Checks that staging cleanup cannot escape a generated GUID child.</summary>
     private void ValidateStaging(string directory)
@@ -655,4 +693,6 @@ public sealed class SkillCatalogService(AppPaths paths, SkillsAndMemoryStore sto
     /// <summary>Looks up one exact YAML key without depending on dictionary implementation details.</summary>
     private static YamlNode? Child(YamlMappingNode? node, string key) =>
         node is not null && node.Children.TryGetValue(new YamlScalarNode(key), out var child) ? child : null;
+
+    #endregion
 }

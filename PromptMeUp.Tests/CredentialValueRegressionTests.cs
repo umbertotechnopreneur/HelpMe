@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies credential value regression behavior.</summary>
 public sealed class CredentialValueRegressionTests
 {
+
+    #region Methods
+
     /// <summary>Verifies complete PowerShell and JSON values are masked while adjacent non-secret data is retained.</summary>
     [Theory]
     [InlineData("PASSWORD='synthetic''tail'; safe=keep")]
@@ -105,4 +109,6 @@ public sealed class CredentialValueRegressionTests
         Assert.Equal($"Authorization: {scheme} [redacted-credential]", result);
         Assert.Equal(result, redactor.Redact(result));
     }
+
+    #endregion
 }

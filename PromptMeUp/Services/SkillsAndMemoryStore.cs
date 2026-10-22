@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using PromptMeUp.Infrastructure;
@@ -27,7 +26,13 @@ namespace PromptMeUp.Services;
 /// <summary>Stores global skills and memory preferences without enabling any feature by default.</summary>
 public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataRedactor redactor, ILocalizationService text)
 {
+    #region Fields
+
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Loads explicit global preferences, preserving disabled defaults.</summary>
     public async Task<SkillsAndMemorySettings> SettingsAsync(CancellationToken ct)
@@ -132,6 +137,10 @@ public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataR
         await WritePreferenceAsync(connection, null, PersistentMemoryService.GlobalScope, key, value, ct).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Rejects malformed or credential-bearing preference names and values before persistence.</summary>
     private void ValidatePreference(string key, string value)
     {
@@ -170,12 +179,20 @@ public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataR
         return value is null ? new() : JsonSerializer.Deserialize<SkillsAndMemorySettings>(value, Json) ?? throw InvalidLearning();
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Snapshots global purge epochs before capturing input or requesting reflection.</summary>
     public async Task<string> RevisionAsync(CancellationToken ct)
     {
         await using var connection = await OpenAsync(ct).ConfigureAwait(false);
         return await ReadRevisionAsync(connection, null, PersistentMemoryService.GlobalScope, ct).ConfigureAwait(false);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads the global purge epoch in one SQLite snapshot before dependent work.</summary>
     private static async Task<string> ReadRevisionAsync(SqliteConnection connection, SqliteTransaction? transaction,
@@ -189,6 +206,10 @@ public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataR
         command.Parameters.AddWithValue("$scope", scope);
         return (string)(await command.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Invalidates in-flight work inside the same transaction that revokes or forgets evidence.</summary>
     internal static async Task AdvanceRevisionAsync(SqliteConnection connection, SqliteTransaction transaction,
@@ -204,6 +225,10 @@ public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataR
         command.Parameters.AddWithValue("$revision", Guid.NewGuid().ToString("N"));
         await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Opens the already initialized database without creating files in the current repository.</summary>
     private async Task<SqliteConnection> OpenAsync(CancellationToken ct)
@@ -227,6 +252,10 @@ public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataR
             throw;
         }
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Clears global captured evidence and pending proposals together.</summary>
     public async Task ClearObservationsAsync(CancellationToken ct)
@@ -252,4 +281,6 @@ public sealed partial class SkillsAndMemoryStore(AppPaths paths, ISensitiveDataR
         command.Parameters.AddWithValue("$scope", scope);
         await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
+
+    #endregion
 }

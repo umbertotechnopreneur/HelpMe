@@ -16,34 +16,45 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates conversation commands, model responses, and session status.</summary>
 public sealed partial class AiConversationWorkflow
 {
+
+    #region Methods
+
     /// <summary>Recognizes a run directive without accepting similarly prefixed ordinary prompts.</summary>
     internal static bool TryParseRunCommand(string input, out string command)
     {
         ArgumentNullException.ThrowIfNull(input);
+
         if (input.Equals("/run", StringComparison.OrdinalIgnoreCase))
         {
             command = string.Empty;
+
             return true;
         }
 
         if (input.StartsWith("/run ", StringComparison.OrdinalIgnoreCase))
         {
             command = input[4..].Trim();
+
             return true;
         }
 
         command = string.Empty;
+
         return false;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Keeps skill and proposal commands local to the app, outside provider context.</summary>
     /// <param name="input">Direct user input to check for a local command.</param>
@@ -62,17 +73,21 @@ public sealed partial class AiConversationWorkflow
             "/heartbeat" => AppCommand.Heartbeat,
             _ => (AppCommand?)null
         };
+
         if (command is null)
         {
             return false;
         }
+
         var hasArguments = parts.Length != 1;
         var handlerAvailable = command == AppCommand.Proposals
             ? _memoryManagerWorkflow is not null
             : _skillsAndMemoryWorkflow is not null;
+
         if (hasArguments || !handlerAvailable)
         {
             _shell.RenderError(_text.Text("Lab.Invalid"));
+
             return true;
         }
 
@@ -95,6 +110,7 @@ public sealed partial class AiConversationWorkflow
         {
             _shell.RenderError(exception.Message);
         }
+
         return true;
     }
 
@@ -102,15 +118,19 @@ public sealed partial class AiConversationWorkflow
     private async Task<bool> HandleMemoryCommandAsync(string input, CancellationToken cancellationToken)
     {
         var parts = input.Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries);
+
         if (parts.Length == 0)
         {
             return false;
         }
+
         var command = parts[0].ToLowerInvariant();
+
         if (command is not ("/remember" or "/memories" or "/forget"))
         {
             return false;
         }
+
         try
         {
             switch (command)
@@ -154,6 +174,10 @@ public sealed partial class AiConversationWorkflow
         {
             _shell.RenderError(exception.Message);
         }
+
         return true;
     }
+
+    #endregion
+
 }

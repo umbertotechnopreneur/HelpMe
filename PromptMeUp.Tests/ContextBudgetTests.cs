@@ -23,8 +23,12 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies context budget behavior.</summary>
 public sealed class ContextBudgetTests
 {
+
+    #region Methods
+
     /// <summary>A smaller request budget removes complete old turns while preserving newer messages in their original order.</summary>
     [Fact]
     public void SetTokenBudget_SmallerRemainingContext_PrunesWholeTurns()
@@ -194,7 +198,13 @@ public sealed class ContextBudgetTests
         Assert.Equal(24_000, (await fixture.Database.LoadSettingsAsync(default)).ContextTokenBudget);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a minimal prompt definition without transport or external prompt dependencies.</summary>
     private static PromptDefinition CreatePrompt(string id) => new(id, 1, "Synthetic context regression", [],
         new Dictionary<string, string> { ["en"] = "Answer the question." }, new Dictionary<string, string>());
+
+    #endregion
 }

@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies pricing parser behavior.</summary>
 public sealed class PricingParserTests
 {
+
+    #region Methods
+
     /// <summary>Verifies the official nine-column Standard pricing shape, including cache writes and long context.</summary>
     [Fact]
     public void ParseStandardPricingData_NineColumnTable_NormalizesBothContextBands()
@@ -48,4 +52,6 @@ public sealed class PricingParserTests
         Assert.Equal("long", rows[1].ContextWindow);
         Assert.Equal(16m, rows[1].OutputUsdPerMillionTokens);
     }
+
+    #endregion
 }

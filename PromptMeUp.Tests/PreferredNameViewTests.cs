@@ -24,8 +24,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies preferred name view behavior.</summary>
 public sealed class PreferredNameViewTests
 {
+
+    #region Methods
+
     /// <summary>The existing settings form normalizes edits and permits clearing a previously saved name.</summary>
     [Theory]
     [InlineData("", "  Rene\u0301  ", "René")]
@@ -112,6 +116,10 @@ public sealed class PreferredNameViewTests
         Assert.NotEmpty(text.Text("Setup.ChangePreferredName"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates in-memory interactive input while keeping all real terminal and environment state untouched.</summary>
     private static (IAnsiConsole Console, StringWriter Output, Queue<ConsoleKeyInfo> Keys) CreateConsole(IEnumerable<ConsoleKeyInfo> inputKeys)
     {
@@ -145,4 +153,6 @@ public sealed class PreferredNameViewTests
     /// <summary>Produces one navigation key without reading the real console.</summary>
     private static ConsoleKeyInfo Key(ConsoleKey key) =>
         new(key == ConsoleKey.Enter ? '\r' : '\0', key, false, false, false);
+
+    #endregion
 }

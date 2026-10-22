@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -31,6 +30,9 @@ public sealed class DiagnosticWorkflow(
     IConsoleShellView shell,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Collects explicit evidence and enters the existing authorized diagnostic conversation.</summary>
     public async Task RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
@@ -38,6 +40,7 @@ public sealed class DiagnosticWorkflow(
         shell.RenderSectionTitle(text.Text("Diagnose.Help"));
         shell.RenderNotice(text.Text("Input.Sharing"));
         string evidence;
+
         if (options.InputFile is not null)
         {
             evidence = await input.ReadFileAsync(options.InputFile, maximum, cancellationToken).ConfigureAwait(false);
@@ -56,8 +59,13 @@ public sealed class DiagnosticWorkflow(
             {
                 throw new InvalidOperationException(text.Text("Error.InteractiveRequired"));
             }
+
             evidence = input.Sanitize(chat.ReadMessage(maximum, status: ShellRuntimeStatus.FromSettings(settings)), maximum);
         }
+
         await conversation.RunQueryAsync(evidence, settings, false, cancellationToken, "diagnose-system").ConfigureAwait(false);
     }
+
+    #endregion
+
 }

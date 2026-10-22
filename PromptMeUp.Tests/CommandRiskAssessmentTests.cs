@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies command risk assessment behavior.</summary>
 public sealed class CommandRiskAssessmentTests
 {
+
+    #region Methods
+
     /// <summary>Verifies mutations, compound commands, redirects, and unknown Git arguments never inherit a diagnostic prefix's low score.</summary>
     [Theory]
     [InlineData("git branch -D review-placeholder", 75)]
@@ -82,4 +86,6 @@ public sealed class CommandRiskAssessmentTests
         Assert.True(result.Score >= 75);
         Assert.Equal(CommandRiskLevel.High, result.Level);
     }
+
+    #endregion
 }

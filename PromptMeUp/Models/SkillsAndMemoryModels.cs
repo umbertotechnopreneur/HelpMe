@@ -16,16 +16,21 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Describes one inspected skill package; approval is bound to its content fingerprint.</summary>
 public sealed record SkillDefinition(string Name, string Description, string Version, string Instructions,
     string Directory, string Origin, string Fingerprint, string? UnavailableReason, IReadOnlyDictionary<string, string> Scripts)
 {
+
+    #region Properties
+
     public string Icon { get; init; } = "🧩";
 
     public string Color { get; init; } = "#89DCEB";
+
+    #endregion
+
 }
 
 /// <summary>Identifies a workflow-owned skill menu action without coupling a view to menu positions.</summary>

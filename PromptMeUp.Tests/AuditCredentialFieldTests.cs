@@ -22,8 +22,12 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies audit credential field behavior.</summary>
 public sealed class AuditCredentialFieldTests
 {
+
+    #region Methods
+
     /// <summary>Removes nested credential fields from every audit entry point while preserving valid JSON and typed usage metadata.</summary>
     [Fact]
     public async Task Audit_CredentialFields_RedactsAllPersistenceSurfaces()
@@ -83,4 +87,6 @@ public sealed class AuditCredentialFieldTests
             Assert.Equal(9, credentials.GetProperty("output_tokens").GetInt32());
         }
     }
+
+    #endregion
 }

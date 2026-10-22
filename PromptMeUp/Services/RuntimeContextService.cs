@@ -16,25 +16,36 @@
  *
  * VBWR E */
 
-
 using System.Text;
 using System.Text.RegularExpressions;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Collects a sanitized snapshot of the current shell and working context.</summary>
 public interface IRuntimeContextService
 {
+    #region Methods
+
+    /// <summary>Returns the sanitized runtime context for the current working environment.</summary>
     RuntimeContext GetCurrent(ScriptLanguage preferredScriptLanguage);
+
+    #endregion
 }
 
 /// <summary>Builds portable runtime context and exposes the machine name and sanitized working path only to operational prompts.</summary>
 public sealed class RuntimeContextService : IRuntimeContextService
 {
+    #region Fields
+
     private const int MaximumWorkingDirectoryLength = 240;
     private const string ApprovedCommandShell = "PowerShell 7 (pwsh -NoLogo -NoProfile -NonInteractive)";
     private readonly IScriptLanguageCatalog _scriptLanguages;
     private readonly ISensitiveDataRedactor _redactor;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the runtime-context service with the fixed script catalog and shared credential redactor.</summary>
     public RuntimeContextService(IScriptLanguageCatalog scriptLanguages, ISensitiveDataRedactor redactor)
@@ -42,6 +53,10 @@ public sealed class RuntimeContextService : IRuntimeContextService
         _scriptLanguages = scriptLanguages ?? throw new ArgumentNullException(nameof(scriptLanguages));
         _redactor = redactor ?? throw new ArgumentNullException(nameof(redactor));
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Returns the OS, effective shell, selected script interpreter, machine name, and an account-safe local working directory.</summary>
     public RuntimeContext GetCurrent(ScriptLanguage preferredScriptLanguage)
@@ -88,6 +103,10 @@ public sealed class RuntimeContextService : IRuntimeContextService
             MachineName = SanitizeMachineName(snapshot.MachineName)
         };
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Identifies the supported platform family without reading account identity.</summary>
     private static RuntimePlatform DetectPlatform() => OperatingSystem.IsWindows()
@@ -230,6 +249,8 @@ public sealed class RuntimeContextService : IRuntimeContextService
             return false;
         }
     }
+
+    #endregion
 }
 
 /// <summary>Captures trusted platform, machine, and local-path facts before prompt-safe formatting.</summary>
@@ -239,7 +260,11 @@ internal sealed record RuntimeContextSnapshot(
     string? CurrentDirectory,
     string? UserProfile)
 {
+    #region Properties
+
     public string? MachineName { get; init; }
+
+    #endregion
 }
 
 /// <summary>Represents the supported console platform families plus an explicit fallback.</summary>

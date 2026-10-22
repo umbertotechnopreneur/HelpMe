@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using PromptMeUp.Models;
@@ -27,8 +26,14 @@ namespace PromptMeUp.Services;
 public sealed class SettingsFeatureOverviewService(SkillsAndMemoryStore store, SkillCatalogService skills,
     ILogger<SettingsFeatureOverviewService>? logger = null, ILocalizationService? localization = null)
 {
+    #region Fields
+
     private readonly ILogger<SettingsFeatureOverviewService> _logger = logger ?? NullLogger<SettingsFeatureOverviewService>.Instance;
     private readonly ILocalizationService _text = localization ?? new LocalizationService();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Refreshes preferences and catalog counts; effective activation also requires the project master switch.</summary>
     public async Task<SettingsFeatureOverview> ReadAsync(CancellationToken ct)
@@ -79,6 +84,10 @@ public sealed class SettingsFeatureOverviewService(SkillsAndMemoryStore store, S
         await store.SaveFeatureChangesAsync(snapshot, ct).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Requires a readable catalog and reviewed snapshots for every currently approved package before reactivation.</summary>
     private async Task<SettingsFeatureChanges> ValidateReactivationSnapshotAsync(SettingsFeatureChanges changes, CancellationToken ct)
     {
@@ -106,4 +115,6 @@ public sealed class SettingsFeatureOverviewService(SkillsAndMemoryStore store, S
         }
         return changes with { Skills = complete.ToArray() };
     }
+
+    #endregion
 }

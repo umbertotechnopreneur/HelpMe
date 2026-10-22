@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
@@ -29,7 +28,13 @@ namespace PromptMeUp.Services;
 public sealed class ReminderService(AppPaths paths, ISensitiveDataRedactor redactor, ILocalizationService text,
     SkillCatalogService skills, TimeProvider? clock = null)
 {
+    #region Fields
+
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Parses an explicit ISO offset or a local clock time, rejecting ambiguous or missing daylight-saving times.</summary>
     public DateTimeOffset ParseTime(string input)
@@ -182,6 +187,10 @@ public sealed class ReminderService(AppPaths paths, ISensitiveDataRedactor redac
         await transaction.CommitAsync(ct).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Reads a bounded snapshot without exposing recognizable credentials from externally modified database content.</summary>
     private async Task<IReadOnlyList<Reminder>> ReadAsync(SqliteConnection connection, SqliteTransaction transaction,
         string scope, long? dueBefore, CancellationToken ct)
@@ -264,4 +273,6 @@ public sealed class ReminderService(AppPaths paths, ISensitiveDataRedactor redac
 
     /// <summary>Explains supported time formats and daylight-saving ambiguity without echoing input.</summary>
     private InvalidOperationException InvalidTime() => new(text.Text("Reminder.InvalidTime"));
+
+    #endregion
 }

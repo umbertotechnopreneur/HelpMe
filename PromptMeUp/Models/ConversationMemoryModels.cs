@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Captures the retained conversation messages and their estimated context usage.</summary>
 public sealed record ConversationMemorySnapshot(
     IReadOnlyList<ChatMessage> Messages,
     int TurnCount,
@@ -26,4 +26,5 @@ public sealed record ConversationMemorySnapshot(
     long EstimatedTokens,
     long TokenBudget);
 
+/// <summary>Reports pruned message count alongside the updated conversation snapshot.</summary>
 public sealed record ConversationMemoryUpdate(int PrunedMessages, ConversationMemorySnapshot Snapshot);

@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies theme catalog service behavior.</summary>
 public sealed class ThemeCatalogServiceTests
 {
+
+    #region Fields
+
     private const string ValidTheme = """
         {
           "version": 4,
@@ -49,6 +53,10 @@ public sealed class ThemeCatalogServiceTests
           }
         }
         """;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Ensures packaged theme resources load and the initial palette agrees with the bundled default.</summary>
     [Fact]
@@ -205,7 +213,13 @@ public sealed class ThemeCatalogServiceTests
         Assert.Throws<InvalidOperationException>(() => new ThemeCatalogService(fixture.Paths.DataDirectory));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Writes only a disposable fixture palette without changing packaged application resources.</summary>
     private static void WriteTheme(RegressionFixture fixture, string json) =>
         File.WriteAllText(Path.Combine(fixture.Paths.DataDirectory, "cyan.json"), json);
+
+    #endregion
 }

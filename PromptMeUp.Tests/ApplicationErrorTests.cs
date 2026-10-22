@@ -25,8 +25,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies application error behavior.</summary>
 public sealed class ApplicationErrorTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that explicit cost refresh failures show authentication guidance when appropriate and still render cached costs.</summary>
     /// <param name="statusCode">The simulated provider HTTP status code.</param>
     [Theory]
@@ -160,4 +164,6 @@ public sealed class ApplicationErrorTests
 
         Assert.Equal(exception.Message, message);
     }
+
+    #endregion
 }

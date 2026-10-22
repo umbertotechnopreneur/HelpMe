@@ -16,15 +16,17 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Persists global skills, learning settings, and memory-management state.</summary>
 public sealed partial class SkillsAndMemoryStore
 {
+    #region Methods
+
     /// <summary>Captures only a completed directly typed user turn after checking current opt-in preferences.</summary>
     public async Task CaptureAsync(string sessionId, string userMessage, CancellationToken ct, string? expectedRevision = null)
     {
@@ -304,6 +306,10 @@ public sealed partial class SkillsAndMemoryStore
         await transaction.CommitAsync(ct).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Verifies all source IDs, independent sessions, scopes, and exact target snapshots before saving or applying.</summary>
     private async Task ValidateEvidenceAsync(SqliteConnection connection, SqliteTransaction transaction, string scope, MemoryProposal proposal, CancellationToken ct)
     {
@@ -381,6 +387,10 @@ public sealed partial class SkillsAndMemoryStore
         string scope, string? expectedRevision, CancellationToken ct) => expectedRevision is null
         || expectedRevision == await ReadRevisionAsync(connection, transaction, scope, ct).ConfigureAwait(false);
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Deletes one observation and all retained proposals derived from it without deleting approved memories.</summary>
     public async Task<bool> ForgetObservationAsync(string id, CancellationToken ct)
     {
@@ -406,6 +416,10 @@ public sealed partial class SkillsAndMemoryStore
         await transaction.CommitAsync(ct).ConfigureAwait(false);
         return removed;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Prunes expired evidence and derivatives, expires changed targets, and bounds completed review history.</summary>
     private static async Task PruneLearningAsync(SqliteConnection connection, SqliteTransaction transaction, string scope, CancellationToken ct)
@@ -436,4 +450,6 @@ public sealed partial class SkillsAndMemoryStore
 
     /// <summary>Reports stale or invalid learning evidence without disclosing its contents in an error.</summary>
     private InvalidOperationException InvalidLearning() => new(text.Text("Lab.Invalid"));
+
+    #endregion
 }

@@ -16,12 +16,12 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Identifies the terminal outcome recorded when an audited workflow ends.</summary>
 internal enum AuditSessionOutcome
 {
     Failed,
@@ -33,7 +33,14 @@ internal enum AuditSessionOutcome
 /// <summary>Owns the audit lifetime and records its terminal outcome exactly once.</summary>
 internal sealed class AuditSessionScope : IAsyncDisposable
 {
+
+    #region Fields
+
     private readonly IActivityAuditService _audit;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Retains an opened audit session and the workflow's explicit default outcome.</summary>
     private AuditSessionScope(IActivityAuditService audit, string id, AuditSessionOutcome outcome)
@@ -43,9 +50,17 @@ internal sealed class AuditSessionScope : IAsyncDisposable
         Outcome = outcome;
     }
 
+    #endregion
+
+    #region Properties
+
     public string Id { get; }
 
     public AuditSessionOutcome Outcome { get; set; }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Opens one audit session before returning the scope responsible for closing it.</summary>
     public static async Task<AuditSessionScope> StartAsync(
@@ -59,6 +74,7 @@ internal sealed class AuditSessionScope : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(audit);
         var session = new AuditSessionScope(audit, Guid.NewGuid().ToString("N"), initialOutcome);
         await audit.StartSessionAsync(session.Id, kind, settings, metadata, cancellationToken).ConfigureAwait(false);
+
         return session;
     }
 
@@ -75,4 +91,7 @@ internal sealed class AuditSessionScope : IAsyncDisposable
         };
         await _audit.CloseSessionAsync(Id, status, CancellationToken.None).ConfigureAwait(false);
     }
+
+    #endregion
+
 }

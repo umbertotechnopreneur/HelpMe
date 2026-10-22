@@ -16,16 +16,18 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Describes a supported language by its code and display names.</summary>
 public sealed record SupportedLanguage(string Code, string NativeName, string CultureName, string Flag);
 
 /// <summary>Lists the languages supported by PromptMeUp's localized terminal interface.</summary>
 public static class SupportedLanguages
 {
+    #region Properties
+
     public static IReadOnlyList<SupportedLanguage> All { get; } =
     [
         new("it", "Italiano", "it-IT", "🇮🇹"),
@@ -37,6 +39,10 @@ public static class SupportedLanguages
     ];
 
     public static IReadOnlyList<string> Codes { get; } = All.Select(language => language.Code).ToArray();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Checks whether a two-letter interface language is advertised by the product.</summary>
     public static bool IsSupported(string? value) =>
@@ -57,25 +63,44 @@ public static class SupportedLanguages
     /// <summary>Resolves the display culture used for localized numbers, dates, and text formatting.</summary>
     public static CultureInfo Culture(string language) =>
         CultureInfo.GetCultureInfo(All.First(item => item.Code == Normalize(language)).CultureName);
+
+    #endregion
 }
 
+/// <summary>Selects the UI language and resolves localized message templates.</summary>
 public interface ILocalizationService
 {
+    #region Properties
+
     string Language { get; }
 
     CultureInfo Culture { get; }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>Selects the supported language used for subsequent UI messages.</summary>
     void SetLanguage(string language);
 
+    /// <summary>Formats a localized message using the selected UI language.</summary>
     string Text(string key, params object?[] args);
+
+    #endregion
 }
 
 /// <summary>Resolves localized UI strings and formats their parameter values for the active language.</summary>
 public sealed class LocalizationService : ILocalizationService
 {
+    #region Properties
+
     public string Language { get; private set; } = "en";
 
     public CultureInfo Culture => SupportedLanguages.Culture(Language);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Applies one supported interface language for the current invocation.</summary>
     public void SetLanguage(string language) => Language = SupportedLanguages.Normalize(language);
@@ -88,4 +113,6 @@ public sealed class LocalizationService : ILocalizationService
             : key;
         return args.Length == 0 ? template : string.Format(Culture, template, args);
     }
+
+    #endregion
 }

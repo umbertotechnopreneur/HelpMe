@@ -23,9 +23,17 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies skill context budget behavior.</summary>
 public sealed class SkillContextBudgetTests
 {
+
+    #region Fields
+
     private const string Markup = "<tag attr=\"value\">content</tag>";
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Rejects oversized plain and escaped instructions in every language before saving their activation fingerprints.</summary>
     [Theory]
@@ -196,6 +204,10 @@ public sealed class SkillContextBudgetTests
         Assert.Empty(await catalog.SelectAsync("question", default));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds either a plain over-budget body or a smaller body that exceeds the limit only after JSON escaping.</summary>
     private static string OversizedInstructions(bool escaped) => escaped
         ? string.Concat(Enumerable.Repeat(Markup, 210))
@@ -222,4 +234,6 @@ public sealed class SkillContextBudgetTests
     /// <summary>Creates the real read-only YAML catalog over the fixture's copied prompt resources.</summary>
     private static YamlPromptCatalogService Prompts(RegressionFixture fixture) =>
         new(fixture.Paths, NullLogger<YamlPromptCatalogService>.Instance);
+
+    #endregion
 }

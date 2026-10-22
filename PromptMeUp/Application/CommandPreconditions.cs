@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 
@@ -25,7 +24,14 @@ namespace PromptMeUp.Application;
 /// <summary>Applies the shared terminal and AI prerequisites before a command starts.</summary>
 internal static class CommandPreconditions
 {
+
+    #region Properties
+
     internal static bool IsInteractive => !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Requires a live terminal for forms and authorization prompts.</summary>
     internal static void RequireInteractive(ILocalizationService text)
@@ -52,10 +58,17 @@ internal static class CommandPreconditions
         {
             throw new InvalidOperationException(text.Text("Error.SetupRequired"));
         }
+
         if (!secrets.IsConfigured(settings.ApiKeyVariable))
         {
-            throw new InvalidOperationException(PromptMeUpApplication.AppendKeyRestartHint(
-                text.Text("Error.ApiKeyMissing", settings.ApiKeyVariable), text, OperatingSystem.IsWindows()));
+            var missingKeyMessage = text.Text("Error.ApiKeyMissing", settings.ApiKeyVariable);
+            var setupGuidance = PromptMeUpApplication.AppendKeyRestartHint(
+                missingKeyMessage, text, OperatingSystem.IsWindows());
+
+            throw new InvalidOperationException(setupGuidance);
         }
     }
+
+    #endregion
+
 }

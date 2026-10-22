@@ -23,8 +23,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies command countdown view behavior.</summary>
 public sealed class CommandCountdownViewTests
 {
+
+    #region Methods
+
     /// <summary>Completes only after all five seconds elapse when no key is pressed.</summary>
     [Fact]
     public async Task Countdown_NoKeys_WaitsForFiveSeconds()
@@ -98,6 +102,10 @@ public sealed class CommandCountdownViewTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => view.WaitAsync(cancellation.Token));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates an isolated terminal renderer with scripted keys and a deterministic monotonic clock.</summary>
     private static CommandCountdownView CreateView(IEnumerable<ConsoleKeyInfo> keys, TimeProvider clock)
     {
@@ -119,13 +127,29 @@ public sealed class CommandCountdownViewTests
         return new CommandCountdownView(console, new LocalizationService(), clock, isInteractive: true);
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Advances simulated time so countdown assertions do not wait on a real clock.</summary>
     private sealed class AdvancingTimeProvider : TimeProvider
     {
+
+        #region Properties
+
         public long Timestamp { get; private set; }
 
         public override long TimestampFrequency => 1_000;
 
+        #endregion
+
+        #region Methods
+
         /// <summary>Advances one synthetic second per observation without delaying the test for real seconds.</summary>
         public override long GetTimestamp() => Timestamp += 1_000;
+
+        #endregion
     }
+
+    #endregion
 }

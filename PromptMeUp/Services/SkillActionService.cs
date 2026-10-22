@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using PromptMeUp.Models;
 
@@ -25,6 +24,8 @@ namespace PromptMeUp.Services;
 /// <summary>Builds inert skill commands; execution remains exclusively owned by AuthorizedCommandWorkflow.</summary>
 public sealed class SkillActionService(ISensitiveDataRedactor redactor, ILocalizationService text)
 {
+    #region Methods
+
     /// <summary>Lists supported native actions or the inspected PowerShell script names.</summary>
     public IReadOnlyList<string> Actions(SkillDefinition skill) => skill.Origin == "bundled" ? skill.Name switch
     {
@@ -94,6 +95,10 @@ public sealed class SkillActionService(ISensitiveDataRedactor redactor, ILocaliz
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Validates scalar parameters before composing the reviewed script as a literal snapshot.</summary>
     private string ScriptCommandCore(SkillDefinition skill, string action, string parameters)
     {
@@ -158,4 +163,6 @@ public sealed class SkillActionService(ISensitiveDataRedactor redactor, ILocaliz
         }
         return command;
     }
+
+    #endregion
 }

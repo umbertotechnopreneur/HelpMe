@@ -23,15 +23,27 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Displays generated files and asks the user to review them.</summary>
 public interface IFilePreviewView
 {
+
+    #region Methods
+
+    /// <summary>Renders concrete file mappings, byte counts, and collision warnings from an immutable snapshot.</summary>
     void Render(FilePreview preview);
+
+    /// <summary>Offers individual command review after the complete effect snapshot, defaulting to no action.</summary>
     bool ConfirmReview();
+
+    #endregion
 }
 
 /// <summary>Presents local file previews and captures the user's explicit review decision.</summary>
 public sealed class FilePreviewView(IAnsiConsole console, ILocalizationService text) : IFilePreviewView
 {
+
+    #region Methods
+
     /// <summary>Renders concrete file mappings, byte counts, and collision warnings from an immutable snapshot.</summary>
     public void Render(FilePreview preview)
     {
@@ -41,7 +53,9 @@ public sealed class FilePreviewView(IAnsiConsole console, ILocalizationService t
         console.WriteLine();
         var table = TerminalTable.Create(text.Text("Preview.Source"), text.Text("Preview.Target"),
             text.Text("Preview.Bytes"), text.Text("Plan.Status"));
+
         table.Columns[2].RightAligned();
+
         foreach (var effect in preview.Effects)
         {
             table.AddRow(new Text(effect.Source),
@@ -50,6 +64,7 @@ public sealed class FilePreviewView(IAnsiConsole console, ILocalizationService t
                 new Text(text.Text(effect.Collision ? "Preview.Collision" : "Preview.Ready"),
                     Style.Parse(effect.Collision ? TerminalTheme.Warning : TerminalTheme.Primary)));
         }
+
         console.Write(table);
         console.Write(new Text(text.Text("Preview.Total", preview.Effects.Count, preview.Effects.Sum(effect => effect.Bytes))));
         console.WriteLine();
@@ -57,4 +72,6 @@ public sealed class FilePreviewView(IAnsiConsole console, ILocalizationService t
 
     /// <summary>Offers individual command review after the complete effect snapshot, defaulting to no action.</summary>
     public bool ConfirmReview() => console.Prompt(new ConfirmationPrompt(text.Text("Preview.Review")) { DefaultValue = false });
+
+    #endregion
 }

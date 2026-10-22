@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Diagnostics;
 
 namespace PromptMeUp.Services;
@@ -24,7 +23,13 @@ namespace PromptMeUp.Services;
 /// <summary>Opens only the bundled command reference in the operating system's PDF viewer.</summary>
 public sealed class CommandGuideService
 {
+    #region Properties
+
     public string DocumentPath => Path.Combine(AppContext.BaseDirectory, "docs", "promptmeup-quick-reference.pdf");
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Launches the installed document without interpreting a shell command or downloading content.</summary>
     public void Open()
@@ -59,4 +64,6 @@ public sealed class CommandGuideService
             throw new InvalidOperationException("The PDF viewer could not be started.");
         }
     }
+
+    #endregion
 }

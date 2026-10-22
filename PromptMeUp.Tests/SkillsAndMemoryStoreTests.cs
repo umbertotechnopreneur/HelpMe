@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies skills and memory store behavior.</summary>
 public sealed class SkillsAndMemoryStoreTests
 {
+
+    #region Methods
+
     /// <summary>Limits an approval snapshot to the requested skills without duplicating rows or exposing other preferences.</summary>
     [Fact]
     public async Task GetSkillApprovals_ReadsOnlyRequestedNames()
@@ -382,6 +386,10 @@ public sealed class SkillsAndMemoryStoreTests
         Assert.Equal(0L, await fixture.ScalarAsync("SELECT COUNT(*) FROM memory_proposals;"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Initializes a disposable database with explicitly enabled capture and no provider or process calls.</summary>
     private static async Task<SkillsAndMemoryStore> PrepareAsync(RegressionFixture fixture)
     {
@@ -411,4 +419,6 @@ public sealed class SkillsAndMemoryStoreTests
     private static MemoryProposal Proposal(string operation, IReadOnlyList<string> sources, IReadOnlyList<PersistentMemory> targets) =>
         new(Guid.NewGuid().ToString("N"), "preference", operation, "Prefer concise explanations.", "Consistent reviewed evidence.",
             sources, targets, DateTimeOffset.UtcNow);
+
+    #endregion
 }

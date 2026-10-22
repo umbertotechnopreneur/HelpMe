@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using PromptMeUp.Models;
 using PromptMeUp.Services;
@@ -37,6 +36,9 @@ public sealed class MemoryCommandWorkflow(
     IMemoryForgetView forgetView,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Saves literal notes locally or deletes a single identified note after a complete lookup.</summary>
     public async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
@@ -44,6 +46,7 @@ public sealed class MemoryCommandWorkflow(
         try
         {
             var request = input.Sanitize(options.Query ?? string.Empty, PersistentMemoryService.MaximumCharacters + 8, fromArgument: true).Trim();
+
             if (options.Command == AppCommand.Remember)
             {
                 var parts = request.Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries);
@@ -56,8 +59,10 @@ public sealed class MemoryCommandWorkflow(
                 shell.RenderSuccess(text.Text("Memory.Saved", saved.Id));
                 view.Render([saved]);
                 await activity.TryRecordAsync("remember", "completed", null, new { saved.Id, saved.IsGlobal }).ConfigureAwait(false);
+
                 return 0;
             }
+
             if (options.Command != AppCommand.Forget)
             {
                 throw new InvalidOperationException(text.Text("MemoryCli.Usage"));
@@ -65,6 +70,7 @@ public sealed class MemoryCommandWorkflow(
 
             var available = await memories.ListAsync(cancellationToken).ConfigureAwait(false);
             IReadOnlyList<PersistentMemory> matches;
+
             if (Guid.TryParseExact(request, "N", out var id))
             {
                 matches = available.Where(memory => memory.Id == id.ToString("N")).ToArray();
@@ -72,6 +78,7 @@ public sealed class MemoryCommandWorkflow(
             else
             {
                 matches = available.Where(memory => memory.Text.Equals(request, StringComparison.Ordinal)).ToArray();
+
                 if (matches.Count == 0 && available.Count > 0)
                 {
                     var resolution = await ResolveAsync(request, available, settings, cancellationToken).ConfigureAwait(false);
@@ -79,16 +86,21 @@ public sealed class MemoryCommandWorkflow(
                     finalSummary = resolution.Summary;
                 }
             }
+
             if (matches.Count == 0)
             {
                 shell.RenderWarning(text.Text("Memory.NotFound"));
+
                 return 1;
             }
+
             shell.RenderNotice(text.Text("Lab.ForgetNotice"));
             var selectedId = forgetView.SelectForDeletion(matches);
+
             if (selectedId is null)
             {
                 shell.RenderNotice(text.Text("Common.Cancelled"));
+
                 return 0;
             }
 
@@ -97,16 +109,20 @@ public sealed class MemoryCommandWorkflow(
             if (!await memories.ForgetAsync(selected.Id, cancellationToken, selected).ConfigureAwait(false))
             {
                 shell.RenderWarning(text.Text("MemoryCli.Changed"));
+
                 return 1;
             }
+
             shell.RenderSuccess(text.Text("MemoryCli.Forgotten", selected.Id));
             shell.RenderNotice(selected.Text);
             await activity.TryRecordAsync("forget", "completed", null, new { selected.Id, selected.IsGlobal }).ConfigureAwait(false);
+
             return 0;
         }
         catch (MemoryValidationException exception)
         {
             shell.RenderError(exception.Message);
+
             return 1;
         }
         finally
@@ -117,6 +133,10 @@ public sealed class MemoryCommandWorkflow(
             }
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Searches every accessible note in bounded batches before offering matches for explicit selection.</summary>
     private async Task<MemoryResolution> ResolveAsync(
@@ -129,11 +149,13 @@ public sealed class MemoryCommandWorkflow(
         {
             throw new InvalidOperationException(text.Text("Error.SetupRequired"));
         }
+
         if (!secrets.IsConfigured(settings.ApiKeyVariable))
         {
             throw new InvalidOperationException(PromptMeUpApplication.AppendKeyRestartHint(
                 text.Text("Error.ApiKeyMissing", settings.ApiKeyVariable), text, OperatingSystem.IsWindows()));
         }
+
         var matches = new List<PersistentMemory>();
         var totalCost = 0m;
         AiResponse? lastResponse = null;
@@ -160,22 +182,30 @@ public sealed class MemoryCommandWorkflow(
                 throw new InvalidOperationException(text.Text("MemoryCli.InvalidResponse"));
             }
         }
+
         session.Outcome = AuditSessionOutcome.Completed;
         var finalResponse = lastResponse ?? throw new InvalidOperationException("The memory lookup did not return a provider response.");
+
         return new MemoryResolution(matches, AiConversationWorkflow.CreateTurnSnapshot(finalResponse, settings, totalCost));
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Accepts only distinct identifiers present in the exact batch shown to the provider.</summary>
     internal static IReadOnlyList<PersistentMemory> ParseMatches(string response, IReadOnlyList<PersistentMemory> batch)
     {
         using var document = JsonDocument.Parse(response);
         var root = document.RootElement;
+
         if (root.ValueKind != JsonValueKind.Object || root.EnumerateObject().Count() != 1
             || !root.TryGetProperty("matched_ids", out var ids) || ids.ValueKind != JsonValueKind.Array
             || ids.GetArrayLength() > batch.Count)
         {
             throw new JsonException("Invalid memory selection envelope.");
         }
+
         var matches = new List<PersistentMemory>();
         foreach (var id in ids.EnumerateArray())
         {
@@ -185,11 +215,20 @@ public sealed class MemoryCommandWorkflow(
             {
                 throw new JsonException("Unknown or repeated memory identifier.");
             }
+
             matches.Add(matched);
         }
+
         return matches;
     }
 
+    #endregion
+
+    #region Types
+
     /// <summary>Returns AI-resolved candidates together with one final cumulative usage summary for the entire batch operation.</summary>
     private sealed record MemoryResolution(IReadOnlyList<PersistentMemory> Matches, ShellRuntimeStatus Summary);
+
+    #endregion
+
 }

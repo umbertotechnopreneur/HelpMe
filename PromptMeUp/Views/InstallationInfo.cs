@@ -27,10 +27,17 @@ namespace PromptMeUp.Views;
 /// <summary>Shows build information and project links in an optional full-width, theme-aware card.</summary>
 internal sealed class InstallationInfo(ILocalizationService text, BuildInformation buildInformation, bool renderCard = true) : IRenderable
 {
+
+    #region Fields
+
     private const string RepositoryUrl = "https://github.com/umbertotechnopreneur/PromptMeUp";
     private const string AuthorUrl = "https://umbertogiacobbi.biz";
     private const string PrivacyUrl = "https://umbertogiacobbi.biz/privacy/";
     private const string TermsUrl = "https://umbertogiacobbi.biz/terms/";
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Measures the details using the width assigned by the containing view.</summary>
     public Measurement Measure(RenderOptions options, int maxWidth) =>
@@ -40,11 +47,16 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
     public IEnumerable<Segment> Render(RenderOptions options, int maxWidth) =>
         CreateContent(maxWidth).Render(options, maxWidth);
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Expands the optional card to the available width and keeps the unboxed variant suitable for About.</summary>
     private IRenderable CreateContent(int width)
     {
         var title = text.Text("About.Installation");
         var body = CreateBody(renderCard ? Math.Max(1, width - 4) : width);
+
         return renderCard
             ? new Panel(body)
             {
@@ -62,6 +74,7 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
     {
         var details = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn(new GridColumn().LeftAligned());
         var narrowDetails = new List<IRenderable>();
+
         AddDetail(details, narrowDetails, "Footer.Version", buildInformation.Version);
         AddDetail(details, narrowDetails, "About.BuildDate", buildInformation.BuildTimestamp);
         AddDetail(details, narrowDetails, "About.BuildCommit", buildInformation.GitCommit);
@@ -69,6 +82,7 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
         AddDetail(details, narrowDetails, "About.Author", "Umberto Giacobbi");
         AddDetail(details, narrowDetails, "About.License", "MIT");
         AddDetail(details, narrowDetails, "About.Platforms", "Windows / Linux / macOS");
+
         return new Rows(
             width >= 65 ? details : new Rows(narrowDetails),
             new Text(text.Text("About.Repository"), Style.Parse(TerminalTheme.Muted)),
@@ -88,8 +102,11 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
     {
         var label = new Text(text.Text(labelKey) + ":", Style.Parse(TerminalTheme.Muted));
         var renderedValue = new Text(value, Style.Parse(TerminalTheme.Primary));
+
         grid.AddRow(label, renderedValue);
         grid.AddEmptyRow();
         narrowRows.AddRange([label, renderedValue, new Text(" ")]);
     }
+
+    #endregion
 }

@@ -25,8 +25,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies settings feature overview behavior.</summary>
 public sealed class SettingsFeatureOverviewTests
 {
+
+    #region Methods
+
     /// <summary>Reading a fresh installation preserves disabled defaults without creating preferences or skill directories.</summary>
     [Fact]
     public async Task Read_Defaults_DoesNotPersistConsent()
@@ -233,6 +237,10 @@ public sealed class SettingsFeatureOverviewTests
         Assert.False(File.Exists(fixture.Paths.DatabasePath));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a project store backed only by the fixture's disposable database.</summary>
     private static SkillsAndMemoryStore Store(RegressionFixture fixture) =>
         new(fixture.Paths, new SensitiveDataRedactor(), new LocalizationService());
@@ -252,9 +260,21 @@ public sealed class SettingsFeatureOverviewTests
         return directory;
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Collects application log messages for isolated regression assertions.</summary>
     private sealed class RecordingLogger : ILogger<SettingsFeatureOverviewService>
     {
+
+        #region Properties
+
         public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Declines scopes because the test captures only emitted overview diagnostics.</summary>
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -265,5 +285,9 @@ public sealed class SettingsFeatureOverviewTests
         /// <summary>Captures messages and exception objects without forwarding private test data to an external sink.</summary>
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             Entries.Add((logLevel, formatter(state, exception), exception));
+
+        #endregion
     }
+
+    #endregion
 }

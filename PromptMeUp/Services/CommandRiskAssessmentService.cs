@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
@@ -24,8 +23,12 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Assesses command risk locally and optionally requests advisory AI review.</summary>
 public interface ICommandRiskAssessmentService
 {
+    #region Methods
+
+    /// <summary>Assesses the command locally before any optional provider review.</summary>
     Task<CommandRiskAssessment> AssessAsync(
         string sessionId,
         string command,
@@ -33,15 +36,23 @@ public interface ICommandRiskAssessmentService
         AppSettings settings,
         string language,
         CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Applies deterministic local risk scoring before optional AI command review.</summary>
 public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmentService
 {
+    #region Fields
+
     private readonly IOpenAiService _openAi;
     private readonly IEnvironmentSecretService _secrets;
     private readonly ISensitiveDataRedactor _redactor;
     private readonly ILogger<CommandRiskAssessmentService> _logger;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the combined deterministic and optional AI command reviewer.</summary>
     public CommandRiskAssessmentService(
@@ -56,6 +67,10 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Returns a conservative local score, optionally enriched by an advisory AI review.</summary>
     public async Task<CommandRiskAssessment> AssessAsync(
         string sessionId,
@@ -68,6 +83,7 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(settings);
+
         var local = AssessLocally(command, language);
         if (!useAi || !settings.AiEnabled || !_secrets.IsConfigured(settings.ApiKeyVariable))
         {
@@ -76,13 +92,18 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
 
         try
         {
-            var ai = await _openAi.AssessCommandAsync(sessionId, _redactor.Redact(command), settings, language, cancellationToken).ConfigureAwait(false);
+            var redactedCommand = _redactor.Redact(command);
+            var ai = await _openAi.AssessCommandAsync(sessionId, redactedCommand, settings, language, cancellationToken).ConfigureAwait(false);
             var score = Math.Max(local.Score, ai.Score);
+
             // A high severity label must retain its veto even when the AI returns a lower numeric score.
-            var level = (CommandRiskLevel)Math.Max((int)ScoreToLevel(score), Math.Max((int)local.Level, (int)ai.Level));
+            var highestReportedLevel = Math.Max((int)local.Level, (int)ai.Level);
+            var scoredLevel = (int)ScoreToLevel(score);
+            var level = (CommandRiskLevel)Math.Max(scoredLevel, highestReportedLevel);
             var advisory = local.Score > ai.Score
                 ? Translate(language, "Risk.LocalWins")
                 : Translate(language, "Risk.Advisory");
+
             return new CommandRiskAssessment(score, level, ai.DescriptionMarkdown, true, advisory);
         }
         catch (Exception exception) when (exception is OpenAiRequestException or HttpRequestException or JsonException)
@@ -126,6 +147,10 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
         var description = Translate(language, "Risk.Description", effect);
         return new CommandRiskAssessment(score, ScoreToLevel(score), description, false, null);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Maps a conservative score to the four visible severity bands.</summary>
     private static CommandRiskLevel ScoreToLevel(int score) => score switch
@@ -177,4 +202,6 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
     /// <summary>Allows only known inspection-only Git verbs and options, excluding branch mutation and external diff helpers.</summary>
     [GeneratedRegex(@"(?ix)^\s*git\s+(?:status(?:\s+(?:--short|--branch|--porcelain(?:=[12])?|-s|-b|-sb|--untracked-files(?:=(?:no|normal|all))?))*|branch(?:\s+(?:--list|--all|--remotes|--show-current|--verbose|--no-color|-a|-r|-v|-vv))*|(?:log|show)(?:\s+(?:--oneline|--stat|--name-only|--name-status|--no-patch|--no-color|--decorate(?:=short)?|-\d+))*|diff(?:\s+(?:--stat|--name-only|--name-status|--no-color|--cached|--staged|--check))*\s+--no-ext-diff\s+--no-textconv)\s*$")]
     private static partial Regex GitReadOnlyPattern();
+
+    #endregion
 }

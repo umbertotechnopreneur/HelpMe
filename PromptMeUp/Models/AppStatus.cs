@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Summarizes local configuration, storage, and provider readiness.</summary>
 public sealed record AppStatus(
     AppSettings Settings,
     bool HasApiKey,
@@ -29,7 +29,14 @@ public sealed record AppStatus(
     string PromptDirectory,
     int PromptCount)
 {
+
+    #region Properties
+
     public ArtifactLimits ArtifactLimits { get; init; } = ArtifactLimits.Default;
+
+    #endregion
+
 }
 
+/// <summary>Reports whether a requested font installation changed the local machine.</summary>
 public sealed record FontInstallResult(bool Changed, bool DryRun, string FontName, string Message);

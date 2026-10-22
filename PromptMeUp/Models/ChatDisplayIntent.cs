@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Describes explicit chat preferences; summary and execution confirmation are global while command suggestions stay in the current chat.</summary>
@@ -26,7 +25,13 @@ public sealed record ChatDisplayIntent(
     bool? RequireExecutionConfirmation,
     bool ContinueChat)
 {
+
+    #region Properties
+
     public bool HasChanges => ShowSessionSummary.HasValue
         || ShowCommandSuggestions.HasValue
         || RequireExecutionConfirmation.HasValue;
+
+    #endregion
+
 }

@@ -26,9 +26,15 @@ namespace PromptMeUp.Views;
 /// <summary>Pairs a public command with its localized description.</summary>
 internal sealed record HelpEntry(string Command, string Description)
 {
+
+    #region Properties
+
     public bool IsCommand { get; init; } = true;
     public string? Example { get; init; }
+
     public IReadOnlyList<HelpArgument> Arguments { get; init; } = [];
+
+    #endregion
 }
 
 /// <summary>Explains one literal token used in a concrete command example.</summary>
@@ -37,13 +43,22 @@ internal sealed record HelpArgument(string Token, string Description);
 /// <summary>Groups help entries under full and compact localized section names.</summary>
 internal sealed record HelpSection(string Icon, string Title, string NavigationLabel, IReadOnlyList<HelpEntry> Entries)
 {
+
+    #region Properties
+
     public Action? Open { get; init; }
+
     public string? OpenHintKey { get; init; }
+
+    #endregion
 }
 
 /// <summary>Browses command sections in a temporary open layout without changing the original terminal buffer.</summary>
 internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationService text, ConsoleRenderOptions? options = null)
 {
+
+    #region Fields
+
     private const int HeadingRows = 2;
     private readonly ConsoleRenderOptions _options = options ?? new(false, false);
     private readonly FullscreenSectionNavigator _sectionNavigator = new();
@@ -55,6 +70,10 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     private HelpFocus _focus = HelpFocus.Sections;
     private FullscreenFrame? _lastFrame;
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Uses fullscreen help only when both terminal input and the alternate buffer are available.</summary>
     internal static bool CanUse(IAnsiConsole console) => FullscreenViewport.CanUse(console);
 
@@ -62,19 +81,23 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     internal void Render(IReadOnlyList<HelpSection> sections)
     {
         ArgumentNullException.ThrowIfNull(sections);
+
         if (sections.Count == 0)
         {
             throw new ArgumentException("Fullscreen help needs at least one section.", nameof(sections));
         }
+
         _focus = HelpFocus.Sections;
         _section = Math.Clamp(_section, 0, sections.Count - 1);
         _sectionNavigator.Reset(_section, sections.Count, focused: true);
         _offset = 0;
         _lastFrame = null;
         _input.Reset();
+
         try
         {
             Action? open;
+
             do
             {
                 open = null;
@@ -95,6 +118,10 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Navigates descriptions and returns screen actions for opening outside the help buffer.</summary>
     private Action? RunLoop(IReadOnlyList<HelpSection> sections)
     {
@@ -103,29 +130,36 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
             void Paint() => PaintScreen(sections);
             Paint();
             var readKey = _input.ReadKey(Paint, _sectionNavigator.PendingSelectionDeadline);
+
             if (readKey is null)
             {
                 CompletePendingSectionNumber(sections.Count);
                 continue;
             }
+
             var key = readKey.Value;
+
             if (key.Key is ConsoleKey.Escape or ConsoleKey.Q)
             {
                 return null;
             }
+
             if (console.Profile.Width < 60 || console.Profile.Height < 20)
             {
                 continue;
             }
+
             if (key.Key == ConsoleKey.LeftArrow && (key.Modifiers & ConsoleModifiers.Control) != 0)
             {
                 _focus = HelpFocus.Sections;
                 continue;
             }
+
             if (_focus != HelpFocus.Close && TrySelectSectionNumber(key, sections.Count))
             {
                 continue;
             }
+
             switch (key.Key)
             {
                 case ConsoleKey.F6:
@@ -159,6 +193,7 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
                         {
                             return openSection;
                         }
+
                         _focus = HelpFocus.Commands;
                     }
                     break;
@@ -238,15 +273,19 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     private bool TrySelectSectionNumber(ConsoleKeyInfo key, int count)
     {
         var previous = _section;
+
         if (!_sectionNavigator.TrySelectNumber(key, count))
         {
             return false;
         }
+
         if (_sectionNavigator.SelectedIndex != previous)
         {
             ApplySelectedSection();
         }
+
         _focus = HelpFocus.Sections;
+
         return true;
     }
 
@@ -254,6 +293,7 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     private void CompletePendingSectionNumber(int count)
     {
         var previous = _section;
+
         if (_sectionNavigator.CompletePendingNumber(count) && _sectionNavigator.SelectedIndex != previous)
         {
             ApplySelectedSection();
@@ -275,28 +315,35 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     private void PaintScreen(IReadOnlyList<HelpSection> sections)
     {
         var frame = FullscreenViewport.BeginFrame(console, _lastFrame);
+
         _lastFrame = frame;
         var width = Math.Max(1, frame.Width - 1);
         var height = Math.Max(1, frame.Height - 1);
+
         if (frame.Width < 60 || frame.Height < 20)
         {
             var small = new Layout("help", Inset(new Text(text.Text("Help.Browse.TooSmall"), Style.Parse(TerminalTheme.Warning))));
+
             console.Write(new FormSurface(small));
+
             return;
         }
 
         var bodyHeight = height - FullscreenHeader.Height - FullscreenFooter.Height();
         var contentWidth = width - FullscreenWorkspace.SidebarWidth(console.Profile.Width) - 4;
+
         _visibleRows = bodyHeight - HeadingRows;
         var active = sections[_section];
         var entries = new Rows(active.Entries.Select(RenderEntry));
         var renderOptions = new RenderOptions(console.Profile.Capabilities, new Size(width, height));
         var lines = Segment.SplitLines(((IRenderable)entries).Render(renderOptions, contentWidth)).ToList();
+
         // A final spacing row alone must not make otherwise visible help count as overflowing.
         while (lines.Count > 0 && lines[^1].All(segment => string.IsNullOrWhiteSpace(segment.Text)))
         {
             lines.RemoveAt(lines.Count - 1);
         }
+
         _lineCount = lines.Count;
         _offset = Math.Clamp(_offset, 0, Math.Max(0, _lineCount - _visibleRows));
 
@@ -309,11 +356,13 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
         IRenderable message = _lineCount > _visibleRows
             ? new HelpRange(range)
             : HelpCommandLine.CreateDescription(text.Text("Help.Usage"), "hm");
+
         if (active.Open is not null && _focus != HelpFocus.Close)
         {
             message = Line(text.Text(active.OpenHintKey
                 ?? throw new InvalidOperationException("An actionable help section needs opening guidance.")), TerminalTheme.Primary);
         }
+
         var closeSelected = _focus == HelpFocus.Close;
         var actions = TerminalActionBar.Create(
         [
@@ -329,6 +378,7 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
         };
         var footer = FullscreenFooter.Create(message, actions,
             FullscreenFooter.Shortcuts(text.Text(footerKey), text.Text(footerKey + "Compact"), width - 4));
+
         console.Write(FullscreenWorkspace.Create(text.Text("Help.Title"), _options, console.Profile.Width,
             content, SectionNavigation(sections, bodyHeight), footer, FullscreenFooter.NoticeRows));
     }
@@ -337,6 +387,7 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     private IRenderable SectionNavigation(IReadOnlyList<HelpSection> sections, int bodyHeight)
     {
         _sectionNavigator.IsFocused = _focus == HelpFocus.Sections;
+
         return _sectionNavigator.Render(sections, section => SectionTitle(section, compact: true), bodyHeight,
             text.Text("Help.Browse.Sections"), console.Profile.Capabilities.Unicode);
     }
@@ -352,9 +403,16 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
     private static HelpLine Line(string value, string foreground, string? background = null) =>
         new(value, Style.Parse(background is null ? foreground : $"{foreground} on {background}"));
 
+    #endregion
+
+    #region Types
+
     /// <summary>Keeps the localized displayed-line range on one row and emphasizes only its numbers.</summary>
     private sealed class HelpRange(string value) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Measures the range without requesting more than the content column's width.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => new(0, Math.Min(new Segment(value).CellCount(), maxWidth));
 
@@ -365,24 +423,38 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
             var bold = Style.Parse($"bold {TerminalTheme.Primary}");
             var segments = new List<Segment>();
             var start = 0;
+
             while (start < value.Length)
             {
                 var numeric = char.IsDigit(value[start]);
                 var end = start + 1;
+
                 while (end < value.Length && char.IsDigit(value[end]) == numeric)
                 {
                     end++;
                 }
+
                 segments.Add(new Segment(value[start..end], numeric ? bold : normal));
                 start = end;
             }
+
             return maxWidth > 0 ? Segment.Truncate(segments, maxWidth) : [];
         }
+
+        #endregion
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Uses a concrete example while leaving the full original syntax available in static help.</summary>
     private static string CommandExample(HelpEntry entry) => entry.Example
         ?? (entry.Command.StartsWith("hm ", StringComparison.Ordinal) ? entry.Command : "hm " + entry.Command);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Separates syntax, indented explanations, and concrete examples while keeping hm white.</summary>
     internal static IRenderable RenderEntry(HelpEntry entry)
@@ -392,25 +464,36 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
             return new Rows(new Text(entry.Command, Style.Parse(TerminalTheme.Info)),
                 new Text(entry.Description, Style.Parse(TerminalTheme.Primary)), new Text(" "));
         }
+
         var example = CommandExample(entry);
         var rows = new List<IRenderable>
         {
             HelpCommandLine.Create(entry.Command.StartsWith("hm ", StringComparison.Ordinal) ? entry.Command : "hm " + entry.Command),
             new Padder(HelpCommandLine.CreateDescription(entry.Description, example), new Padding(2, 0, 0, 0))
         };
+
         if (entry.Example is not null)
         {
             rows.Add(new Padder(HelpCommandLine.Create(example), new Padding(2, 1, 0, 0)));
         }
+
         rows.AddRange(entry.Arguments.Select(argument => new Padder(
             HelpCommandLine.CreateArgument(example, argument.Token, argument.Description), new Padding(4, 0, 0, 0))));
         rows.Add(new Text(" "));
+
         return new Rows(rows);
     }
+
+    #endregion
+
+    #region Types
 
     /// <summary>Renders only the selected complete terminal lines of a command grid.</summary>
     private sealed class HelpLines(IReadOnlyList<SegmentLine> lines) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Lets the surrounding layout assign the content column's available width.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => new(0, maxWidth);
 
@@ -423,26 +506,37 @@ internal sealed class FullscreenHelpView(IAnsiConsole console, ILocalizationServ
                 {
                     yield return segment;
                 }
+
                 yield return Segment.LineBreak;
             }
         }
+
+        #endregion
     }
 
     /// <summary>Keeps navigation and fixed-height chrome on one visual row even in a narrow terminal.</summary>
     private sealed class HelpLine(string value, Style style) : IRenderable
     {
+
+        #region Methods
+
         /// <summary>Measures a label without requesting more than the assigned width.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) => new(0, Math.Min(new Segment(value).CellCount(), maxWidth));
 
         /// <summary>Truncates the entire label rather than letting individual words wrap into another region.</summary>
         public IEnumerable<Segment> Render(RenderOptions options, int maxWidth) =>
             maxWidth > 0 ? Segment.SplitOverflow(new Segment(value, style), Overflow.Ellipsis, maxWidth) : [];
+
+        #endregion
     }
 
+    /// <summary>Identifies the focused area of the fullscreen help page.</summary>
     private enum HelpFocus
     {
         Sections,
         Commands,
         Close
     }
+
+    #endregion
 }

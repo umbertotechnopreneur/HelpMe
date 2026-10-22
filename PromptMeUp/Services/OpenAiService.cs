@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
@@ -27,8 +26,12 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Sends provider requests and returns typed responses, context estimates, and risk reviews.</summary>
 public interface IOpenAiService
 {
+    #region Methods
+
+    /// <summary>Sends the configured AI request and returns its parsed response.</summary>
     Task<AiResponse> SendAsync(
         string promptId,
         string conversationId,
@@ -38,11 +41,13 @@ public interface IOpenAiService
         CancellationToken cancellationToken,
         AppGuideContext? guide = null);
 
+    /// <summary>Checks the configured provider connection when explicitly requested.</summary>
     Task<ConnectionTestResult> TestConnectionAsync(
         AppSettings settings,
         string language,
         CancellationToken cancellationToken);
 
+    /// <summary>Estimates the context required by the next provider request.</summary>
     Task<AiContextUsage> EstimateContextAsync(
         string promptId,
         IReadOnlyList<ChatMessage> messages,
@@ -51,17 +56,22 @@ public interface IOpenAiService
         CancellationToken cancellationToken,
         AppGuideContext? guide = null);
 
+    /// <summary>Requests an advisory provider risk assessment for sanitized command text.</summary>
     Task<CommandRiskAssessment> AssessCommandAsync(
         string sessionId,
         string command,
         AppSettings settings,
         string language,
         CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Builds and sends bounded OpenAI requests while normalizing provider responses and failures.</summary>
 public sealed class OpenAiService : IOpenAiService
 {
+    #region Fields
+
     private const string Provider = "openai";
     private readonly ArtifactLimits _limits;
     private readonly ConversationContextLimits _contextLimits;
@@ -75,6 +85,10 @@ public sealed class OpenAiService : IOpenAiService
     private readonly ISensitiveDataRedactor _redactor;
     private readonly IPromptInjectionProtectionService _promptProtection;
     private readonly ILogger<OpenAiService> _logger;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the Responses API client and its local persistence collaborators.</summary>
     public OpenAiService(
@@ -104,6 +118,10 @@ public sealed class OpenAiService : IOpenAiService
         _limits = limits ?? ArtifactLimits.Default;
         _contextLimits = contextLimits ?? ConversationContextLimits.Default;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Sends one bounded multi-turn conversation through the configured OpenAI Responses endpoint.</summary>
     public async Task<AiResponse> SendAsync(
@@ -139,6 +157,10 @@ public sealed class OpenAiService : IOpenAiService
             guide).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Reads the bounded provider error classification without using error prose to make retry decisions.</summary>
     private static string? ReadProviderErrorCode(string responseJson)
     {
@@ -159,6 +181,10 @@ public sealed class OpenAiService : IOpenAiService
             return null;
         }
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Runs the localized YAML connection probe and returns its expected short phrase.</summary>
     public async Task<ConnectionTestResult> TestConnectionAsync(
@@ -251,6 +277,10 @@ public sealed class OpenAiService : IOpenAiService
             cancellationToken).ConfigureAwait(false);
         return OpenAiResponseParser.ParseRiskAssessment(response.Text);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Performs one HTTP request, parses usage, estimates price, and records both success and failure.</summary>
     private async Task<AiResponse> SendCoreAsync(
@@ -594,11 +624,14 @@ public sealed class OpenAiService : IOpenAiService
         || prompt.Metadata.GetValueOrDefault("response-format") == "promptmeup-console-response-v1"
         || OpenAiRequestBuilder.SupportsAppGuide(prompt);
 
+    #endregion
 }
 
 /// <summary>Represents a provider request failure with a safe status and diagnostic message.</summary>
 public sealed class OpenAiRequestException : Exception
 {
+    #region Initialization
+
     /// <summary>Creates a provider exception that carries a stable local code and optional HTTP status.</summary>
     public OpenAiRequestException(string message, string errorCode, int? statusCode, Exception? innerException = null)
         : base(message, innerException)
@@ -607,9 +640,15 @@ public sealed class OpenAiRequestException : Exception
         StatusCode = statusCode;
     }
 
+    #endregion
+
+    #region Properties
+
     public string ErrorCode { get; }
 
     public string? ProviderCode { get; init; }
 
     public int? StatusCode { get; }
+
+    #endregion
 }

@@ -26,6 +26,9 @@ namespace PromptMeUp.Views;
 /// <summary>Shares exact-command copying and its visible receipt across command interaction views.</summary>
 internal static class CommandCopyView
 {
+
+    #region Methods
+
     /// <summary>Reports clipboard success and requests a graceful exit only after a successful copy.</summary>
     /// <param name="console">The console receiving the copy receipt.</param>
     /// <param name="text">The localized success and failure messages.</param>
@@ -37,10 +40,14 @@ internal static class CommandCopyView
         string? command, bool exitAfterCopy)
     {
         var copied = !string.IsNullOrWhiteSpace(command) && clipboard.TryCopy(command);
+
         console.MarkupLine($"  [{(copied ? TerminalTheme.Success : TerminalTheme.Warning)}]{Markup.Escape(text.Text(copied ? "Command.Copied" : "Command.CopyFailed"))}[/]");
+
         if (copied && exitAfterCopy)
         {
             throw new ApplicationExitRequestedException();
         }
     }
+
+    #endregion
 }

@@ -16,9 +16,10 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Describes the source, destination, and collision risk of one previewed file operation.</summary>
 public sealed record FileEffect(string Source, string? Destination, long Bytes, long LastWriteTicks, bool Collision);
 
+/// <summary>Groups the file effects proposed by a preview operation.</summary>
 public sealed record FilePreview(string Operation, IReadOnlyList<FileEffect> Effects);

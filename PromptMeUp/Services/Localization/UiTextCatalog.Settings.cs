@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the shared settings workspace labels and section guidance in all six languages.</summary>
     private static void AddSettingsEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -488,4 +490,6 @@ internal static partial class UiTextCatalog
             "Guardar esta opción desactiva skills y memoria globales y borra definitivamente mensajes recopilados y sugerencias. Los recuerdos guardados y el historial anterior permanecen.",
             "Lưu lựa chọn này sẽ tắt kỹ năng và bộ nhớ toàn cục, đồng thời xóa vĩnh viễn tin nhắn đã thu thập và đề xuất. Ghi nhớ đã lưu và lịch sử trước đó vẫn còn."));
     }
+
+    #endregion
 }

@@ -25,6 +25,9 @@ namespace PromptMeUp.Views;
 /// <summary>Builds a theme-aware OpenAI ASCII mark for terminal layouts.</summary>
 internal static class OpenAiAsciiLogo
 {
+
+    #region Fields
+
     internal const int DetailedColumnWidth = 54;
     internal const int CompactColumnWidth = 24;
 
@@ -59,21 +62,31 @@ internal static class OpenAiAsciiLogo
         "      '-..-'      "
     ];
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Creates either the detailed mark or its narrow-terminal variant.</summary>
     internal static IRenderable Create(bool detailed)
     {
         var lines = detailed ? DetailedLines : CompactLines;
         var rows = new List<IRenderable>(lines.Length + 2);
+
         for (var index = 0; index < lines.Length; index++)
         {
             var color = index < lines.Length / 2 ? TerminalTheme.Accent : TerminalTheme.Info;
+
             rows.Add(new Text(lines[index], Style.Parse(color)));
         }
 
         var width = lines.Max(line => line.Length);
+
         rows.Add(new Text(string.Empty));
         rows.Add(new Text("OpenAI".PadLeft((width + "OpenAI".Length) / 2),
             Style.Parse("bold " + TerminalTheme.Primary)));
+
         return new Rows(rows);
     }
+
+    #endregion
 }

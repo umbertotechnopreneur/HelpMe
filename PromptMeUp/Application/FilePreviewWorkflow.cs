@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -32,21 +31,28 @@ public sealed class FilePreviewWorkflow(
     IConsoleShellView shell,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Previews local effects and optionally offers each concrete operation through the existing authorization gate.</summary>
     public async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
         var executionMode = settings.DirectModeEnabled ? CommandExecutionMode.Direct : CommandExecutionMode.Confirm;
         var preview = service.Build(options);
         view.Render(preview);
+
         if (preview.Effects.Any(effect => effect.Collision))
         {
             shell.RenderWarning(text.Text("Preview.Collision"));
+
             return 1;
         }
+
         if (Console.IsInputRedirected || Console.IsOutputRedirected || !view.ConfirmReview())
         {
             return 0;
         }
+
         await using var session = await AuditSessionScope.StartAsync(
             audit, "file-preview", settings, new { preview.Operation, count = preview.Effects.Count }, AuditSessionOutcome.Paused, cancellationToken).ConfigureAwait(false);
         foreach (var effect in preview.Effects)
@@ -55,16 +61,23 @@ public sealed class FilePreviewWorkflow(
             var command = service.BuildCommand(preview, effect);
             var result = await commands.RunForResultAsync(
                 session.Id, command, settings, cancellationToken, executionMode).ConfigureAwait(false);
+
             if (result is null)
             {
                 return 0;
             }
+
             if (result.TimedOut || result.ExitCode != 0)
             {
                 return 1;
             }
         }
+
         session.Outcome = AuditSessionOutcome.Completed;
+
         return 0;
     }
+
+    #endregion
+
 }

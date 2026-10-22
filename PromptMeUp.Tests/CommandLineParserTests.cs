@@ -22,9 +22,17 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies command line parser behavior.</summary>
 public sealed class CommandLineParserTests
 {
+
+    #region Fields
+
     private readonly CommandLineParser _parser = new(new LocalizationService());
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Parses skills and memory screens without accepting unreviewed payloads or combining top-level actions.</summary>
     [Theory]
@@ -192,4 +200,6 @@ public sealed class CommandLineParserTests
         Assert.False(result.Succeeded);
         Assert.Equal("Argomento sconosciuto '--sconosciuto'. Usa --help per la sintassi dei comandi.", result.Error);
     }
+
+    #endregion
 }

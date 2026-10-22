@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using PromptMeUp.Models;
 using PromptMeUp.Services;
@@ -36,6 +35,9 @@ public sealed class ScriptWorkflow(
     IConsoleShellView shell,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Generates or revises a selected-language script and offers explicit save, temporary execution, validation, or no-op actions.</summary>
     public async Task RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
@@ -90,6 +92,7 @@ public sealed class ScriptWorkflow(
                             await artifacts.SaveAsync(outputPath, artifact.Source, language, cancellationToken).ConfigureAwait(false);
                             shell.RenderSuccess(text.Text("Script.Saved", outputPath));
                             RenderFinalSummary(response, settings, summaryRendered);
+
                             return;
                         }
                         break;
@@ -103,6 +106,7 @@ public sealed class ScriptWorkflow(
                         if (execution is not null)
                         {
                             RenderFinalSummary(response, settings, summaryRendered);
+
                             return;
                         }
                         break;
@@ -126,6 +130,10 @@ public sealed class ScriptWorkflow(
             }
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Prefers the exact --output destination and otherwise returns a collision-free current-directory suggestion.</summary>
     private string ResolveOutputPath(CommandLineOptions options, string request, ScriptLanguage language) => options.OutputFile is { Length: > 0 }
@@ -183,6 +191,10 @@ public sealed class ScriptWorkflow(
             { TimedOut: false, ExitCode: 0 } => AuditSessionOutcome.Completed,
             _ => AuditSessionOutcome.Failed
         };
+
         return result;
     }
+
+    #endregion
+
 }
