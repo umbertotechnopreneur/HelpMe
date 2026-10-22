@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the six supported translations for explicitly reviewed local reminders.</summary>
     private static void AddReminderEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -38,4 +40,6 @@ internal static partial class UiTextCatalog
         entries.Add("Reminder.InvalidNote", new("Use a non-empty, single-line note of at most 500 characters without credentials.", "Usa una nota non vuota su una sola riga, di massimo 500 caratteri e senza credenziali.", "Utilisez une note non vide d’une seule ligne, de 500 caractères maximum, sans identifiants secrets.", "Eine nicht leere, einzeilige Notiz mit höchstens 500 Zeichen und ohne Zugangsdaten verwenden.", "Usa una nota de una sola línea, no vacía, con hasta 500 caracteres y sin credenciales.", "Dùng ghi chú một dòng, không trống, tối đa 500 ký tự và không chứa thông tin đăng nhập."));
         entries.Add("Reminder.InvalidTime", new("Enter a future ISO date with an explicit offset (2030-05-20T14:30:00+02:00 or Z), or a clock time such as 14:30 or 3pm for its next local occurrence. Ambiguous or skipped daylight-saving times require an explicit offset.", "Inserisci una data ISO futura con fuso esplicito (2030-05-20T14:30:00+02:00 o Z), oppure un orario come 14:30 o 3pm per la prossima occorrenza locale. Gli orari ambigui o saltati dall’ora legale richiedono un fuso esplicito.", "Saisissez une date ISO future avec décalage explicite (2030-05-20T14:30:00+02:00 ou Z), ou une heure comme 14:30 ou 3pm pour sa prochaine occurrence locale. Les heures ambiguës ou sautées par le changement d’heure exigent un décalage explicite.", "Ein künftiges ISO-Datum mit explizitem Offset eingeben (2030-05-20T14:30:00+02:00 oder Z), oder eine Uhrzeit wie 14:30 oder 3pm für das nächste lokale Auftreten. Mehrdeutige oder durch Zeitumstellung übersprungene Zeiten erfordern einen expliziten Offset.", "Introduce una fecha ISO futura con zona explícita (2030-05-20T14:30:00+02:00 o Z), o una hora como 14:30 o 3pm para su próxima aparición local. Las horas ambiguas u omitidas por el cambio horario requieren una zona explícita.", "Nhập ngày ISO tương lai có múi giờ rõ ràng (2030-05-20T14:30:00+02:00 hoặc Z), hoặc giờ như 14:30 hay 3pm cho lần tiếp theo theo giờ địa phương. Giờ không rõ ràng hoặc bị bỏ qua do đổi giờ mùa hè cần múi giờ rõ ràng."));
     }
+
+    #endregion
 }

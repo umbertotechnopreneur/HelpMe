@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies command review accounting behavior.</summary>
 public sealed class CommandReviewAccountingTests
 {
+
+    #region Methods
+
     /// <summary>Counts successful and rejected AI review contracts in the parent flow without closing or relabeling it.</summary>
     [Theory]
     [InlineData(15, true)]
@@ -60,4 +64,6 @@ public sealed class CommandReviewAccountingTests
         Assert.Equal(1, accounting.Usage.OutputTokens);
         Assert.Equal(0.000025m, accounting.EstimatedCostUsd);
     }
+
+    #endregion
 }

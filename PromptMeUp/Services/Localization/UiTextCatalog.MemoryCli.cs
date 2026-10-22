@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds all six translations for direct saved-memory commands and their verified outcomes.</summary>
     private static void AddMemoryCliEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -88,4 +90,6 @@ internal static partial class UiTextCatalog
             Spanish: "La búsqueda con IA devolvió una selección no válida. No se eliminó nada.",
             Vietnamese: "AI tìm ghi chú trả về lựa chọn không hợp lệ. Chưa xóa gì."));
     }
+
+    #endregion
 }

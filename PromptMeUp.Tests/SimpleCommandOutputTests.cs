@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies simple command output behavior.</summary>
 public sealed class SimpleCommandOutputTests
 {
+
+    #region Methods
+
     /// <summary>Shows progress before a newline while retaining only the final rewritten row.</summary>
     [Fact]
     public void Progress_RewritesAndErasesCurrentLine()
@@ -125,7 +129,13 @@ public sealed class SimpleCommandOutputTests
         Assert.EndsWith("final diagnostic", redacted);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Combines the visible spans in a test update.</summary>
     /// <param name="update">The normalized command line.</param>
     private static string Flatten(CommandOutputUpdate update) => string.Concat(update.Spans.Select(span => span.Text));
+
+    #endregion
 }

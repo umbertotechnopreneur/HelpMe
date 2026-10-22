@@ -24,8 +24,12 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies OpenAI response parser behavior.</summary>
 public sealed class OpenAiResponseParserTests
 {
+
+    #region Methods
+
     /// <summary>Verifies response text concatenation and every normalized usage counter.</summary>
     [Fact]
     public void ParseResponse_TextAndUsage_ReturnsNormalizedResponse()
@@ -301,6 +305,10 @@ public sealed class OpenAiResponseParserTests
     public void ReadApiError_InvalidEnvelope_ReturnsNull(string json) =>
         Assert.Null(OpenAiResponseParser.ReadApiError(json));
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Wraps model text in the minimal Responses API envelope consumed by the response parser.</summary>
     private static string CreateTextResponse(string text) => JsonSerializer.Serialize(new
     {
@@ -317,4 +325,6 @@ public sealed class OpenAiResponseParserTests
             }
         }
     });
+
+    #endregion
 }

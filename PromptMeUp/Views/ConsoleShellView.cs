@@ -25,51 +25,84 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Provides shared terminal headings, messages, input, and runtime status.</summary>
 public interface IConsoleShellView
 {
+
+    #region Properties
+
     ConsoleRenderOptions Options { get; }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>Applies terminal compatibility preferences for the current invocation.</summary>
     void Configure(ConsoleRenderOptions options);
 
+    /// <summary>Draws a compact product and invocation header while preserving prior terminal output.</summary>
     void RenderHeader(string command, AppSettings? settings, bool hasApiKey);
 
+    /// <summary>Draws one responsive turn snapshot after a request or on explicit status demand.</summary>
     void RenderRuntimeStatus(ShellRuntimeStatus status);
 
+    /// <summary>Shows indeterminate progress while working and retains the measured outcome in scrollback.</summary>
     Task<T> RunWithStatusAsync<T>(string message, Func<Task<T>> action);
 
+    /// <summary>Displays the shared project banner on exit unless help has already shown it.</summary>
     void RenderFooter();
 
+    /// <summary>Renders the localized thanks, project links, and copyright at most once per local day.</summary>
     void RenderProjectBanner();
 
+    /// <summary>Shows a sanitized frameless error without exposing exception internals.</summary>
     void RenderError(string message);
 
+    /// <summary>Shows a short frameless informational message.</summary>
     void RenderNotice(string message);
 
+    /// <summary>Identifies each selected skill with its package icon and a readable name color.</summary>
     void RenderActiveSkills(IReadOnlyList<SkillDefinition> skills);
 
+    /// <summary>Shows one successful operation message using the shared terminal palette.</summary>
     void RenderSuccess(string message);
 
+    /// <summary>Shows one recoverable warning using the shared terminal palette.</summary>
     void RenderWarning(string message);
 
+    /// <summary>Shows low-emphasis explanatory text without leaking Spectre into the application layer.</summary>
     void RenderMuted(string message);
 
+    /// <summary>Shows a compact section heading for a focused command workflow.</summary>
     void RenderSectionTitle(string message);
 
+    /// <summary>Reads one required text value using a localized passive-view prompt.</summary>
     string ReadText(string prompt);
 
+    /// <summary>Renders product, runtime, source, and safety details as a compact frameless About section.</summary>
     void RenderVersion(BuildInformation buildInformation, string runtimeVersion, string runtimeIdentifier);
 
+    /// <summary>Writes one layout separator line through the passive console boundary.</summary>
     void WriteLine();
+
+    #endregion
 }
 
 /// <summary>Provides the shared terminal shell operations used by passive PromptMeUp views.</summary>
 public sealed class ConsoleShellView : IConsoleShellView
 {
+
+    #region Fields
+
     private const string RepositoryUrl = "https://github.com/umbertotechnopreneur/PromptMeUp";
     private readonly IAnsiConsole _console;
     private readonly ILocalizationService _text;
     private readonly IProjectBannerSchedule _projectBannerSchedule;
     private bool _projectBannerRendered;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the shared premium console chrome used by every top-level command.</summary>
     public ConsoleShellView(IAnsiConsole console, ILocalizationService text, IProjectBannerSchedule projectBannerSchedule)
@@ -79,7 +112,15 @@ public sealed class ConsoleShellView : IConsoleShellView
         _projectBannerSchedule = projectBannerSchedule ?? throw new ArgumentNullException(nameof(projectBannerSchedule));
     }
 
+    #endregion
+
+    #region Properties
+
     public ConsoleRenderOptions Options { get; private set; } = new(false, false);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Applies terminal compatibility preferences for the current invocation.</summary>
     public void Configure(ConsoleRenderOptions options)
@@ -95,6 +136,10 @@ public sealed class ConsoleShellView : IConsoleShellView
         RenderHeaderContext(command, settings, hasApiKey);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Renders the opening identity and product promise as an unmistakable terminal banner.</summary>
     private void RenderOpeningBanner()
     {
@@ -102,17 +147,25 @@ public sealed class ConsoleShellView : IConsoleShellView
         var title = $"{icon}[#F5F5F5]P R O M P T M E[/][white] U P[/]";
         var width = Math.Max(1, (int)Math.Floor(_console.Profile.Width * 0.8d));
         var dividerWidth = Math.Max(1, width - (icon.Length + "P R O M P T M E U P".Length) - 1);
+
         _console.WriteLine();
         _console.MarkupLine($"{title} {ThemeSeparator.Markup(dividerWidth)}");
         var trial = TrialNotice.MarkupFor(_text, TerminalSession.For(_console).License?.Invoke());
+
         if (trial.Length > 0) _console.MarkupLine("  " + trial);
+
         if (_projectBannerSchedule.TryMarkOpeningTipRenderedToday())
         {
             _console.MarkupLine($"  [bold {TerminalTheme.Info}]{Markup.Escape(_text.Text("Shell.OpeningKicker"))}[/]");
             _console.MarkupLine($"  [{TerminalTheme.Primary}]{Markup.Escape(_text.Text("Tagline"))}[/]");
         }
+
         _console.WriteLine();
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Draws one responsive turn snapshot after a request or on explicit status demand.</summary>
     public void RenderRuntimeStatus(ShellRuntimeStatus status)
@@ -141,6 +194,7 @@ public sealed class ConsoleShellView : IConsoleShellView
             TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "✓", "+")}{_text.Text("Shell.SessionCost")}", status.SessionCostKnown ? FormatCost(status.RunningCostUsd) : _text.Text("Costs.Unavailable"), TerminalTheme.Success),
             TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "▣", "#")}{_text.Text("Shell.Cache")}", cache)
         };
+
         if (status.HasSessionUsage)
         {
             metrics.Add(TerminalTheme.CompactMetric(_text.Text("Shell.SessionInput"), FormatTokens(status.SessionInputTokens), TerminalTheme.Info));
@@ -151,6 +205,7 @@ public sealed class ConsoleShellView : IConsoleShellView
         var labelWidth = metrics.Where((_, index) => index % pairs == 0)
             .Select(metric => new Segment(metric.Label + ":").CellCount())
             .Append(new Segment(_text.Text("Shell.ContextBudget") + ":").CellCount()).Max();
+
         RenderSessionSnapshot(
             $"{icon}{_text.Text("Shell.Session")}",
             metrics,
@@ -158,10 +213,12 @@ public sealed class ConsoleShellView : IConsoleShellView
             firstLabelWidth: labelWidth);
         _console.WriteLine();
         RenderContextBudget(status, labelWidth);
+
         if (status.HasContextBreakdown)
         {
             RenderContextLegend(status);
         }
+
         _console.WriteLine();
     }
 
@@ -181,14 +238,17 @@ public sealed class ConsoleShellView : IConsoleShellView
         var elapsed = Stopwatch.StartNew();
         var outcome = TerminalActivityState.Completed;
         var row = new TerminalActivityRow(message, TerminalActivityState.Working, useSymbols: !Options.NoEmoji);
+
         try
         {
             if (Options.NoAnimation || !_console.Profile.Capabilities.Interactive || Console.IsOutputRedirected)
             {
                 _console.Write(new Padder(row, new Padding(indent, 0, 0, 0)));
                 _console.WriteLine();
+
                 return await action().ConfigureAwait(false);
             }
+
             return await _console.Progress()
                 .AutoClear(true)
                 .Columns(
@@ -199,7 +259,9 @@ public sealed class ConsoleShellView : IConsoleShellView
                 .StartAsync(async context =>
                 {
                     var task = context.AddTask(new string(' ', indent) + Markup.Escape(message));
+
                     task.IsIndeterminate = true;
+
                     try
                     {
                         return await action().ConfigureAwait(false);
@@ -223,6 +285,7 @@ public sealed class ConsoleShellView : IConsoleShellView
         finally
         {
             session.State = outcome;
+
             if (typeof(T) != typeof(CommandExecutionResult) || outcome != TerminalActivityState.Completed)
             {
                 _console.Write(new Padder(new TerminalActivityRow(message, outcome, elapsed.Elapsed, !Options.NoEmoji),
@@ -248,7 +311,9 @@ public sealed class ConsoleShellView : IConsoleShellView
         {
             return;
         }
+
         var content = new Grid();
+
         content.AddColumn();
         content.AddRow(new Markup($"[bold {TerminalTheme.Primary}]{TerminalTheme.IconPrefix(Options, "👋", "*")}{Markup.Escape(_text.Text("Footer.Thanks"))}[/]"));
         content.AddRow(new Text(" "));
@@ -269,12 +334,16 @@ public sealed class ConsoleShellView : IConsoleShellView
     {
         var safe = TerminalText.Safe(message);
         var collapse = safe.Length > 400 || safe.Count(character => character == '\n') > 4;
+
         if (!collapse)
         {
             TerminalTheme.WriteSection(_console, _text.Text("Common.Error"), safe, TerminalTheme.Error);
+
             return;
         }
+
         var summary = safe.Split('\n').FirstOrDefault(line => !string.IsNullOrWhiteSpace(line)) ?? _text.Text("Common.Error");
+
         _console.Write(new TerminalActivityRow(summary, TerminalActivityState.Failed, useSymbols: !Options.NoEmoji));
         _console.WriteLine();
         TerminalDisclosure.Write(_console, _text, TerminalTurnKind.Tool, _text.Text("Common.Error"),
@@ -295,17 +364,21 @@ public sealed class ConsoleShellView : IConsoleShellView
     public void RenderActiveSkills(IReadOnlyList<SkillDefinition> skills)
     {
         ArgumentNullException.ThrowIfNull(skills);
+
         if (skills.Count == 0)
         {
             return;
         }
+
         var names = skills.Select(skill =>
         {
             var color = ThemeCatalogService.ContrastRatio(skill.Color, TerminalTheme.Current.Colors.Background) >= 4.5d
                 ? skill.Color : TerminalTheme.Primary;
             var label = TerminalTheme.IconPrefix(Options, skill.Icon, "*") + skill.Name;
+
             return $"[bold {color}]{Markup.Escape(label)}[/]";
         });
+
         _console.WriteLine();
         ConversationText.Write(_console, new Markup(
             $"[bold {TerminalTheme.Info}]{TerminalTheme.IconPrefix(Options, "ℹ", "i")}[/][{TerminalTheme.Primary}]{_text.Text("Lab.Active", string.Join(", ", names))}[/]"));
@@ -338,7 +411,9 @@ public sealed class ConsoleShellView : IConsoleShellView
     public string ReadText(string prompt)
     {
         using var state = new TerminalStateScope(_console, _text, TerminalActivityState.NeedsInput);
+
         TerminalPromptDock.Align(_console, reservedRows: 2);
+
         return _console.Prompt(new TextPrompt<string>(Markup.Escape(prompt)));
     }
 
@@ -361,6 +436,7 @@ public sealed class ConsoleShellView : IConsoleShellView
             TerminalTheme.CompactMetric(_text.Text("About.BuildCommit"), buildInformation.GitCommit)
         ], preferredPairs: 1, width: _console.Profile.Width);
         var links = new Grid();
+
         links.AddColumn(new GridColumn().RightAligned().NoWrap());
         links.AddColumn(new GridColumn().LeftAligned());
         links.AddRow(
@@ -382,6 +458,10 @@ public sealed class ConsoleShellView : IConsoleShellView
 
     /// <summary>Writes one layout separator line through the passive console boundary.</summary>
     public void WriteLine() => _console.WriteLine();
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Aligns startup settings beneath the working directory without a separate heading.</summary>
     private void RenderHeaderContext(string command, AppSettings? settings, bool hasApiKey)
@@ -406,6 +486,7 @@ public sealed class ConsoleShellView : IConsoleShellView
                 ],
                 preferredPairs: 3,
                 width: Math.Max(1, _console.Profile.Width - 2));
+
             _console.Write(new Padder(grid, new Padding(2, 0, 0, 0)));
         }
     }
@@ -435,22 +516,28 @@ public sealed class ConsoleShellView : IConsoleShellView
         const int maximumBarWidth = 36;
         var width = Math.Max(1, _console.Profile.Width);
         var labelText = _text.Text("Shell.ContextBudget") + ":";
+
         labelText = new string(' ', Math.Max(0, Math.Min(firstLabelWidth, width) - new Segment(labelText).CellCount())) + labelText;
         var valueText = FormatContextUsage(status.ActiveContextTokens, status.ContextBudgetTokens);
         var label = new Text(labelText, Style.Parse(TerminalTheme.Muted));
         var value = new Text(valueText, Style.Parse($"bold {TerminalTheme.Info}"));
+
         if (width < 4)
         {
             // Spectre bars require at least four terminal cells; preserve the text during extreme resizing.
             _console.Write(new Rows(label, value));
+
             return;
         }
+
         var labelWidth = new Segment(labelText).CellCount();
         var valueWidth = new Segment(valueText).CellCount();
         var barWidth = width - labelWidth - valueWidth - 4;
+
         if (barWidth >= minimumBarWidth)
         {
             _console.Write(BudgetColumns(label, BudgetBar(status, Math.Min(maximumBarWidth, barWidth)), value));
+
             return;
         }
 
@@ -458,6 +545,7 @@ public sealed class ConsoleShellView : IConsoleShellView
         IRenderable detail = barWidth >= minimumBarWidth
             ? BudgetColumns(BudgetBar(status, Math.Min(maximumBarWidth, barWidth)), value)
             : new Rows(BudgetBar(status, Math.Min(maximumBarWidth, width)), value);
+
         _console.Write(new Rows(label, detail));
     }
 
@@ -471,10 +559,12 @@ public sealed class ConsoleShellView : IConsoleShellView
             char[] glyphs = useSymbols ? ['S', 'U', 'T', 'A', '.'] : ['━', '━', '━', '━', '─'];
             var colors = new[] { TerminalTheme.Warning, TerminalTheme.Info, TerminalTheme.Accent, TerminalTheme.Success, TerminalTheme.Muted };
             var bar = new Paragraph();
+
             for (var index = 0; index < cells.Length; index++)
             {
                 bar.Append(new string(glyphs[index], cells[index]), Style.Parse(colors[index]));
             }
+
             return bar;
         }
 
@@ -493,8 +583,13 @@ public sealed class ConsoleShellView : IConsoleShellView
             RemainingStyle = Style.Parse(TerminalTheme.Divider)
         };
         var options = new RenderOptions(_console.Profile.Capabilities, new Size(width, 1));
+
         return column.Render(options, task, TimeSpan.Zero);
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Allocates terminal cells by share, including free space, with at most one cell of rounding per category.</summary>
     internal static int[] AllocateContextBarCells(ShellRuntimeStatus status, int width)
@@ -519,12 +614,18 @@ public sealed class ConsoleShellView : IConsoleShellView
             .OrderByDescending(index => exact[index] - cells[index])
             .ThenBy(index => index)
             .Take(width - cells.Sum());
+
         foreach (var index in remainderOrder)
         {
             cells[index]++;
         }
+
         return cells;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Explains every bar category numerically and identifies the guide as already included in system tokens.</summary>
     private void RenderContextLegend(ShellRuntimeStatus status)
@@ -533,6 +634,7 @@ public sealed class ConsoleShellView : IConsoleShellView
         var free = status.ContextBudgetTokens > 0 && status.ActiveContextTokens.HasValue
             ? FormatContextTokens(Math.Max(0, status.ContextBudgetTokens - status.ActiveContextTokens.Value))
             : _text.Text("Costs.Unavailable");
+
         _console.Write(TerminalTheme.PairGrid(
         [
             TerminalTheme.CompactMetric(ContextLegendLabel("Shell.ContextSystem", "S", useSymbols), FormatContextTokens(status.SystemInstructionTokens), TerminalTheme.Warning),
@@ -560,6 +662,7 @@ public sealed class ConsoleShellView : IConsoleShellView
     private static Grid BudgetColumns(params IRenderable[] components)
     {
         var grid = new Grid();
+
         for (var index = 0; index < components.Length; index++)
         {
             grid.AddColumn(new GridColumn
@@ -568,7 +671,9 @@ public sealed class ConsoleShellView : IConsoleShellView
                 Padding = new Padding(0, 0, index + 1 < components.Length ? 2 : 0, 0)
             });
         }
+
         grid.AddRow(components);
+
         return grid;
     }
 
@@ -597,5 +702,7 @@ public sealed class ConsoleShellView : IConsoleShellView
         >= 10_000 => $"{value / 1_000d:0.0}K",
         _ => value.ToString("N0")
     };
+
+    #endregion
 
 }

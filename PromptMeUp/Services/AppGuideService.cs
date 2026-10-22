@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -24,14 +23,22 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Loads the bundled user guide for in-application help.</summary>
 public interface IAppGuideService
 {
+    #region Methods
+
+    /// <summary>Loads the requested application data from its configured source.</summary>
     Task<AppGuideContext> LoadAsync(IReadOnlyList<string> topics, string language, CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Loads bounded, localized guidance from the bundled application reference.</summary>
 public sealed class AppGuideService : IAppGuideService
 {
+    #region Fields
+
     public const int MaxTopics = 2;
     public const long MaximumTokens = 3000;
 
@@ -44,12 +51,20 @@ public sealed class AppGuideService : IAppGuideService
     private readonly IPromptCatalogService _catalog;
     private readonly ILogger<AppGuideService> _logger;
 
+    #endregion
+
+    #region Initialization
+
     /// <summary>Creates a guide reader restricted to the packaged prompt catalog.</summary>
     public AppGuideService(IPromptCatalogService catalog, ILogger<AppGuideService> logger)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Loads known chapters in the selected language and rejects invalid or oversized context.</summary>
     public async Task<AppGuideContext> LoadAsync(IReadOnlyList<string> topics, string language, CancellationToken cancellationToken)
@@ -105,4 +120,6 @@ public sealed class AppGuideService : IAppGuideService
             requested.Length, normalizedLanguage, tokens);
         return new AppGuideContext(Array.AsReadOnly(requested), completed, tokens);
     }
+
+    #endregion
 }

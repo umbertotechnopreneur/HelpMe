@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies diagnostic input behavior.</summary>
 public sealed class DiagnosticInputTests
 {
+
+    #region Methods
+
     /// <summary>Sanitizes evidence but rejects credential-shaped command-line input.</summary>
     [Fact]
     public async Task ReadAsync_RedactsBeforeSharing_ArgumentsAreRejected()
@@ -32,11 +36,25 @@ public sealed class DiagnosticInputTests
         Assert.Throws<InvalidOperationException>(() => service.Sanitize("marker", 20, fromArgument: true));
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Marks redacted text so tests can observe the redaction boundary.</summary>
     private sealed class MarkerRedactor : ISensitiveDataRedactor
     {
+
+        #region Methods
+
         /// <summary>Substitutes a harmless marker to test the privacy boundary without credential fixtures.</summary>
         public string Redact(string value) => value.Replace("marker", "[removed]", StringComparison.Ordinal);
+
+        #endregion
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Preserves multiline evidence while enforcing a strict size limit.</summary>
     [Fact]
@@ -81,4 +99,6 @@ public sealed class DiagnosticInputTests
         var service = new BoundedTextInput(new SensitiveDataRedactor(), new LocalizationService());
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.ReadAsync(new StringReader("log"), 10, cancellation.Token));
     }
+
+    #endregion
 }

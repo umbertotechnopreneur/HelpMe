@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Diagnostics;
 using System.Text;
 
@@ -25,18 +24,28 @@ namespace PromptMeUp.Services;
 /// <summary>Copies an exact previewed shell command without invoking a shell.</summary>
 public interface ICommandClipboard
 {
+    #region Methods
+
     /// <summary>Returns whether the host clipboard accepted the command.</summary>
     bool TryCopy(string command);
+
+    #endregion
 }
 
 /// <summary>Writes commands to the Windows clipboard through the system clipboard utility.</summary>
 public sealed class CommandClipboard : ICommandClipboard
 {
+    #region Methods
+
     /// <summary>Copies the exact command through standard input, never through command-line interpolation.</summary>
     public bool TryCopy(string command)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
-        if (!OperatingSystem.IsWindows()) return false;
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
         var utility = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "clip.exe");
 
         try
@@ -48,10 +57,18 @@ public sealed class CommandClipboard : ICommandClipboard
                 RedirectStandardInput = true,
                 StandardInputEncoding = new UnicodeEncoding(false, true)
             });
-            if (process is null) return false;
+            if (process is null)
+            {
+                return false;
+            }
+
             process.StandardInput.Write(command);
             process.StandardInput.Close();
-            if (process.WaitForExit(3000)) return process.ExitCode == 0;
+            if (process.WaitForExit(3000))
+            {
+                return process.ExitCode == 0;
+            }
+
             process.Kill(entireProcessTree: true);
             return false;
         }
@@ -60,4 +77,6 @@ public sealed class CommandClipboard : ICommandClipboard
             return false;
         }
     }
+
+    #endregion
 }

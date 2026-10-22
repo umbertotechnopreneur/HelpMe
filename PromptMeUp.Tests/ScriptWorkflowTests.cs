@@ -24,8 +24,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies script workflow behavior.</summary>
 public sealed class ScriptWorkflowTests
 {
+
+    #region Methods
+
     /// <summary>Passes the saved confirmation preference to one-time script execution through the normal authorization gate.</summary>
     [Theory]
     [InlineData(true, CommandExecutionMode.Direct)]
@@ -93,6 +97,10 @@ public sealed class ScriptWorkflowTests
         Assert.Equal(expectedMode, mode.Value);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates an artifact response with a valid JSON script and ordinary provider accounting.</summary>
     private static AiResponse Response() => new(
         "response-id",
@@ -105,4 +113,6 @@ public sealed class ScriptWorkflowTests
         200,
         0,
         "provider-request-id");
+
+    #endregion
 }

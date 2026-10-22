@@ -23,31 +23,51 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Displays conversation turns and reads messages from the terminal.</summary>
 public interface IChatView
 {
+
+    #region Methods
+
+    /// <summary>Starts chat with its essential shortcuts, leaving the full command guide on demand.</summary>
     void RenderIntro();
 
+    /// <summary>Shows every chat command and the session-summary explanation when the user asks for help.</summary>
     void RenderCommandGuide();
 
+    /// <summary>Shows a compact reminder of saved-memory commands available inside chat.</summary>
     void RenderMemoryHint();
 
+    /// <summary>Reads one bounded message while showing the full editing guide only on the first prompt.</summary>
     string ReadMessage(int maximumCharacters, string? userName = null, ShellRuntimeStatus? status = null);
 
+    /// <summary>Renders the user label above an indented text column, matching the typed-input rhythm.</summary>
     void RenderUser(string text);
 
+    /// <summary>Renders a model response through the Markdown renderer so formatting never degrades into raw source text.</summary>
     void RenderAssistant(string markdown, bool animate, CancellationToken cancellationToken);
 
+    /// <summary>Notifies the user when old active-context messages were pruned but remain in the session ledger.</summary>
     void RenderMemoryPruned(int messageCount);
+
+    #endregion
 }
 
 /// <summary>Renders chat turns, AI activity, and follow-up choices without owning conversation state.</summary>
 public sealed class ChatView : IChatView
 {
+
+    #region Fields
+
     private readonly IAnsiConsole _console;
     private readonly ILocalizationService _text;
     private readonly IPoorMarkdownRenderer _markdown;
     private readonly IConsoleShellView _shell;
     private bool _inputHintShown;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the lightweight multi-turn chat control.</summary>
     public ChatView(
@@ -62,14 +82,20 @@ public sealed class ChatView : IChatView
         _shell = shell ?? throw new ArgumentNullException(nameof(shell));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Starts chat with its essential shortcuts, leaving the full command guide on demand.</summary>
     public void RenderIntro()
     {
         _inputHintShown = false;
         TerminalSession.For(_console).SetMode(ConversationDisplayMode.Chat, hasPromptDock: true);
         var icon = TerminalTheme.IconPrefix(_shell.Options, "💬", ">");
+
         TerminalTheme.WriteRule(_console, $"{icon}{_text.Text("Chat.Title")}", TerminalTheme.Accent);
         var shortcuts = new[] { _text.Text("Chat.Command.RunSyntax"), "/status", "/exit", "/help" };
+
         _console.MarkupLine($"  [{TerminalTheme.Muted}]{Markup.Escape(_text.Text("Chat.CommandsHeading"))}[/] " +
             string.Join($" [{TerminalTheme.Divider}]·[/] ", shortcuts.Select(shortcut =>
                 $"[bold {TerminalTheme.Info}]{Markup.Escape(shortcut)}[/]")));
@@ -101,6 +127,7 @@ public sealed class ChatView : IChatView
         var remember = $"[bold {TerminalTheme.Info}]{Markup.Escape(_text.Text("Chat.Command.RememberSyntax"))}[/]";
         var memories = $"[bold {TerminalTheme.Info}]/memories[/]";
         var forget = $"[bold {TerminalTheme.Info}]/forget <id>[/]";
+
         _console.MarkupLine($"  [{TerminalTheme.Muted}]{_text.Text("Chat.MemoryHint", remember, memories, forget)}[/]");
         _console.WriteLine();
     }
@@ -112,7 +139,9 @@ public sealed class ChatView : IChatView
         var name = string.IsNullOrWhiteSpace(userName) ? _text.Text("Chat.You") : userName.Trim();
         var label = $"{TerminalTheme.IconPrefix(_shell.Options, "👤", ">")}{name} >";
         var input = new MultilineChatPrompt(_console, _text).Read(label, maximumCharacters, status, showHint: !_inputHintShown);
+
         _inputHintShown = true;
+
         return input;
     }
 
@@ -140,6 +169,7 @@ public sealed class ChatView : IChatView
         cancellationToken.ThrowIfCancellationRequested();
         var (heading, body) = SeparateLeadingHeading(markdown);
         var document = PoorMarkdownRenderer.Parse(body);
+
         TerminalSession.For(_console).History.Add(TerminalTurnKind.Assistant, heading ?? string.Empty,
             document, markdown.Length);
         TerminalTurnHeader.Write(_console, _text, TerminalTurnKind.Assistant, heading);
@@ -147,6 +177,7 @@ public sealed class ChatView : IChatView
         if (!string.IsNullOrWhiteSpace(body))
         {
             var shouldAnimate = animate && !_shell.Options.NoAnimation && !Console.IsOutputRedirected;
+
             _markdown.Render(document, shouldAnimate, cancellationToken);
         }
 
@@ -156,6 +187,10 @@ public sealed class ChatView : IChatView
     /// <summary>Notifies the user when old active-context messages were pruned but remain in the session ledger.</summary>
     public void RenderMemoryPruned(int messageCount) =>
         _console.MarkupLine($"[{TerminalTheme.Warning}]{Markup.Escape(_text.Text("Chat.Pruned", messageCount))}[/]");
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Renders one slash command and its localized behavior as a compact two-column guide.</summary>
     private void RenderCommandHint(string command, string descriptionKey) =>
@@ -170,18 +205,23 @@ public sealed class ChatView : IChatView
         var lineEnd = normalized.IndexOf('\n');
         var firstLine = lineEnd >= 0 ? normalized[..lineEnd] : normalized;
         var markerCount = firstLine.TakeWhile(character => character == '#').Count();
+
         if (markerCount is < 1 or > 3 || firstLine.Length <= markerCount || !char.IsWhiteSpace(firstLine[markerCount]))
         {
             return (null, markdown);
         }
 
         var heading = firstLine[markerCount..].Trim();
+
         if (string.IsNullOrWhiteSpace(heading))
         {
             return (null, markdown);
         }
 
         var body = lineEnd < 0 ? string.Empty : normalized[(lineEnd + 1)..].TrimStart('\n');
+
         return (heading, body);
     }
+
+    #endregion
 }

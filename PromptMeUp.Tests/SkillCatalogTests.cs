@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies skill catalog behavior.</summary>
 public sealed class SkillCatalogTests
 {
+
+    #region Methods
+
     /// <summary>Rejects malformed field types through the localized validation contract.</summary>
     [Theory]
     [InlineData("name: [demo]\ndescription: Example")]
@@ -288,6 +292,10 @@ public sealed class SkillCatalogTests
         Assert.Equal("first", selected[0].Name);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a package under this fixture's own local skills directory.</summary>
     private static string Package(RegressionFixture fixture, string name, string definition)
     {
@@ -322,4 +330,6 @@ public sealed class SkillCatalogTests
 
     /// <summary>Creates preferences in the same isolated database as the fixture.</summary>
     private static SkillsAndMemoryStore Store(RegressionFixture fixture) => new(fixture.Paths, new SensitiveDataRedactor(), new LocalizationService());
+
+    #endregion
 }

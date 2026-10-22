@@ -28,29 +28,47 @@ internal sealed record TerminalAction(string Label, string Color, bool Selected 
 /// <summary>Renders consistently spaced, keyboard-focused actions without an enclosing frame.</summary>
 internal static class TerminalActionBar
 {
+
+    #region Methods
+
     /// <summary>Places actions in one open row and optionally omits each button's brackets.</summary>
     internal static IRenderable Create(IReadOnlyList<TerminalAction> actions, bool showBrackets = true)
     {
         ArgumentNullException.ThrowIfNull(actions);
+
         if (actions.Count == 0)
         {
             throw new ArgumentException("An action bar needs at least one action.", nameof(actions));
         }
 
         var row = new Grid();
+
         foreach (var action in actions)
         {
             row.AddColumn();
         }
+
         row.AddRow(actions.Select(action => (IRenderable)new Button(action, showBrackets)).ToArray());
+
         return row;
     }
+
+    #endregion
+
+    #region Types
 
     /// <summary>Renders one action with a visible focus marker and the current theme selection colors.</summary>
     private sealed class Button(TerminalAction action, bool showBrackets) : IRenderable
     {
+
+        #region Fields
+
         private readonly string _label = (action.Selected ? ">" : " ")
             + (showBrackets ? $" [ {action.Label} ]" : $" {action.Label}");
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Accepts the available width without requesting a wrapped action row.</summary>
         public Measurement Measure(RenderOptions options, int maxWidth) =>
@@ -62,9 +80,14 @@ internal static class TerminalActionBar
             var style = Style.Parse(action.Selected
                 ? $"{TerminalTheme.SelectionForeground} on {TerminalTheme.SelectionBackground}"
                 : action.Color);
+
             return maxWidth > 0
                 ? Segment.SplitOverflow(new Segment(_label, style), Overflow.Ellipsis, maxWidth)
                 : [];
         }
+
+        #endregion
     }
+
+    #endregion
 }

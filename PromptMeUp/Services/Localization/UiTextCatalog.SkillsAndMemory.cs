@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds all six translations for opt-in skills and reviewed memory learning.</summary>
     private static void AddSkillsAndMemoryEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -142,4 +144,6 @@ internal static partial class UiTextCatalog
         entries.Add("Lab.ForgetNotice", new("Deleting this memory also permanently clears all collected messages and suggestions. Other saved memories and earlier history remain.", "Eliminare questo ricordo cancella definitivamente anche tutti i messaggi raccolti e i suggerimenti. Gli altri ricordi salvati e la cronologia precedente restano.", "Supprimer ce souvenir efface aussi définitivement tous les messages conservés et les suggestions. Les autres souvenirs et l’historique restent.", "Diese Erinnerung zu löschen entfernt auch alle gesammelten Nachrichten und Vorschläge endgültig. Andere Erinnerungen und der bisherige Verlauf bleiben.", "Eliminar este recuerdo también borra definitivamente todos los mensajes conservados y las sugerencias. Los demás recuerdos y el historial permanecen.", "Xóa ghi nhớ này cũng xóa vĩnh viễn mọi tin nhắn đã thu thập và đề xuất. Ghi nhớ khác và lịch sử trước đó vẫn còn."));
         entries.Add("Lab.ConcatInvalid", new("The selected paths or files are invalid, linked, or exceed the concatenation limits.", "I percorsi o i file selezionati non sono validi, sono collegamenti o superano i limiti di concatenazione.", "Les chemins ou fichiers sélectionnés sont invalides, sont des liens ou dépassent les limites de concaténation.", "Die gewählten Pfade oder Dateien sind ungültig, sind Verknüpfungen oder überschreiten die Zusammenführungslimits.", "Las rutas o los archivos seleccionados no son válidos, son enlaces o superan los límites de concatenación.", "Đường dẫn hoặc tệp đã chọn không hợp lệ, là liên kết hoặc vượt giới hạn ghép tệp."));
     }
+
+    #endregion
 }

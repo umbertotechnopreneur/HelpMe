@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds offline PDF discovery, explicit opening, and recovery copy in all supported languages.</summary>
     private static void AddCommandGuideEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -74,4 +76,6 @@ internal static partial class UiTextCatalog
             Spanish: "No se pudo iniciar el lector PDF. Abre este archivo manualmente o configura un lector PDF predeterminado: {0}",
             Vietnamese: "Không thể khởi động trình đọc PDF. Mở tệp này thủ công hoặc đặt trình đọc PDF mặc định: {0}"));
     }
+
+    #endregion
 }

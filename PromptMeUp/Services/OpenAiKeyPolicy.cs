@@ -16,14 +16,19 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
 /// <summary>Validates OpenAI API-key input without retaining or disclosing the secret value.</summary>
 public static class OpenAiKeyPolicy
 {
+    #region Fields
+
     // Windows Credential Manager accepts at most 2,560 bytes; the vault uses UTF-16.
     public const int MaximumLength = 1_280;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Checks whether a value has the local shape expected for an OpenAI secret without authenticating it.</summary>
     public static bool IsPlausible(string? secret)
@@ -39,4 +44,6 @@ public static class OpenAiKeyPolicy
 
         return secret.All(character => !char.IsWhiteSpace(character) && !char.IsControl(character));
     }
+
+    #endregion
 }

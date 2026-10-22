@@ -26,8 +26,12 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies preferred name provider behavior.</summary>
 public sealed class PreferredNameProviderTests
 {
+
+    #region Methods
+
     /// <summary>Sends the normalized literal name in localized chat and query instructions with either caching mode and matching estimates.</summary>
     [Theory]
     [InlineData("en")]
@@ -172,6 +176,10 @@ public sealed class PreferredNameProviderTests
             AppSettings.Default with { PreferredName = "Example" }, "en"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Reads the same instruction text from ordinary and explicit-cache Responses payloads.</summary>
     private static string Instructions(JsonElement request) => request.TryGetProperty("instructions", out var instructions)
         ? instructions.GetString()!
@@ -215,9 +223,21 @@ public sealed class PreferredNameProviderTests
         usage = new { input_tokens = 20, output_tokens = 1, total_tokens = 21 }
     });
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Captures outgoing provider requests and returns synthetic responses.</summary>
     private sealed class RecordingHandler : HttpMessageHandler
     {
+
+        #region Properties
+
         internal List<string> Bodies { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures outbound payloads and returns a synthetic response without network access.</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -225,5 +245,9 @@ public sealed class PreferredNameProviderTests
             Bodies.Add(await request.Content!.ReadAsStringAsync(cancellationToken));
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ResponseJson()) };
         }
+
+        #endregion
     }
+
+    #endregion
 }

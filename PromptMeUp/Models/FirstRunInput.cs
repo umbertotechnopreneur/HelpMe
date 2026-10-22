@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Names explicit navigation without interpreting a blank field as consent.</summary>

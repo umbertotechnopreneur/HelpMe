@@ -16,12 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services.Sqlite;
 
 /// <summary>Defines the current SQLite schema version and its initialization SQL.</summary>
 internal static class SqliteSchema
 {
+    #region Fields
+
     /// <summary>Identifies the schema version supported by this application build.</summary>
     internal const int Version = 8;
 
@@ -208,4 +209,6 @@ internal static class SqliteSchema
         );
 
         """;
+
+    #endregion
 }

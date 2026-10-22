@@ -24,8 +24,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies terminal components behavior.</summary>
 public sealed class TerminalComponentsTests
 {
+
+    #region Methods
+
     /// <summary>Protects all four context categories and complete row widths across supported languages and terminal sizes.</summary>
     [Theory]
     [InlineData(32)]
@@ -136,4 +140,6 @@ public sealed class TerminalComponentsTests
         Assert.Contains("echo '[red]'", output.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("**", output.ToString(), StringComparison.Ordinal);
     }
+
+    #endregion
 }

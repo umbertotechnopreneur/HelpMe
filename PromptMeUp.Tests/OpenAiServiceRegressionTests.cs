@@ -31,8 +31,12 @@ using Serilog.Events;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies OpenAI service regression behavior.</summary>
 public sealed class OpenAiServiceRegressionTests
 {
+
+    #region Methods
+
     /// <summary>Keeps a completed priced request in the ledger when shutdown starts at the persistence boundary.</summary>
     [Fact]
     public async Task SendAsync_CancellationDuringPersistence_RetainsCompletedUsage()
@@ -316,6 +320,10 @@ public sealed class OpenAiServiceRegressionTests
         Assert.Equal(0L, await fixture.ScalarAsync("SELECT COUNT(*) FROM ai_sessions;"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a bounded synthetic chapter with the exact token metadata expected by instruction assembly.</summary>
     private static AppGuideContext CreateGuide()
     {
@@ -366,10 +374,27 @@ public sealed class OpenAiServiceRegressionTests
     private static Task<AiResponse> SendAsync(OpenAiService service, CancellationToken cancellationToken = default) =>
         service.SendAsync("query-system", "regression-session", [new ChatMessage("user", "Hello")], AppSettings.Default, "en", cancellationToken);
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Supplies synthetic provider responses and records request activity for guide tests.</summary>
     private sealed class GuideHttpHandler(IEnumerable<string> responses) : HttpMessageHandler
     {
+
+        #region Fields
+
         private readonly Queue<string> _responses = new(responses);
+
+        #endregion
+
+        #region Properties
+
         public List<string> Requests { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures each provider-visible request and returns the next in-memory response without networking.</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -377,13 +402,27 @@ public sealed class OpenAiServiceRegressionTests
             Requests.Add(await request.Content!.ReadAsStringAsync(cancellationToken));
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(_responses.Dequeue()) };
         }
+
+        #endregion
     }
 
+    /// <summary>Collects log events for assertions without writing them to disk.</summary>
     private sealed class CaptureSink : ILogEventSink
     {
+
+        #region Properties
+
         public List<LogEvent> Events { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures exactly what the persistent Serilog pipeline would receive.</summary>
         public void Emit(LogEvent logEvent) => Events.Add(logEvent);
+
+        #endregion
     }
+
+    #endregion
 }

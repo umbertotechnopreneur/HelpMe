@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Identifies a script language supported by the reviewed artifact workflow.</summary>

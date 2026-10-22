@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies preferred name settings behavior.</summary>
 public sealed class PreferredNameSettingsTests
 {
+
+    #region Methods
+
     /// <summary>Accepts optional Unicode names and ordinary nicknames while trimming and applying canonical normalization.</summary>
     [Theory]
     [InlineData(null, "")]
@@ -217,9 +221,21 @@ public sealed class PreferredNameSettingsTests
         Assert.Equal(0L, await fixture.ScalarAsync("SELECT (SELECT COUNT(*) FROM activity_audit) + (SELECT COUNT(*) FROM ai_session_events);"));
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Collects application log messages for isolated regression assertions.</summary>
     private sealed class RecordingLogger : ILogger<SqliteDatabaseService>
     {
+
+        #region Properties
+
         public List<string> Messages { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Declines logger scopes because the test records only emitted database messages.</summary>
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -230,5 +246,9 @@ public sealed class PreferredNameSettingsTests
         /// <summary>Records formatted log content without forwarding it to any external sink.</summary>
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
             Messages.Add(formatter(state, exception));
+
+        #endregion
     }
+
+    #endregion
 }

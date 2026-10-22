@@ -21,11 +21,15 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Supplies saved settings, feature availability, and memory actions to setup.</summary>
 public sealed record SetupViewState(
     AppSettings Settings,
     bool ApiKeyConfigured,
     bool AdminKeyConfigured)
 {
+
+    #region Properties
+
     public SettingsSection InitialSection { get; init; } = SettingsSection.General;
 
     public bool ContextBudgetOverridden { get; init; }
@@ -41,8 +45,11 @@ public sealed record SetupViewState(
     public Func<IReadOnlyList<PersistentMemory>>? RefreshSavedMemories { get; init; }
 
     public bool SaveSucceeded { get; init; }
+
+    #endregion
 }
 
+/// <summary>Identifies a section in the setup interface.</summary>
 public enum SettingsSection
 {
     General,
@@ -59,24 +66,32 @@ public enum SettingsSection
     About
 }
 
+/// <summary>Returns the user's settings and credential changes from setup.</summary>
 public sealed record SetupSubmission(
     AppSettings Settings,
     string? ApiKey,
     string? AdminKey,
     bool TestConnection)
 {
+
+    #region Properties
+
     public SettingsFeatureChanges? Features { get; init; }
 
     public bool KeepOpen { get; init; }
 
     public SettingsSection SelectedSection { get; init; } = SettingsSection.General;
+
+    #endregion
 }
 
+/// <summary>Controls animation, emoji, and footer rendering for a terminal session.</summary>
 public sealed record ConsoleRenderOptions(bool NoAnimation, bool NoEmoji, bool SuppressFooter = false);
 
 /// <summary>Identifies the interactive workflow without coupling session metrics to localized labels.</summary>
 public enum ConversationDisplayMode { Chat, Plan, Script, Diagnose, Explain }
 
+/// <summary>Supplies provider, context, token, and cost values to the session display.</summary>
 public sealed record ShellRuntimeStatus(
     string Provider,
     string Model,
@@ -92,7 +107,11 @@ public sealed record ShellRuntimeStatus(
     long CachedInputTokens,
     long CacheWriteTokens)
 {
+
+    #region Properties
+
     public long? ActiveContextTokens { get; init; }
+
     public ConversationDisplayMode? ConversationMode { get; init; }
 
     public long ContextBudgetTokens { get; init; }
@@ -125,6 +144,10 @@ public sealed record ShellRuntimeStatus(
 
     public bool HasSessionUsage { get; init; }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Creates an idle status-bar snapshot from persisted settings.</summary>
     public static ShellRuntimeStatus FromSettings(AppSettings? settings) => new(
         settings?.AiEnabled == false ? "local" : "OpenAI",
@@ -140,8 +163,11 @@ public sealed record ShellRuntimeStatus(
         true,
         0,
         0);
+
+    #endregion
 }
 
+/// <summary>Identifies the next action selected after viewing command suggestions.</summary>
 public enum CommandSuggestionAction
 {
     DoNotExecute,
@@ -150,6 +176,7 @@ public enum CommandSuggestionAction
     CopyAndExit
 }
 
+/// <summary>Returns the chosen suggestion action and its optional command.</summary>
 public sealed record CommandSuggestionDecision(
     CommandSuggestionAction Action,
     SuggestedCommand? SuggestedCommand);

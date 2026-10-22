@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using PromptMeUp.Models;
 
@@ -25,11 +24,17 @@ namespace PromptMeUp.Services;
 /// <summary>Defines the configurable limits applied to generated artifact content and files.</summary>
 public static class ArtifactLimitConfiguration
 {
+    #region Methods
+
     /// <summary>Loads non-secret MiB settings without changing persistent application preferences.</summary>
     public static ArtifactLimits Load(Func<string, string?> readVariable, ILocalizationService text) => new(
         Read("PROMPTMEUP_MAX_SCRIPT_MIB", 1, readVariable, text),
         Read("PROMPTMEUP_MAX_PLAN_MIB", 8, readVariable, text),
         ReadOutputTokens(readVariable, text));
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Loads a separate artifact generation budget without changing ordinary chat verbosity.</summary>
     private static int ReadOutputTokens(Func<string, string?> readVariable, ILocalizationService text)
@@ -61,4 +66,6 @@ public static class ArtifactLimitConfiguration
         }
         return mebibytes * ArtifactLimits.Mebibyte;
     }
+
+    #endregion
 }

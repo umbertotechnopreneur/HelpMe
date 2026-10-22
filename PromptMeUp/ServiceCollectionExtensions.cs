@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Application;
@@ -32,6 +31,9 @@ namespace PromptMeUp;
 /// <summary>Registers the PromptMeUp runtime with the console host service collection.</summary>
 internal static class ServiceCollectionExtensions
 {
+
+    #region Methods
+
     /// <summary>Adds the model, service, view, and workflow layers used by the lightweight console host.</summary>
     public static IServiceCollection AddPromptMeUpRuntime(
         this IServiceCollection services,
@@ -44,6 +46,7 @@ internal static class ServiceCollectionExtensions
         {
             var console = new EscapeAwareAnsiConsole(AnsiConsole.Console, shutdownToken);
             TerminalSession.For(console).License = () => provider.GetRequiredService<IAppLicenseService>().Current;
+
             return console;
         });
         services.AddLogging(builder =>
@@ -164,6 +167,10 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<SetupCommandHandler>();
         services.AddSingleton<IApplicationCommandRouter, ApplicationCommandRouter>();
         services.AddSingleton<IPromptMeUpApplication, PromptMeUpApplication>();
+
         return services;
     }
+
+    #endregion
+
 }

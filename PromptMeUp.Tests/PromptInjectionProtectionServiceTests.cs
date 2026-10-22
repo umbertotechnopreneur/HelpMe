@@ -21,9 +21,17 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies prompt injection protection service behavior.</summary>
 public sealed class PromptInjectionProtectionServiceTests
 {
+
+    #region Fields
+
     private readonly PromptInjectionProtectionService _service = new();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Verifies that ordinary multilingual style preferences remain valid and count Unicode words.</summary>
     [Theory]
@@ -89,4 +97,6 @@ public sealed class PromptInjectionProtectionServiceTests
 
         Assert.False(result.IsSafe);
     }
+
+    #endregion
 }

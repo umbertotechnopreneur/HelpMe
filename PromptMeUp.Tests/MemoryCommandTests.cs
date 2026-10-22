@@ -26,8 +26,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies memory command behavior.</summary>
 public sealed class MemoryCommandTests
 {
+
+    #region Methods
+
     /// <summary>Routes flags and the formerly misleading slash invocations to local memory workflows.</summary>
     [Theory]
     [InlineData("--remember", AppCommand.Remember)]
@@ -180,6 +184,10 @@ public sealed class MemoryCommandTests
         Assert.ThrowsAny<JsonException>(() => MemoryCommandWorkflow.ParseMatches(json,
             [new PersistentMemory("known", "A note.", true, DateTimeOffset.UtcNow)]));
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds parsed options exactly as a terminal invocation supplies them.</summary>
     private static CommandLineOptions Options(string flag, string value) =>
         new CommandLineParser(new LocalizationService()).Parse([flag, value]).Options!;
@@ -216,4 +224,6 @@ public sealed class MemoryCommandTests
             new ApplicationActivityRecorder(fixture.Audit, NullLogger<ApplicationActivityRecorder>.Instance),
             new BoundedTextInput(new SensitiveDataRedactor(), text), fixture.Secrets, shell, view, forgetView, text);
     }
+
+    #endregion
 }

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Describes the minimal runtime facts that make terminal guidance actionable while exposing the machine name only to operational prompts.</summary>
@@ -27,7 +26,14 @@ public sealed record RuntimeContext(
     bool IsPreferredScriptInterpreterAvailable,
     string WorkingDirectory)
 {
+
+    #region Properties
+
     public string MachineName { get; init; } = string.Empty;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Formats approved technical facts, revealing the sanitized working directory and machine name only to an operational prompt.</summary>
     public string ToPromptBlock(string language, bool includeWorkingDirectory)
@@ -43,6 +49,7 @@ public sealed record RuntimeContext(
                 PreferredScriptInterpreter,
                 IsPreferredScriptInterpreterAvailable ? text.Available : text.Unavailable)
         };
+
         if (includeWorkingDirectory)
         {
             lines.Add(string.Format(text.WorkingDirectory, WorkingDirectory));
@@ -50,8 +57,12 @@ public sealed record RuntimeContext(
         }
 
         lines.Add(text.PrivacyBoundary);
+
         return string.Join(Environment.NewLine, lines);
     }
+
+    #endregion
+
 }
 
 /// <summary>Keeps the provider-bound runtime-context wording complete for every supported interface language.</summary>
@@ -66,6 +77,9 @@ internal sealed record RuntimeContextPromptText(
     string Unavailable,
     string PrivacyBoundary)
 {
+
+    #region Methods
+
     /// <summary>Returns the runtime-context wording for a supported language, with English as the defensive fallback.</summary>
     public static RuntimeContextPromptText For(string? language) => language?.Trim().ToLowerInvariant() switch
     {
@@ -130,4 +144,7 @@ internal sealed record RuntimeContextPromptText(
             "not detected locally",
             "- Privacy boundary: no user name, personal path, environment-variable value, or secret is supplied. Do not request, infer, or invent them.")
     };
+
+    #endregion
+
 }

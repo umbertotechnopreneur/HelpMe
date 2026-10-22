@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -34,12 +33,16 @@ public sealed class PlanWorkflow(
     IConsoleShellView shell,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Creates or loads an exclusively locked plan and preserves its working directory on resume.</summary>
     public async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
         ExecutionPlan plan;
         var runtimeStatus = ShellRuntimeStatus.FromSettings(settings);
         IDisposable lease;
+
         if (options.ResumeId is not null)
         {
             lease = store.Acquire(options.ResumeId);
@@ -61,18 +64,27 @@ public sealed class PlanWorkflow(
             plan = store.Parse(response.Text, goal, Environment.CurrentDirectory);
             lease = store.Acquire(plan.Id);
         }
+        // Hold the exclusive lease through execution so another session cannot advance the same plan.
         using (lease)
         {
-            if (!string.Equals(plan.Directory, Environment.CurrentDirectory, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            var directoryComparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            var isPlanDirectory = string.Equals(plan.Directory, Environment.CurrentDirectory, directoryComparison);
+
+            if (!isPlanDirectory)
             {
                 throw new InvalidOperationException(text.Text("Plan.Directory", plan.Directory));
             }
+
             await store.SaveAsync(plan, cancellationToken).ConfigureAwait(false);
             view.Render(plan);
+
             if (!view.ConfirmStart())
             {
                 return 0;
             }
+
             return await RunStepsAsync(plan, options.ResumeId is not null, settings, cancellationToken, runtimeStatus).ConfigureAwait(false);
         }
     }
@@ -94,25 +106,32 @@ public sealed class PlanWorkflow(
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var step = plan.Steps[index];
+
                 if (step.Status == PlanStepStatus.Completed && !resuming)
                 {
                     continue;
                 }
+
                 shell.RenderSectionTitle(step.Label);
+
                 if (step.Status == PlanStepStatus.Pending)
                 {
                     plan.Steps[index] = step with { Status = PlanStepStatus.Running };
                     await store.SaveAsync(plan, cancellationToken).ConfigureAwait(false);
                     var result = await commands.RunForResultAsync(session.Id, step.Command, settings, cancellationToken, executionMode).ConfigureAwait(false);
+
                     if (result is null)
                     {
                         plan.Steps[index] = step;
                         await store.SaveAsync(plan, cancellationToken).ConfigureAwait(false);
+
                         return 0;
                     }
+
                     if (result.TimedOut || result.ExitCode != 0)
                     {
                         await StopAsync(plan, index, cancellationToken).ConfigureAwait(false);
+
                         return 1;
                     }
                 }
@@ -120,16 +139,24 @@ public sealed class PlanWorkflow(
                 {
                     shell.RenderNotice(text.Text("Plan.Recheck"));
                 }
+
                 var check = await commands.RunForResultAsync(session.Id, step.Verification, settings, cancellationToken, executionMode).ConfigureAwait(false);
-                if (check is null || check.TimedOut || check.OutputTruncated || check.ExitCode != 0 || !view.ConfirmOutcome(step))
+
+                // Ask for outcome confirmation only after complete, successful verification output.
+                var verificationFailed = check is null || check.TimedOut || check.OutputTruncated || check.ExitCode != 0;
+
+                if (verificationFailed || !view.ConfirmOutcome(step))
                 {
                     await StopAsync(plan, index, cancellationToken).ConfigureAwait(false);
+
                     return check is null ? 0 : 1;
                 }
+
                 plan.Steps[index] = step with { Status = PlanStepStatus.Completed };
                 await store.SaveAsync(plan, cancellationToken).ConfigureAwait(false);
                 view.Render(plan);
                 var currentStatus = runtimeStatus ?? ShellRuntimeStatus.FromSettings(settings);
+
                 if (index < plan.Steps.Count - 1
                     && (SessionSummaryPolicy.ShouldRender(settings, SessionSummaryTiming.AfterVisibleTurn)
                         || AiConversationWorkflow.IsContextWarning(currentStatus)))
@@ -139,6 +166,7 @@ public sealed class PlanWorkflow(
             }
             session.Outcome = AuditSessionOutcome.Completed;
             shell.RenderSuccess(text.Text("Plan.Completed"));
+
             return 0;
         }
         finally
@@ -146,6 +174,10 @@ public sealed class PlanWorkflow(
             shell.RenderRuntimeStatus(runtimeStatus ?? ShellRuntimeStatus.FromSettings(settings));
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Stops on uncertain evidence while retaining later checkpoints so completed commands cannot be replayed.</summary>
     private async Task StopAsync(ExecutionPlan plan, int index, CancellationToken cancellationToken)
@@ -155,4 +187,7 @@ public sealed class PlanWorkflow(
         shell.RenderWarning(text.Text("Plan.Stopped"));
         view.Render(plan);
     }
+
+    #endregion
+
 }

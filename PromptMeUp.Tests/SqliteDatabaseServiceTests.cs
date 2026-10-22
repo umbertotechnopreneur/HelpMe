@@ -25,10 +25,18 @@ using PromptMeUp.Services.Sqlite;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies SQLite database service behavior.</summary>
 public sealed class SqliteDatabaseServiceTests : IDisposable
 {
+
+    #region Fields
+
     private readonly string _dataDirectory;
     private readonly AppPaths _paths;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates an isolated filesystem-backed database location for each test.</summary>
     public SqliteDatabaseServiceTests()
@@ -42,6 +50,10 @@ public sealed class SqliteDatabaseServiceTests : IDisposable
             Path.Combine(_dataDirectory, "logs", "promptmeup-.log"),
             Path.Combine(_dataDirectory, "prompt"));
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Removes the disposable database and releases pooled SQLite file handles.</summary>
     public void Dispose()
@@ -159,6 +171,10 @@ public sealed class SqliteDatabaseServiceTests : IDisposable
                 "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'app_settings';"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates the service under test with a no-op logger.</summary>
     private SqliteDatabaseService CreateService() =>
         new(
@@ -195,4 +211,6 @@ public sealed class SqliteDatabaseServiceTests : IDisposable
         command.CommandText = sql;
         return Convert.ToInt64(await command.ExecuteScalarAsync());
     }
+
+    #endregion
 }

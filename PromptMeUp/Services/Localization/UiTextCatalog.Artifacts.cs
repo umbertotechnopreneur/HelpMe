@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the complete six-language artifacts UI catalog.</summary>
     private static void AddArtifactsEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -550,4 +552,6 @@ internal static partial class UiTextCatalog
             Spanish: "Las comprobaciones de sintaxis no garantizan corrección ni seguridad. Para PowerShell, AnalyzerAvailable indica si se usó PSScriptAnalyzer opcional.",
             Vietnamese: "Kiểm tra cú pháp không chứng minh tính đúng đắn hay an toàn. Với PowerShell, AnalyzerAvailable cho biết có dùng PSScriptAnalyzer tùy chọn hay không."));
     }
+
+    #endregion
 }

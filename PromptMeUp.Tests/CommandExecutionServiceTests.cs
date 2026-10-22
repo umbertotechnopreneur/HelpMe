@@ -24,11 +24,19 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies command execution service behavior.</summary>
 public sealed class CommandExecutionServiceTests
 {
+
+    #region Fields
+
     private static readonly TimeSpan ProcessDeadline = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan MaximumReturnTime = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan WatchdogDeadline = TimeSpan.FromSeconds(45);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Publishes partial stdout and stderr before exit and returns evidence when only the command is stopped.</summary>
     [Fact]
@@ -200,6 +208,10 @@ public sealed class CommandExecutionServiceTests
         Assert.Equal("synthetic-error", result.StandardError);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates the test-only authorization capability for the exact safe fixture command.</summary>
     private static ApprovedCommand Approve(string command) => ApprovedCommand.Create(command,
         CommandRiskAssessmentService.AssessLocally(command, "en"));
@@ -222,4 +234,6 @@ public sealed class CommandExecutionServiceTests
             // The synthetic sleeper exited while cleanup inspected it.
         }
     }
+
+    #endregion
 }

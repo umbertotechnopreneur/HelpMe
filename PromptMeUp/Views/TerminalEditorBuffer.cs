@@ -24,8 +24,15 @@ namespace PromptMeUp.Views;
 /// <summary>Owns the draft and Unicode-safe caret used by fullscreen text fields.</summary>
 internal sealed class TerminalEditorBuffer
 {
+
+    #region Properties
+
     public string Text { get; private set; } = string.Empty;
     public int Caret { get; private set; }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Replaces the draft when focus enters a field.</summary>
     public void SetText(string value)
@@ -45,6 +52,7 @@ internal sealed class TerminalEditorBuffer
     public bool Apply(ConsoleKeyInfo key, bool multiline, int maximumCharacters)
     {
         var control = (key.Modifiers & ConsoleModifiers.Control) != 0;
+
         switch (key.Key)
         {
             case ConsoleKey.U when control:
@@ -74,7 +82,10 @@ internal sealed class TerminalEditorBuffer
                 Caret = previous;
                 break;
             case ConsoleKey.Delete when Caret < Text.Length:
-                Text = Text.Remove(Caret, TerminalTextElements.Next(Text, Caret) - Caret);
+                // Delete the complete grapheme so combining marks stay attached to their character.
+                var next = TerminalTextElements.Next(Text, Caret);
+                var deletedLength = next - Caret;
+                Text = Text.Remove(Caret, deletedLength);
                 break;
             case ConsoleKey.Enter when multiline:
                 return Insert("\n", maximumCharacters);
@@ -85,8 +96,13 @@ internal sealed class TerminalEditorBuffer
                 }
                 break;
         }
+
         return true;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Inserts a whole fragment or leaves the draft unchanged when it does not fit.</summary>
     private bool Insert(string value, int maximumCharacters)
@@ -95,12 +111,15 @@ internal sealed class TerminalEditorBuffer
         {
             return false;
         }
+
         Text = Text.Insert(Caret, value);
         Caret += value.Length;
+
         if (Caret < Text.Length)
         {
             Caret = StringInfo.ParseCombiningCharacters(Text).FirstOrDefault(index => index >= Caret, Text.Length);
         }
+
         return true;
     }
 
@@ -110,7 +129,10 @@ internal sealed class TerminalEditorBuffer
     {
         var start = LineStart(Caret);
         var end = LineEnd(Caret);
-        if (direction < 0 && start == 0 || direction > 0 && end == Text.Length)
+        var movingBeforeFirstLine = direction < 0 && start == 0;
+        var movingAfterLastLine = direction > 0 && end == Text.Length;
+
+        if (movingBeforeFirstLine || movingAfterLastLine)
         {
             return;
         }
@@ -118,8 +140,10 @@ internal sealed class TerminalEditorBuffer
         var column = StringInfo.ParseCombiningCharacters(Text[start..Caret]).Length;
         var targetStart = direction < 0 ? LineStart(start - 1) : end + 1;
         var targetEnd = LineEnd(targetStart);
+
         // A character can occupy several UTF-16 positions, but the cursor stops only once.
         var elements = StringInfo.ParseCombiningCharacters(Text[targetStart..targetEnd]);
+
         Caret = column < elements.Length ? targetStart + elements[column] : targetEnd;
     }
 
@@ -130,6 +154,9 @@ internal sealed class TerminalEditorBuffer
     private int LineEnd(int position)
     {
         var end = Text.IndexOf('\n', position);
+
         return end < 0 ? Text.Length : end;
     }
+
+    #endregion
 }

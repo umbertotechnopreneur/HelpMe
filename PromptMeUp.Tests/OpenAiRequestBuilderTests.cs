@@ -24,8 +24,12 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies OpenAI request builder behavior.</summary>
 public sealed class OpenAiRequestBuilderTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that a long GPT-5.6 chat prefix combines a stable breakpoint with growing-history checkpoints.</summary>
     [Fact]
     public void BuildBody_LongGpt56ChatInstruction_UsesImplicitCachingAfterExplicitPrefix()
@@ -286,6 +290,10 @@ public sealed class OpenAiRequestBuilderTests
             guide: new AppGuideContext(["overview"], new string('x', 12_004), 3_001)));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates an explicit guide-aware response contract without changing legacy fixtures.</summary>
     private static PromptDefinition CreateGuidePrompt() => CreatePrompt() with
     {
@@ -314,4 +322,6 @@ public sealed class OpenAiRequestBuilderTests
             ["en"] = "Base instruction."
         },
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+
+    #endregion
 }

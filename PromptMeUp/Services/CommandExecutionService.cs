@@ -16,31 +16,46 @@
  *
  * VBWR E */
 
-
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Executes approved commands with bounded output and cancellation.</summary>
 public interface ICommandExecutionService
 {
+    #region Methods
+
+    /// <summary>Executes an approved command with the supplied cancellation and output handling.</summary>
     Task<CommandExecutionResult> ExecuteAsync(
         ApprovedCommand command,
         TimeSpan timeout,
         CancellationToken cancellationToken,
         Action<CommandOutputUpdate>? output = null,
         CancellationToken stopToken = default);
+
+    #endregion
 }
 
 /// <summary>Starts authorized local commands and streams their bounded output to the caller.</summary>
 public sealed class CommandExecutionService : ICommandExecutionService
 {
+    #region Fields
+
     private readonly ILogger<CommandExecutionService> _logger;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the restricted child-process runner.</summary>
     public CommandExecutionService(ILogger<CommandExecutionService> logger) =>
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Runs a recently authorized command in non-elevated PowerShell and captures bounded output.</summary>
     /// <param name="command">The exact command authorized by the user.</param>
@@ -72,6 +87,10 @@ public sealed class CommandExecutionService : ICommandExecutionService
         return result;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds a non-interactive, non-elevated PowerShell child-process definition.</summary>
     private static ProcessStartInfo BuildStartInfo(string command)
     {
@@ -90,4 +109,5 @@ public sealed class CommandExecutionService : ICommandExecutionService
         return startInfo;
     }
 
+    #endregion
 }

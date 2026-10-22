@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies OpenAI endpoint policy behavior.</summary>
 public sealed class OpenAiEndpointPolicyTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that the official Responses endpoint is accepted.</summary>
     [Fact]
     public void IsAllowed_OfficialResponsesEndpoint_ReturnsTrue() =>
@@ -37,4 +41,6 @@ public sealed class OpenAiEndpointPolicyTests
     [Fact]
     public void IsAllowed_EndpointWithQuery_ReturnsFalse() =>
         Assert.False(OpenAiEndpointPolicy.IsAllowed("https://api.openai.com/v1/responses?forward=true"));
+
+    #endregion
 }

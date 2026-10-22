@@ -16,30 +16,44 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Loads and stores credentials through supported local secret sources.</summary>
 public interface IEnvironmentSecretService
 {
+    #region Methods
+
+    /// <summary>Loads the requested value from its configured local source.</summary>
     string? Load(string variableName);
 
+    /// <summary>Reports whether the named credential source contains a usable value.</summary>
     bool IsConfigured(string variableName);
 
+    /// <summary>Checks whether a value resembles a supported OpenAI secret key.</summary>
     bool LooksLikeOpenAiKey(string? secret);
 
+    /// <summary>Stores the credential in the supported current-user secret store.</summary>
     SecretStoreResult StoreForCurrentUser(string variableName, string secret);
 
     /// <summary>Temporarily supplies a candidate key to the current async flow without persisting it.</summary>
     IDisposable UseTemporary(string variableName, string secret);
+
+    #endregion
 }
 
 /// <summary>Provides short-lived in-process secret values without writing them to persisted settings.</summary>
 public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> logger) : IEnvironmentSecretService
 {
+    #region Fields
+
     private readonly AsyncLocal<(string Name, string Secret)?> _temporary = new();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reads the validation candidate, Windows vault, or an explicitly supplied environment secret.</summary>
     public string? Load(string variableName)
@@ -104,11 +118,21 @@ public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> l
         return new TemporarySecret(_temporary, previous);
     }
 
+    #endregion
+
+    #region Types
+
     /// <summary>Restores the preceding async-local credential without writing environment variables.</summary>
     private sealed class TemporarySecret(AsyncLocal<(string Name, string Secret)?> slot,
         (string Name, string Secret)? previous) : IDisposable
     {
+        #region Fields
+
         private bool _disposed;
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Releases the candidate secret once, including failed or cancelled validation.</summary>
         public void Dispose()
@@ -119,7 +143,13 @@ public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> l
                 _disposed = true;
             }
         }
+
+        #endregion
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Validates the allowlisted OpenAI environment variable name.</summary>
     private static string ValidateVariableName(string variableName)
@@ -132,4 +162,6 @@ public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> l
 
         return name;
     }
+
+    #endregion
 }

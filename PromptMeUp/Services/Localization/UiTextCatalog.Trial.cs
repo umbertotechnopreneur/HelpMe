@@ -1,8 +1,11 @@
 ﻿// SPDX-License-Identifier: MIT
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds trial countdown, expiration, and Store actions in all six supported languages.</summary>
     private static void AddTrialEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -62,4 +65,6 @@ internal static partial class UiTextCatalog
             Spanish: "Compra PromptMeUp en Microsoft Store para continuar. Solo están disponibles --about y --help.",
             Vietnamese: "Mua PromptMeUp trên Microsoft Store để tiếp tục. Chỉ --about và --help khả dụng."));
     }
+
+    #endregion
 }

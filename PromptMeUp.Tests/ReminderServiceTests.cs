@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies reminder service behavior.</summary>
 public sealed class ReminderServiceTests
 {
+
+    #region Methods
+
     /// <summary>Clock-only input schedules the next local occurrence while explicit dates retain their reviewed offset.</summary>
     [Theory]
     [InlineData("14:30", "2030-05-20T14:30:00+00:00")]
@@ -197,6 +201,10 @@ public sealed class ReminderServiceTests
         Assert.Empty(await service.ListAsync(default));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Captures displayed reminders through the same delivery callback used by the interactive workflow.</summary>
     private static async Task<IReadOnlyList<Reminder>> DeliverAsync(ReminderService service)
     {
@@ -229,14 +237,29 @@ public sealed class ReminderServiceTests
         return (store, catalog, skill);
     }
 
+    #endregion
+
+    #region Types
+
     /// <summary>Exposes a mutable deterministic instant and timezone without scheduling callbacks.</summary>
     private sealed class FixedClock : TimeProvider
     {
+
+        #region Properties
+
         internal DateTimeOffset Now { get; set; } = new(2030, 5, 20, 12, 0, 0, TimeSpan.Zero);
         internal TimeZoneInfo Zone { get; init; } = TimeZoneInfo.Utc;
         public override TimeZoneInfo LocalTimeZone => Zone;
 
+        #endregion
+
+        #region Methods
+
         /// <summary>Returns the test-controlled instant without consulting the machine clock.</summary>
         public override DateTimeOffset GetUtcNow() => Now.ToUniversalTime();
+
+        #endregion
     }
+
+    #endregion
 }

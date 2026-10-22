@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Identifies one local saved-memory management action.</summary>
@@ -39,5 +38,11 @@ public sealed record MemoryProposalWorkspace(
     IReadOnlyList<MemoryProposal> Proposals,
     IReadOnlyList<LearningObservation> Evidence)
 {
+
+    #region Properties
+
     public static MemoryProposalWorkspace Disabled { get; } = new(false, [], []);
+
+    #endregion
+
 }

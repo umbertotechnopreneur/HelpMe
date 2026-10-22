@@ -27,12 +27,24 @@ using Xunit.Abstractions;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies fullscreen feature form behavior.</summary>
 public sealed class FullscreenFeatureFormTests
 {
+
+    #region Fields
+
     private readonly ITestOutputHelper _output;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Retains captured frames in test output for human-readable layout review.</summary>
     public FullscreenFeatureFormTests(ITestOutputHelper output) => _output = output;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Group headings never push the focused control or persistent actions outside a small viewport.</summary>
     [Theory]
@@ -159,6 +171,10 @@ public sealed class FullscreenFeatureFormTests
         Assert.Equal(11, GetField<int>(form, "_page"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Calls only the passive renderer with in-memory output, without opening a real terminal buffer.</summary>
     private static void Render(FullscreenForm form, IReadOnlyList<FormPage> pages, IReadOnlyList<FormField> fields) =>
         typeof(FullscreenForm).GetMethod("Render", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, ["Settings.Title", pages, fields]);
@@ -186,4 +202,6 @@ public sealed class FullscreenFeatureFormTests
 
     /// <summary>Removes terminal escapes while preserving the rendered text and line boundaries.</summary>
     private static string Plain(StringWriter output) => Regex.Replace(output.ToString(), @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty, RegexOptions.CultureInvariant);
+
+    #endregion
 }

@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Infrastructure;
 
+/// <summary>Resolves the local storage, logs, settings, and database paths.</summary>
 public sealed record AppPaths(
     string DataDirectory,
     string DatabasePath,
@@ -26,6 +26,9 @@ public sealed record AppPaths(
     string LogFilePattern,
     string PromptDirectory)
 {
+
+    #region Methods
+
     /// <summary>Resolves and creates the portable local data, log, database, and packaged-prompt paths.</summary>
     public static AppPaths Create()
     {
@@ -51,4 +54,7 @@ public sealed record AppPaths(
             Path.Combine(logsDirectory, "promptmeup-.log"),
             Path.Combine(AppContext.BaseDirectory, "prompt"));
     }
+
+    #endregion
+
 }

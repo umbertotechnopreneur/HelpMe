@@ -25,8 +25,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies authorized command workflow behavior.</summary>
 public sealed class AuthorizedCommandWorkflowTests
 {
+
+    #region Methods
+
     /// <summary>A user interruption renders the partial result and prevents an automatic AI follow-up.</summary>
     [Fact]
     public async Task RunAsync_InterruptedCommand_ReturnsToUser()
@@ -319,6 +323,10 @@ public sealed class AuthorizedCommandWorkflowTests
         Assert.Contains("characters omitted", followUp, StringComparison.Ordinal);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Extracts and trims text between two stable follow-up labels.</summary>
     private static string ExtractSection(string value, string startLabel, string endLabel)
     {
@@ -344,8 +352,16 @@ public sealed class AuthorizedCommandWorkflowTests
         return count;
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Assembles controlled command-workflow collaborators and records their interactions.</summary>
     private sealed class WorkflowFixture
     {
+
+        #region Initialization
+
         /// <summary>Creates a complete in-memory command workflow with deterministic collaborators.</summary>
         public WorkflowFixture(
             bool authorized,
@@ -381,6 +397,10 @@ public sealed class AuthorizedCommandWorkflowTests
                 new FakeLocalizationService(), RegressionFixture.CreatePackagedPrompts());
         }
 
+        #endregion
+
+        #region Properties
+
         public AuthorizedCommandWorkflow Workflow { get; }
 
         public FakeRiskAssessmentService RiskAssessment { get; }
@@ -392,14 +412,28 @@ public sealed class AuthorizedCommandWorkflowTests
         public FakeCommandAuthorizationView CommandView { get; }
 
         public FakeConsoleShellView Shell { get; }
+
+        #endregion
     }
 
+    /// <summary>Returns a configured risk assessment and records review requests.</summary>
     private sealed class FakeRiskAssessmentService : ICommandRiskAssessmentService
     {
+
+        #region Fields
+
         private readonly CommandRiskAssessment _assessment;
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Creates a risk assessor that returns one fixed local assessment.</summary>
         public FakeRiskAssessmentService(CommandRiskAssessment assessment) => _assessment = assessment;
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Returns the configured assessment without making an AI request.</summary>
         public Task<CommandRiskAssessment> AssessAsync(
@@ -409,18 +443,36 @@ public sealed class AuthorizedCommandWorkflowTests
             AppSettings settings,
             string language,
             CancellationToken cancellationToken) => Task.FromResult(_assessment);
+
+        #endregion
     }
 
+    /// <summary>Records authorized command execution and returns a configured result.</summary>
     private sealed class FakeCommandExecutionService : ICommandExecutionService
     {
+
+        #region Fields
+
         private readonly CommandExecutionResult _result;
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Creates an executor that returns a fixed result without starting a process.</summary>
         public FakeCommandExecutionService(CommandExecutionResult result) => _result = result;
 
+        #endregion
+
+        #region Properties
+
         public int CallCount { get; private set; }
 
         public string? ExecutedCommand { get; private set; }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Records one execution request and returns the in-memory result.</summary>
         public Task<CommandExecutionResult> ExecuteAsync(
@@ -436,11 +488,21 @@ public sealed class AuthorizedCommandWorkflowTests
             Assert.NotNull(output);
             return Task.FromResult(_result);
         }
+
+        #endregion
     }
 
+    /// <summary>Records command audit events without writing persistent data.</summary>
     private sealed class FakeActivityAuditService : IActivityAuditService
     {
+
+        #region Properties
+
         public List<string> Calls { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Rejects unexpected session starts in this focused workflow fixture.</summary>
         public Task StartSessionAsync(
@@ -478,12 +540,22 @@ public sealed class AuthorizedCommandWorkflowTests
             Calls.Add($"activity:{activityType}:{outcome}");
             return Task.CompletedTask;
         }
+
+        #endregion
     }
 
+    /// <summary>Models preview and approval decisions without terminal input.</summary>
     private sealed class FakeCommandAuthorizationView : ICommandAuthorizationView
     {
+
+        #region Fields
+
         private readonly bool _authorized;
         private readonly bool _cancelAuthorization;
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Creates an authorization view with a deterministic decision.</summary>
         public FakeCommandAuthorizationView(bool authorized, bool cancelAuthorization)
@@ -492,11 +564,19 @@ public sealed class AuthorizedCommandWorkflowTests
             _cancelAuthorization = cancelAuthorization;
         }
 
+        #endregion
+
+        #region Properties
+
         public int RenderCount { get; private set; }
 
         public string? PreviewedCommand { get; private set; }
 
         public CommandExecutionResult? RenderedResult { get; private set; }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Provides an in-memory output scope without terminal polling.</summary>
         /// <param name="silenceNoticeInterval">The requested status-notice interval.</param>
@@ -522,11 +602,21 @@ public sealed class AuthorizedCommandWorkflowTests
             RenderCount++;
             RenderedResult = result;
         }
+
+        #endregion
     }
 
+    /// <summary>Provides a command output session without a live terminal.</summary>
     private sealed class FakeOutputSession : ICommandOutputSession
     {
+
+        #region Properties
+
         public CancellationToken StopToken => CancellationToken.None;
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Accepts fixture output without rendering.</summary>
         /// <param name="update">The synthetic normalized update.</param>
@@ -534,13 +624,23 @@ public sealed class AuthorizedCommandWorkflowTests
 
         /// <summary>Ends the in-memory scope.</summary>
         public void Dispose() { }
+
+        #endregion
     }
 
+    /// <summary>Records shell output and executes supplied workflow operations in memory.</summary>
     private sealed class FakeConsoleShellView : IConsoleShellView
     {
+
+        #region Properties
+
         public ConsoleRenderOptions Options { get; private set; } = new(true, true);
 
         public int WarningCount { get; private set; }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Stores rendering options for completeness.</summary>
         public void Configure(ConsoleRenderOptions options) => Options = options;
@@ -605,18 +705,32 @@ public sealed class AuthorizedCommandWorkflowTests
         /// <summary>Rejects unexpected blank-line rendering in this focused workflow fixture.</summary>
         public void WriteLine() =>
             throw new InvalidOperationException("Line rendering is outside this workflow.");
+
+        #endregion
     }
 
+    /// <summary>Supplies deterministic text for command-workflow assertions.</summary>
     private sealed class FakeLocalizationService : ILocalizationService
     {
+
+        #region Properties
+
         public string Language { get; private set; } = "en";
 
         public System.Globalization.CultureInfo Culture => System.Globalization.CultureInfo.InvariantCulture;
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Stores the requested supported language for completeness.</summary>
         public void SetLanguage(string language) => Language = language;
 
         /// <summary>Returns stable localization keys without loading external resources.</summary>
         public string Text(string key, params object?[] args) => key;
+
+        #endregion
     }
+
+    #endregion
 }

@@ -16,12 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
 /// <summary>Enforces size and path boundaries while preparing artifact files for local use.</summary>
 internal static class BoundedArtifactFile
 {
+    #region Methods
+
     /// <summary>Reads at most the configured byte budget even if a file grows after opening.</summary>
     internal static async Task<byte[]> ReadAsync(string path, int maximumBytes, ILocalizationService text, CancellationToken cancellationToken)
     {
@@ -46,4 +47,6 @@ internal static class BoundedArtifactFile
             throw new InvalidOperationException(text.Text("Artifact.TooLarge", maximumBytes));
         }
     }
+
+    #endregion
 }

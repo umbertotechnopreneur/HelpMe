@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies conversation memory behavior.</summary>
 public sealed class ConversationMemoryTests
 {
+
+    #region Methods
+
     /// <summary>Keeps command-result origin through short-term memory while rejecting non-user tool messages.</summary>
     [Fact]
     public void Add_ToolOutput_PreservesOriginWithUserProviderRole()
@@ -94,4 +98,6 @@ public sealed class ConversationMemoryTests
         Assert.Throws<ConversationLimitException>(() => memory.Add("user", new string('x', 501)));
         Assert.Empty(memory.Snapshot().Messages);
     }
+
+    #endregion
 }

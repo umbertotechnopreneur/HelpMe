@@ -28,8 +28,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies artifact limit behavior.</summary>
 public sealed class ArtifactLimitTests
 {
+
+    #region Methods
+
     /// <summary>The larger output budget reserves space inside the model window before any provider request.</summary>
     [Fact]
     public async Task Artifact_ContextBudget_ReservesOutputBeforeTransport()
@@ -189,4 +193,6 @@ public sealed class ArtifactLimitTests
         using var document = JsonDocument.Parse(result.StandardOutput);
         Assert.True(document.RootElement.GetProperty("SyntaxValid").GetBoolean());
     }
+
+    #endregion
 }

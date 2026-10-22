@@ -26,6 +26,9 @@ namespace PromptMeUp.Views;
 /// <summary>Temporarily enables bracketed paste mode and restores the terminal state when the scope ends.</summary>
 internal sealed class TerminalPasteScope : IDisposable
 {
+
+    #region Fields
+
     private const uint EnableVirtualTerminalInput = 0x0200;
     private readonly IAnsiConsole _console;
     private readonly IntPtr _inputHandle;
@@ -33,10 +36,15 @@ internal sealed class TerminalPasteScope : IDisposable
     private bool _restoreInputMode;
     private bool _disposed;
 
+    #endregion
+
+    #region Initialization
+
     /// <summary>Enables bracketed paste and Windows modifier reporting while retaining the original console input mode.</summary>
     public TerminalPasteScope(IAnsiConsole console)
     {
         _console = console ?? throw new ArgumentNullException(nameof(console));
+
         if (!console.Profile.Capabilities.Ansi || !console.Profile.Capabilities.Interactive
             || !console.Profile.Out.IsTerminal || Console.IsInputRedirected || Console.IsOutputRedirected)
         {
@@ -46,6 +54,7 @@ internal sealed class TerminalPasteScope : IDisposable
         if (OperatingSystem.IsWindows())
         {
             _inputHandle = GetStdHandle(-10);
+
             if (!GetConsoleMode(_inputHandle, out _originalInputMode))
             {
                 throw new Win32Exception(Marshal.GetLastPInvokeError(), "Cannot read the terminal input mode for paste handling.");
@@ -63,11 +72,13 @@ internal sealed class TerminalPasteScope : IDisposable
         try
         {
             _console.WriteAnsi(writer => writer.Write("\u001b[?2004h"));
+
             if (OperatingSystem.IsWindows())
             {
                 // VT input alone flattens Shift+Enter; Windows key records preserve its modifier.
                 _console.WriteAnsi(writer => writer.Write("\u001b[?9001h"));
             }
+
             Enabled = true;
         }
         catch
@@ -77,7 +88,15 @@ internal sealed class TerminalPasteScope : IDisposable
         }
     }
 
+    #endregion
+
+    #region Properties
+
     public bool Enabled { get; }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Disables temporary keyboard and paste modes and restores native input even if terminal output fails.</summary>
     public void Dispose()
@@ -88,6 +107,7 @@ internal sealed class TerminalPasteScope : IDisposable
         }
 
         _disposed = true;
+
         try
         {
             if (Enabled)
@@ -96,6 +116,7 @@ internal sealed class TerminalPasteScope : IDisposable
                 {
                     _console.WriteAnsi(writer => writer.Write("\u001b[?9001l"));
                 }
+
                 _console.WriteAnsi(writer => writer.Write("\u001b[?2004l"));
             }
         }
@@ -104,6 +125,10 @@ internal sealed class TerminalPasteScope : IDisposable
             RestoreInputMode();
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Restores the native input mode captured before enabling virtual terminal input.</summary>
     private void RestoreInputMode()
@@ -134,4 +159,6 @@ internal sealed class TerminalPasteScope : IDisposable
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetConsoleMode(IntPtr consoleHandle, uint mode);
+
+    #endregion
 }

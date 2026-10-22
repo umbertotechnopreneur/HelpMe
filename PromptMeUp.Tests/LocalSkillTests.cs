@@ -25,8 +25,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies local skill behavior.</summary>
 public sealed class LocalSkillTests
 {
+
+    #region Methods
+
     /// <summary>Checks that every local package can produce a fully reviewed command without false credential matches.</summary>
     [Theory]
     [InlineData("clipboard")]
@@ -126,6 +130,10 @@ public sealed class LocalSkillTests
         Assert.Contains("rejected", result.Output);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Loads only the production script copied alongside the test assembly.</summary>
     private static Task<string> SourceAsync(string package) =>
         File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "skills", package, "scripts", "run.ps1"));
@@ -173,4 +181,6 @@ public sealed class LocalSkillTests
         }
         return (process.ExitCode, await output, await errors);
     }
+
+    #endregion
 }

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 
@@ -29,6 +28,9 @@ internal sealed class MemoryCommandHandler(
     MemoryManagerWorkflow memories,
     ILocalizationService text)
 {
+
+    #region Methods
+
     /// <summary>Runs one global skills or memory command with its terminal requirements.</summary>
     internal async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, CancellationToken cancellationToken)
     {
@@ -60,4 +62,7 @@ internal sealed class MemoryCommandHandler(
                 throw new ArgumentOutOfRangeException(nameof(options), "Unsupported memory command.");
         }
     }
+
+    #endregion
+
 }

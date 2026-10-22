@@ -24,25 +24,46 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Renders model responses and command reviews as terminal content.</summary>
 public interface IPoorMarkdownRenderer
 {
+
+    #region Methods
+
+    /// <summary>Renders a safe, readable Markdown subset with headings, lists, emphasis, links, and fenced code.</summary>
     void Render(string markdown);
 
+    /// <summary>Renders command-review headings without icons and indents their lists by two extra cells.</summary>
     void RenderCommandReview(string markdown);
 
+    /// <summary>Renders the readable Markdown subset progressively without ever exposing raw formatting markers.</summary>
     void RenderAnimated(string markdown, CancellationToken cancellationToken);
 
+    /// <summary>Renders a safe, readable Markdown subset with headings, lists, emphasis, links, and fenced code.</summary>
     void Render(MarkdownDocument document, bool animate, CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Renders the supported Markdown subset as readable terminal output and optional animation.</summary>
 public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
 {
+
+    #region Fields
+
     private readonly IAnsiConsole _console;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the deliberately small, sanitized Markdown renderer.</summary>
     public PoorMarkdownRenderer(IAnsiConsole console) =>
         _console = console ?? throw new ArgumentNullException(nameof(console));
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Renders a safe, readable Markdown subset with headings, lists, emphasis, links, and fenced code.</summary>
     /// <param name="markdown">Source text to parse and render.</param>
@@ -77,6 +98,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
     {
         ArgumentNullException.ThrowIfNull(document);
         var animationChunkSize = Math.Max(1, (int)Math.Ceiling(document.SourceLength / 450d));
+
         foreach (var block in document.Blocks)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -95,8 +117,13 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
     public static MarkdownDocument Parse(string markdown)
     {
         ArgumentNullException.ThrowIfNull(markdown);
+
         return new MarkdownDocument(ParseBlocks(markdown), markdown.Length);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Parses one sanitized Markdown subset into reusable blocks without writing to the terminal.</summary>
     /// <param name="markdown">Non-null source text supplied by the parser entry point.</param>
@@ -104,6 +131,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
     private static IReadOnlyList<MarkdownBlock> ParseBlocks(string markdown, bool commandReview = false)
     {
         var blocks = new List<MarkdownBlock>();
+
         if (string.IsNullOrWhiteSpace(markdown))
         {
             return [new MarkdownBlock(new Text(" "), false)];
@@ -112,9 +140,11 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
         string? codeLanguage = null;
         var codeLines = new List<string>();
         var previousBlank = true;
+
         foreach (var rawLine in TerminalText.Safe(markdown).Trim('\n').Split('\n'))
         {
             var fence = FencePattern().Match(rawLine);
+
             if (codeLanguage is not null)
             {
                 if (fence.Success)
@@ -128,6 +158,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
                 {
                     codeLines.Add(rawLine);
                 }
+
                 continue;
             }
 
@@ -138,28 +169,34 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
             }
 
             var line = rawLine.TrimEnd();
+
             if (line.Length == 0)
             {
                 if (!previousBlank)
                 {
                     blocks.Add(new MarkdownBlock(new Text(" "), false));
                 }
+
                 previousBlank = true;
                 continue;
             }
+
             previousBlank = false;
 
             var heading = HeadingPattern().Match(line);
+
             if (heading.Success)
             {
                 var headingContent = commandReview
                     ? new Markup($"[bold {TerminalTheme.Primary}]{RenderInline(heading.Groups[2].Value.TrimEnd(':'))}:[/]")
                     : Heading(heading.Groups[1].Value.Length, heading.Groups[2].Value);
+
                 blocks.Add(new MarkdownBlock(headingContent, false));
                 continue;
             }
 
             var list = RawListPattern().Match(line);
+
             if (list.Success)
             {
                 var marker = int.TryParse(list.Groups["ordered"].Value.TrimEnd('.'), out var ordinal)
@@ -169,11 +206,13 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
                 IRenderable listContent = new Markup(
                     $"{indent}[{TerminalTheme.Accent}]{Markup.Escape(marker)}[/] " +
                     $"[{TerminalTheme.Primary}]{RenderInline(list.Groups["content"].Value)}[/]");
+
                 if (commandReview)
                 {
                     // Padding keeps wrapped list lines aligned with the indented bullet.
                     listContent = new Padder(listContent, new Padding(2, 0, 0, 0));
                 }
+
                 blocks.Add(new MarkdownBlock(listContent, true));
                 continue;
             }
@@ -188,6 +227,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
         {
             blocks.Add(new MarkdownBlock(CodeBlock(codeLanguage, codeLines), false));
         }
+
         return blocks;
     }
 
@@ -195,6 +235,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
     private static IRenderable Heading(int level, string text)
     {
         var inline = RenderInline(text);
+
         return level switch
         {
             1 => new Markup($"[bold {TerminalTheme.Accent}]✦ {inline}[/]"),
@@ -209,6 +250,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
         ArgumentNullException.ThrowIfNull(lines);
         var label = string.IsNullOrWhiteSpace(language) ? "code" : language;
         var content = string.Join(Environment.NewLine, lines);
+
         return new Rows(new ThemeSeparator($"⌘ {label}", TerminalTheme.Info), new Text(content, Style.Parse(TerminalTheme.Primary)));
     }
 
@@ -217,9 +259,11 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
     {
         var builder = new StringBuilder();
         var cursor = 0;
+
         foreach (Match match in InlinePattern().Matches(source))
         {
             builder.Append(Markup.Escape(source[cursor..match.Index]));
+
             if (match.Groups["bold"].Success)
             {
                 builder.Append("[bold]")
@@ -250,6 +294,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
         }
 
         builder.Append(Markup.Escape(source[cursor..]));
+
         return builder.ToString();
     }
 
@@ -268,5 +313,7 @@ public sealed partial class PoorMarkdownRenderer : IPoorMarkdownRenderer
     /// <summary>Recognizes bold spans, inline code, and Markdown HTTP links without enabling arbitrary markup.</summary>
     [GeneratedRegex(@"\*\*(?<bold>.+?)\*\*|`(?<code>[^`\r\n]+)`|\[(?<linkText>[^\]\r\n]+)\]\((?<url>https?://[^\s)]+)\)", RegexOptions.IgnoreCase)]
     private static partial Regex InlinePattern();
+
+    #endregion
 
 }

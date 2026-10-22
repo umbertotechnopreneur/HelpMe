@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies skill action behavior.</summary>
 public sealed class SkillActionTests
 {
+
+    #region Methods
+
     /// <summary>Rejects malformed, nested, duplicate, null, or invalidly named script parameters.</summary>
     [Theory]
     [InlineData("{")]
@@ -144,8 +148,14 @@ public sealed class SkillActionTests
         Assert.Throws<InvalidOperationException>(() => service.ScriptCommand(skill, "run", "{\"_ValidationError\":\"override\"}"));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates only inert script data without requiring package files or process execution.</summary>
     private static SkillDefinition Script(string source = "Write-Output 'reviewed'") =>
         new("example", "Example skill", "1.0.0", "Instructions", "", "local", "fingerprint", null,
             new Dictionary<string, string> { ["run"] = source });
+
+    #endregion
 }

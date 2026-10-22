@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds localized validation feedback for editing saved memories.</summary>
     private static void AddMemoryManagerValidationEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -32,4 +34,6 @@ internal static partial class UiTextCatalog
             "Esta nota ya está guardada. Edita el recuerdo existente o cambia el texto.",
             "Ghi chú này đã được lưu. Sửa ghi nhớ hiện có hoặc đổi nội dung."));
     }
+
+    #endregion
 }

@@ -24,8 +24,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies memory forget view behavior.</summary>
 public sealed class MemoryForgetViewTests
 {
+
+    #region Methods
+
     /// <summary>Choosing a note alone never deletes it; a second explicit digit must confirm the action.</summary>
     [Theory]
     [InlineData("10", false)]
@@ -56,6 +60,10 @@ public sealed class MemoryForgetViewTests
         Assert.Contains("Note 9.", output.ToString(), StringComparison.Ordinal);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a colorless in-memory console with a fixed sequence of numeric key presses.</summary>
     private static (MemoryForgetView View, StringWriter Output, Queue<ConsoleKeyInfo> Keys) Create(string digits)
     {
@@ -73,4 +81,6 @@ public sealed class MemoryForgetViewTests
             ? input : method.Invoke(rendering, args));
         return (new MemoryForgetView(console, new LocalizationService()), output, keys);
     }
+
+    #endregion
 }

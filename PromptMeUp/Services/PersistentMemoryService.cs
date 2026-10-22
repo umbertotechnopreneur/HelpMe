@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,6 +29,8 @@ namespace PromptMeUp.Services;
 /// <summary>Stores explicit global notes and selects a small local context without provider calls.</summary>
 public sealed partial class PersistentMemoryService
 {
+    #region Fields
+
     public const int MaximumCharacters = 1_000;
     public const int MaximumMemoriesPerScope = 100;
     public const int MaximumMemories = 5;
@@ -41,6 +42,10 @@ public sealed partial class PersistentMemoryService
     private readonly ILocalizationService _text;
     private readonly ILogger<PersistentMemoryService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Connects explicit memories to the initialized local database and shared privacy controls.</summary>
     public PersistentMemoryService(
@@ -63,6 +68,10 @@ public sealed partial class PersistentMemoryService
             DefaultTimeout = 5
         }.ToString();
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Persists a bounded, credential-free global note or refreshes a match; the legacy global parameter is ignored.</summary>
     public async Task<PersistentMemory> RememberAsync(string text, bool global, CancellationToken cancellationToken)
@@ -308,6 +317,10 @@ public sealed partial class PersistentMemoryService
         return new MemorySelection(selected, estimatedTokens);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Rejects empty, oversized, or recognizable credential-bearing notes before persistence.</summary>
     private string ValidateInput(string value)
     {
@@ -343,7 +356,6 @@ public sealed partial class PersistentMemoryService
         }
     }
 
-
     /// <summary>Extracts distinct Unicode word terms for deterministic local relevance ranking.</summary>
     private static HashSet<string> ExtractTerms(string value) =>
         WordPattern().Matches(value).Select(match => match.Value.ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
@@ -351,14 +363,20 @@ public sealed partial class PersistentMemoryService
     /// <summary>Matches words across all supported languages without interpreting user input as a pattern.</summary>
     [GeneratedRegex(@"[\p{L}\p{N}]{3,}", RegexOptions.CultureInvariant)]
     private static partial Regex WordPattern();
+
+    #endregion
 }
 
 /// <summary>Identifies an expected memory input error that the interactive conversation can recover from.</summary>
 public sealed class MemoryValidationException : Exception
 {
+    #region Initialization
+
     /// <summary>Creates a localized validation error without retaining the rejected note or identifier.</summary>
     public MemoryValidationException(string message)
         : base(message)
     {
     }
+
+    #endregion
 }

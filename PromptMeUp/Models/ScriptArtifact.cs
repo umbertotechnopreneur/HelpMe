@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Contains the explanation and source text of a generated script.</summary>
 public sealed record ScriptArtifact(string Explanation, string Source);
 
 /// <summary>Identifies the user-selected follow-up for a reviewed script draft.</summary>

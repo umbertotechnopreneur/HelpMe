@@ -24,9 +24,16 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Displays the bundled Lenna artwork in the terminal.</summary>
 public interface ILennaView
 {
+
+    #region Methods
+
+    /// <summary>Centers the complete portrait and captions within the viewport while reserving one prompt row.</summary>
     void Render(TerminalImage image);
+
+    #endregion
 }
 
 /// <summary>Shows a centered color portrait while retaining the terminal's existing scrollback.</summary>
@@ -34,14 +41,22 @@ public sealed class LennaView(
     IAnsiConsole console,
     ILocalizationService text) : ILennaView
 {
+
+    #region Fields
+
     private const int MinimumPixelWidth = 16;
     private const int MinimumPixelHeight = 16;
     private const string ImageSourceUrl = "https://en.wikipedia.org/wiki/Lenna";
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Centers the complete portrait and captions within the viewport while reserving one prompt row.</summary>
     public void Render(TerminalImage image)
     {
         ArgumentNullException.ThrowIfNull(image);
+
         if (!console.Profile.Capabilities.Ansi || !console.Profile.Supports(ColorSystem.Legacy))
         {
             throw new InvalidOperationException(text.Text("Lenna.ColorRequired"));
@@ -61,12 +76,14 @@ public sealed class LennaView(
         var scale = Math.Min(1d, Math.Min(availableWidth / (double)image.Width, availableHeight / (double)image.Height));
         var width = (int)Math.Floor(image.Width * scale);
         var height = (int)Math.Floor(image.Height * scale);
+
         if (width < MinimumPixelWidth || height < MinimumPixelHeight)
         {
             throw new InvalidOperationException(text.Text("Lenna.TerminalTooSmall"));
         }
 
         var canvas = new Canvas(width, height) { Scale = false };
+
         for (var y = 0; y < height; y++)
         {
             for (var x = 0; x < width; x++)
@@ -76,8 +93,13 @@ public sealed class LennaView(
         }
 
         var content = new Rows(Align.Center(title), Align.Center(canvas), Align.Center(caption), Align.Center(source));
+
         console.Write(new Rows(Align.Center(content, VerticalAlignment.Middle).Height(viewportHeight)));
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Averages each source region so shrinking the portrait preserves its color and detail.</summary>
     private static Color AveragePixel(TerminalImage image, int x, int y, int targetWidth, int targetHeight)
@@ -90,11 +112,13 @@ public sealed class LennaView(
         var green = 0;
         var blue = 0;
         var count = (right - left) * (bottom - top);
+
         for (var row = top; row < bottom; row++)
         {
             for (var column = left; column < right; column++)
             {
                 var offset = ((row * image.Width) + column) * 3;
+
                 red += image.Pixels[offset];
                 green += image.Pixels[offset + 1];
                 blue += image.Pixels[offset + 2];
@@ -103,4 +127,6 @@ public sealed class LennaView(
 
         return new Color((byte)(red / count), (byte)(green / count), (byte)(blue / count));
     }
+
+    #endregion
 }

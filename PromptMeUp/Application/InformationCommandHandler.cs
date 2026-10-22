@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Infrastructure;
 using PromptMeUp.Models;
 using PromptMeUp.Services;
@@ -39,6 +38,9 @@ internal sealed class InformationCommandHandler(
     AppPaths paths,
     ArtifactLimits artifactLimits)
 {
+
+    #region Methods
+
     /// <summary>Runs one informational command and records status inspection when requested.</summary>
     internal async Task<int> RunAsync(CommandLineOptions options, AppSettings settings, int promptCount, CancellationToken cancellationToken)
     {
@@ -70,6 +72,10 @@ internal sealed class InformationCommandHandler(
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds and renders current local status, then records the completed inspection.</summary>
     private async Task RunStatusAsync(AppSettings settings, int promptCount, CancellationToken cancellationToken)
     {
@@ -86,4 +92,7 @@ internal sealed class InformationCommandHandler(
         statusView.Render(status);
         await activity.TryRecordAsync("status", "completed", null, new { promptCount }).ConfigureAwait(false);
     }
+
+    #endregion
+
 }

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Infrastructure;
 using PromptMeUp.Models;
@@ -25,21 +24,34 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Loads versioned runtime prompts in the supported languages.</summary>
 public interface IPromptCatalogService
 {
+    #region Methods
+
+    /// <summary>Loads the requested localized runtime prompt.</summary>
     Task<PromptDefinition> GetAsync(string id, CancellationToken cancellationToken);
 
+    /// <summary>Lists the available versioned runtime prompts.</summary>
     Task<IReadOnlyList<PromptDefinition>> ListAsync(CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Loads versioned local prompt definitions from their YAML files.</summary>
 public sealed class YamlPromptCatalogService : IPromptCatalogService
 {
+    #region Fields
+
     private readonly AppPaths _paths;
     private readonly ILogger<YamlPromptCatalogService> _logger;
     private readonly IDeserializer _deserializer;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private IReadOnlyDictionary<string, PromptDefinition>? _cache;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the validated packaged YAML prompt catalog.</summary>
     public YamlPromptCatalogService(AppPaths paths, ILogger<YamlPromptCatalogService> logger)
@@ -50,6 +62,10 @@ public sealed class YamlPromptCatalogService : IPromptCatalogService
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Loads one validated YAML prompt by stable identifier.</summary>
     public async Task<PromptDefinition> GetAsync(string id, CancellationToken cancellationToken)
@@ -63,6 +79,10 @@ public sealed class YamlPromptCatalogService : IPromptCatalogService
     /// <summary>Lists all validated YAML prompt resources in identifier order.</summary>
     public async Task<IReadOnlyList<PromptDefinition>> ListAsync(CancellationToken cancellationToken) =>
         (await LoadAsync(cancellationToken).ConfigureAwait(false)).Values.OrderBy(prompt => prompt.Id, StringComparer.Ordinal).ToArray();
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Builds the immutable prompt cache once per process.</summary>
     private async Task<IReadOnlyDictionary<string, PromptDefinition>> LoadAsync(CancellationToken cancellationToken)
@@ -147,9 +167,15 @@ public sealed class YamlPromptCatalogService : IPromptCatalogService
             new Dictionary<string, string>(document.Metadata ?? [], StringComparer.OrdinalIgnoreCase));
     }
 
-/// <summary>Maps the supported YAML prompt structure before it becomes an immutable prompt definition.</summary>
+    #endregion
+
+    #region Types
+
+    /// <summary>Maps the supported YAML prompt structure before it becomes an immutable prompt definition.</summary>
     private sealed class PromptYaml
     {
+        #region Properties
+
         public string Id { get; init; } = string.Empty;
 
         public int Version { get; init; }
@@ -161,5 +187,9 @@ public sealed class YamlPromptCatalogService : IPromptCatalogService
         public Dictionary<string, string>? Texts { get; init; }
 
         public Dictionary<string, string>? Metadata { get; init; }
+
+        #endregion
     }
+
+    #endregion
 }

@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text;
 
 namespace PromptMeUp.Services;
@@ -24,6 +23,8 @@ namespace PromptMeUp.Services;
 /// <summary>Identifies credential-bearing fields so they can be protected from display and persistence.</summary>
 internal static class CredentialFieldPolicy
 {
+    #region Fields
+
     private static readonly string[] SecretSuffixes =
     [
         "passwd", "secret",
@@ -31,6 +32,10 @@ internal static class CredentialFieldPolicy
         "idtoken", "securitytoken", "accesskey", "secretkey", "privatekey",
         "sharedaccesssignature"
     ];
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Recognizes credential field names across common casing and separator conventions without matching token metrics.</summary>
     internal static bool IsSecret(string name)
@@ -60,4 +65,6 @@ internal static class CredentialFieldPolicy
         // Credential suffixes allow provider prefixes while leaving counters, types, and expiry metadata intact.
         return SecretSuffixes.Any(suffix => field.EndsWith(suffix, StringComparison.Ordinal));
     }
+
+    #endregion
 }

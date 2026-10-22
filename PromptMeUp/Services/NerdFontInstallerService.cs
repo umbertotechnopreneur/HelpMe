@@ -16,24 +16,35 @@
  *
  * VBWR E */
 
-
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Installs the supported terminal font when explicitly requested.</summary>
 public interface INerdFontInstallerService
 {
+    #region Methods
+
+    /// <summary>Installs the terminal font through the explicit installation workflow.</summary>
     Task<FontInstallResult> InstallAsync(bool dryRun, CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Installs the optional bundled Nerd Font through explicit, user-reviewed local operations.</summary>
 public sealed class NerdFontInstallerService : INerdFontInstallerService
 {
+    #region Fields
+
     private const string FontName = "JetBrainsMono Nerd Font";
     private readonly ILogger<NerdFontInstallerService> _logger;
     private readonly ILocalizationService _text;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the opt-in terminal font helper.</summary>
     public NerdFontInstallerService(ILogger<NerdFontInstallerService> logger, ILocalizationService? text = null)
@@ -41,6 +52,10 @@ public sealed class NerdFontInstallerService : INerdFontInstallerService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _text = text ?? new LocalizationService();
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Installs JetBrainsMono through an existing Oh My Posh CLI; it never installs PromptMeUp itself.</summary>
     public async Task<FontInstallResult> InstallAsync(bool dryRun, CancellationToken cancellationToken)
@@ -93,6 +108,10 @@ public sealed class NerdFontInstallerService : INerdFontInstallerService
         return new FontInstallResult(true, false, FontName, result.StandardOutput);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Checks whether a command resolves without relying on shell aliases.</summary>
     private async Task<bool> CommandExistsAsync(string command, CancellationToken cancellationToken)
     {
@@ -116,4 +135,6 @@ public sealed class NerdFontInstallerService : INerdFontInstallerService
         }
         return result.ExitCode == 0 && result.StandardOutput.Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
     }
+
+    #endregion
 }

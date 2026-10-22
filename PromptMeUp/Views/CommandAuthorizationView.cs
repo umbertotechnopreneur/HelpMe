@@ -24,20 +24,33 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Presents command previews, authorization choices, and execution results.</summary>
 public interface ICommandAuthorizationView
 {
+
+    #region Methods
+
+    /// <summary>Renders the same exact command, risk assessment and output notice for both interaction views.</summary>
     void RenderPreview(string command, CommandRiskAssessment assessment);
 
+    /// <summary>Chooses the normal confirmation or direct countdown without performing execution or risk review.</summary>
     Task<bool> AuthorizeAsync(CommandExecutionMode executionMode, CancellationToken cancellationToken);
 
+    /// <summary>Creates a passive live-output view that can request local command interruption.</summary>
     ICommandOutputSession BeginExecution(TimeSpan silenceNoticeInterval);
 
+    /// <summary>Shows bounded stdout, stderr, timeout, and exit metadata after an authorized command finishes.</summary>
     void RenderExecutionResult(CommandExecutionResult result);
+
+    #endregion
 }
 
 /// <summary>Presents command risk, authorization choices, and execution results in the terminal.</summary>
 public sealed class CommandAuthorizationView : ICommandAuthorizationView
 {
+
+    #region Fields
+
     private readonly IAnsiConsole _console;
     private readonly ILocalizationService _text;
     private readonly IPoorMarkdownRenderer _markdown;
@@ -45,6 +58,10 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
     private readonly ICommandClipboard _clipboard;
     private readonly Func<CommandDecision>? _decisionOverride;
     private string? _previewedCommand;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the mandatory preview and authorization gate for shell commands.</summary>
     public CommandAuthorizationView(
@@ -69,6 +86,10 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
         _decisionOverride = decisionOverride ?? throw new ArgumentNullException(nameof(decisionOverride));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Renders the same exact command, risk assessment and output notice for both interaction views.</summary>
     /// <param name="command">The exact command requiring authorization.</param>
     /// <param name="assessment">The risk assessment and review description to display.</param>
@@ -80,11 +101,13 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
         ArgumentNullException.ThrowIfNull(assessment);
         _previewedCommand = command;
         var color = RiskColor(assessment.Level);
+
         TerminalTheme.WriteRule(
             _console,
             $"{TerminalTheme.IconPrefix(_shell.Options, "🚦", ">")}{_text.Text("Command.Preview")}",
             TerminalTheme.Info);
         _console.WriteLine();
+
         foreach (var line in command.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
         {
             _console.MarkupLine($"  [bold {TerminalTheme.Primary}]{Markup.Escape(line)}[/]");
@@ -95,10 +118,12 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
             $" [{color}]{Markup.Escape(RiskIcon(assessment.Level))}{Markup.Escape(_text.Text("Command.Risk"))}: [bold]{assessment.Score}/100[/] · [bold]{Markup.Escape(_text.Text($"Command.Risk.{assessment.Level}"))}[/][/]");
         _console.WriteLine();
         var reviewIcon = TerminalTheme.IconPrefix(_shell.Options, assessment.UsedAi ? "🤖" : "🛡", assessment.UsedAi ? "AI" : "!");
+
         _console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(reviewIcon)}{Markup.Escape(assessment.UsedAi ? _text.Text("Command.AiReview") : _text.Text("Command.LocalReview"))}[/]");
         _console.WriteLine();
         _markdown.RenderCommandReview(assessment.DescriptionMarkdown);
         _console.WriteLine();
+
         if (!string.IsNullOrWhiteSpace(assessment.Advisory))
         {
             ConversationText.Write(_console, new Markup($"[{TerminalTheme.Warning}]{Markup.Escape(assessment.Advisory)}[/]"));
@@ -117,6 +142,7 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var state = new TerminalStateScope(_console, _text, TerminalActivityState.NeedsInput);
+
         return await (executionMode switch
         {
             CommandExecutionMode.Confirm => Task.FromResult(Confirm()),
@@ -125,6 +151,10 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
             _ => throw new ArgumentOutOfRangeException(nameof(executionMode))
         }).ConfigureAwait(false);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Asks for default-negative approval and leaves a compact receipt for the accepted command.</summary>
     /// <exception cref="ApplicationExitRequestedException">The user successfully copied the command and requested exit.</exception>
@@ -137,15 +167,20 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
             new TerminalMenuChoice<CommandDecision>(CommandDecision.Copy, _text.Text("Command.Copy")),
             new TerminalMenuChoice<CommandDecision>(CommandDecision.CopyAndExit, _text.Text("Command.CopyAndExit"))
         ], _text.Text("Command.Authorize"), echoSelection: false);
+
         if (choice is CommandDecision.Copy or CommandDecision.CopyAndExit)
         {
             CommandCopyView.Copy(_console, _text, _clipboard, _previewedCommand, exitAfterCopy: choice == CommandDecision.CopyAndExit);
+
             return false;
         }
+
         var authorized = choice == CommandDecision.Execute;
+
         if (authorized)
         {
             var command = TerminalText.ClipMiddle(_previewedCommand ?? string.Empty, 50);
+
             _console.Write(new Text(_text.Text("Command.Accepted", command), Style.Parse(TerminalTheme.Info)));
             _console.WriteLine();
             _console.WriteLine();
@@ -160,7 +195,16 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
         return authorized;
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Identifies the user's decision after reviewing a proposed command.</summary>
     internal enum CommandDecision { Cancel, Execute, Copy, CopyAndExit }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Creates a passive live-output view that can request local command interruption.</summary>
     /// <param name="silenceNoticeInterval">How long silence lasts before displaying an elapsed-time notice.</param>
@@ -182,6 +226,7 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
                 result.Cancelled ? TerminalActivityState.Cancelled : succeeded ? TerminalActivityState.Completed : TerminalActivityState.Failed,
                 TimeSpan.FromMilliseconds(result.ElapsedMilliseconds), !_shell.Options.NoEmoji)
         };
+
         if (!result.OutputWasStreamed && !string.IsNullOrWhiteSpace(result.StandardOutput))
         {
             details.Add(new Text("STDOUT", Style.Parse(TerminalTheme.Muted)));
@@ -192,6 +237,7 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
         {
             // Successful commands can also write progress and informational messages to stderr.
             var errorColor = succeeded ? TerminalTheme.Warning : TerminalTheme.Error;
+
             details.Add(new Text("STDERR", Style.Parse($"bold {errorColor}")));
             details.Add(new Text(TerminalText.Safe(result.StandardError), Style.Parse(TerminalTheme.Primary)));
         }
@@ -200,19 +246,26 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
         {
             details.Add(new Text(_text.Text("Command.NoOutput"), Style.Parse(TerminalTheme.Muted)));
         }
+
         if (result.OutputTruncated)
         {
             details.Add(new Text(_text.Text("Command.OutputTruncated"), Style.Parse(TerminalTheme.Warning)));
         }
+
         _console.Write(new Rows(details));
         _console.WriteLine();
         WriteOutputIssueLink();
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Offers the public issue tracker without attaching command text or output.</summary>
     private void WriteOutputIssueLink()
     {
         const string issuesUrl = "https://github.com/umbertotechnopreneur/PromptMeUp/issues";
+
         _console.WriteLine();
         _console.MarkupLine($"[{TerminalTheme.Warning}]{TerminalTheme.IconPrefix(_shell.Options, "⚠️", "!")}{Markup.Escape(_text.Text("Command.ReportOutputProblem"))}[/]");
         _console.MarkupLine($"  [{TerminalTheme.Info} link={issuesUrl}]{issuesUrl}[/]");
@@ -238,4 +291,6 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
         CommandRiskLevel.Critical => TerminalTheme.IconPrefix(_shell.Options, "🔴", "x"),
         _ => TerminalTheme.IconPrefix(_shell.Options, "⚪", "?")
     };
+
+    #endregion
 }

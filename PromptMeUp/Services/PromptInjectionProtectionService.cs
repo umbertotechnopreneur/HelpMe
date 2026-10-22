@@ -16,27 +16,35 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Contains the protected prompt text and any detected preamble warnings.</summary>
 public sealed record PromptPreambleProtectionResult(
     string SanitizedText,
     int WordCount,
     bool IsSafe,
     bool IsWithinWordLimit);
 
+/// <summary>Protects trusted prompt boundaries from instruction-like user preambles.</summary>
 public interface IPromptInjectionProtectionService
 {
+    #region Methods
+
+    /// <summary>Detects instruction-like preambles and preserves trusted prompt boundaries.</summary>
     PromptPreambleProtectionResult Protect(string? preamble);
+
+    #endregion
 }
 
 /// <summary>Validates user-supplied prompt preambles before they are included in an AI request.</summary>
 public sealed class PromptInjectionProtectionService : IPromptInjectionProtectionService
 {
+    #region Fields
+
     public const int MaximumPreambleWords = 500;
 
     private static readonly Regex WordPattern = new(
@@ -64,6 +72,10 @@ public sealed class PromptInjectionProtectionService : IPromptInjectionProtectio
         Pattern(@"<\s*/?\s*user-configured-preamble\b")
     ];
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Normalizes a configured preamble, counts Unicode words, and rejects multilingual instruction-override patterns.</summary>
     public PromptPreambleProtectionResult Protect(string? preamble)
     {
@@ -77,6 +89,10 @@ public sealed class PromptInjectionProtectionService : IPromptInjectionProtectio
             isSafe,
             wordCount <= MaximumPreambleWords);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Creates one compiled, culture-invariant detector over normalized lowercase text.</summary>
     private static Regex Pattern(string expression) => new(
@@ -121,4 +137,6 @@ public sealed class PromptInjectionProtectionService : IPromptInjectionProtectio
 
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }
+
+    #endregion
 }

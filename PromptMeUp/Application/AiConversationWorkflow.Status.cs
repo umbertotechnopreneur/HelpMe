@@ -16,15 +16,18 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
 using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Coordinates conversation commands, model responses, and session status.</summary>
 public sealed partial class AiConversationWorkflow
 {
+
+    #region Implementation
+
     /// <summary>Shows confirmed usage when the active session policy allows it.</summary>
     private void RenderTurnSnapshot(AiResponse response, AppSettings settings, decimal runningCost, SessionSummaryTiming timing)
     {
@@ -34,6 +37,10 @@ public sealed partial class AiConversationWorkflow
         }
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Builds provider-confirmed context and cost values for one completed turn.</summary>
     internal static ShellRuntimeStatus CreateTurnSnapshot(AiResponse response, AppSettings settings, decimal runningCost)
     {
@@ -42,6 +49,7 @@ public sealed partial class AiConversationWorkflow
         decimal? promptCost = response.CostBreakdown is null
             ? null
             : response.CostBreakdown.InputUsd + response.CostBreakdown.CachedInputUsd + response.CostBreakdown.CacheWriteUsd;
+
         return new ShellRuntimeStatus(
             "OpenAI",
             response.Model,
@@ -70,6 +78,10 @@ public sealed partial class AiConversationWorkflow
         };
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Applies visibility policy to a fresh session snapshot.</summary>
     private async Task RenderActiveSnapshotAsync(
         string sessionId,
@@ -79,6 +91,7 @@ public sealed partial class AiConversationWorkflow
         bool force = false)
     {
         var snapshot = await CreateSessionSnapshotAsync(sessionId, memory, settings, cancellationToken).ConfigureAwait(false);
+
         if (memory.ShowSessionSummaryDuringWork || force || IsContextWarning(snapshot))
         {
             _shell.RenderRuntimeStatus(snapshot);
@@ -97,6 +110,7 @@ public sealed partial class AiConversationWorkflow
         var status = memory.LastResponse is null
             ? ShellRuntimeStatus.FromSettings(settings)
             : CreateTurnSnapshot(memory.LastResponse, settings, accounting.EstimatedCostUsd ?? 0m);
+
         return status with
         {
             RunningCostUsd = accounting.EstimatedCostUsd ?? 0m,
@@ -124,9 +138,17 @@ public sealed partial class AiConversationWorkflow
         };
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Forces the summary into view at eighty percent of the operating context budget.</summary>
     internal static bool IsContextWarning(ShellRuntimeStatus status) => status.ContextBudgetTokens > 0
         && status.ActiveContextTokens is { } used && (decimal)used * 100 >= (decimal)status.ContextBudgetTokens * 80;
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads final totals with a short deadline without hiding the original flow failure.</summary>
     private async Task RenderFinalSnapshotAsync(string sessionId, ConversationState memory, AppSettings settings)
@@ -135,6 +157,7 @@ public sealed partial class AiConversationWorkflow
         {
             return;
         }
+
         ShellRuntimeStatus snapshot;
         using var finalRead = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         try
@@ -147,6 +170,10 @@ public sealed partial class AiConversationWorkflow
             _shell.RenderWarning(_text.Text("Chat.SessionSummaryUnavailable"));
             snapshot = ShellRuntimeStatus.FromSettings(settings) with { SessionCostKnown = false };
         }
+
         _shell.RenderRuntimeStatus(snapshot);
     }
+
+    #endregion
+
 }

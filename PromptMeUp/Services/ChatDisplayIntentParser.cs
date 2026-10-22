@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using PromptMeUp.Models;
 
@@ -25,7 +24,13 @@ namespace PromptMeUp.Services;
 /// <summary>Parses the bounded display instructions returned for a chat response.</summary>
 public static class ChatDisplayIntentParser
 {
+    #region Fields
+
     private const int MaximumResponseLength = 1_024;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Accepts only the bounded chat-preference contract and rejects malformed or contradictory routing decisions.</summary>
     public static ChatDisplayIntent Parse(string text, int statusCode)
@@ -74,6 +79,10 @@ public static class ChatDisplayIntentParser
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Maps only the three allowed visibility operations to a nullable session preference.</summary>
     private static bool? ReadVisibility(JsonElement value) => value.GetString() switch
     {
@@ -91,4 +100,6 @@ public static class ChatDisplayIntentParser
         "direct" => false,
         _ => throw new JsonException("The chat execution-confirmation operation is invalid.")
     };
+
+    #endregion
 }

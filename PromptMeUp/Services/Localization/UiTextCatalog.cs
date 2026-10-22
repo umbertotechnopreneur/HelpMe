@@ -16,13 +16,18 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
 /// <summary>Provides the localized text catalogs used by PromptMeUp's terminal views and workflows.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Properties
+
     internal static IReadOnlyDictionary<string, LocalizedText> Entries { get; } = CreateEntries();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Resolves a UI string for one supported language without changing the active interface culture.</summary>
     internal static bool TryGet(string key, string language, out string value)
@@ -35,6 +40,10 @@ internal static partial class UiTextCatalog
         value = translations.ForLanguage(language);
         return true;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Combines each functional catalog while rejecting duplicate UI keys.</summary>
     private static IReadOnlyDictionary<string, LocalizedText> CreateEntries()
@@ -70,6 +79,8 @@ internal static partial class UiTextCatalog
         AddTerminalEntries(entries);
         return entries;
     }
+
+    #endregion
 }
 
 /// <summary>Stores one required UI translation for each supported language.</summary>
@@ -82,6 +93,8 @@ internal sealed record LocalizedText(
     string Spanish,
     string Vietnamese)
 {
+    #region Methods
+
     /// <summary>Resolves one explicitly named translation for a supported language.</summary>
     internal string ForLanguage(string language) => language switch
     {
@@ -93,4 +106,6 @@ internal sealed record LocalizedText(
         "vi" => Vietnamese,
         _ => throw new ArgumentOutOfRangeException(nameof(language), language, "Unsupported language.")
     };
+
+    #endregion
 }

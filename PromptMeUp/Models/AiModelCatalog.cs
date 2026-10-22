@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Describes a supported model, reasoning choices, and context window.</summary>
 public sealed record AiModelDescriptor(
     string Id,
     string DisplayName,
@@ -28,8 +28,15 @@ public sealed record AiModelDescriptor(
 /// <summary>Provides the supported AI model definitions and their local defaults.</summary>
 public static class AiModelCatalog
 {
+
+    #region Fields
+
     private static readonly string[] FullEfforts = ["none", "low", "medium", "high", "xhigh"];
     private static readonly string[] FrontierEfforts = ["none", "low", "medium", "high", "xhigh", "max"];
+
+    #endregion
+
+    #region Properties
 
     public static IReadOnlyList<AiModelDescriptor> Models { get; } =
     [
@@ -42,8 +49,15 @@ public static class AiModelCatalog
         new("gpt-5.4-nano", "GPT-5.4 nano", FullEfforts, 400_000)
     ];
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Resolves a supported model identifier or rejects stale configuration.</summary>
     public static AiModelDescriptor Resolve(string id) =>
         Models.FirstOrDefault(model => string.Equals(model.Id, id, StringComparison.OrdinalIgnoreCase))
         ?? throw new InvalidOperationException($"Unsupported model '{id}'.");
+
+    #endregion
+
 }

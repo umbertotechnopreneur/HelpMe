@@ -21,8 +21,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies terminal editor buffer behavior.</summary>
 public sealed class TerminalEditorBufferTests
 {
+
+    #region Methods
+
     /// <summary>Vertical movement lands between complete characters, even when a line contains an emoji.</summary>
     [Fact]
     public void VerticalMovement_PreservesGraphemeColumn()
@@ -61,6 +65,12 @@ public sealed class TerminalEditorBufferTests
         Assert.Equal(4, editor.Caret);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a navigation key without relying on a real terminal.</summary>
     private static ConsoleKeyInfo Key(ConsoleKey key) => new('\0', key, false, false, false);
+
+    #endregion
 }

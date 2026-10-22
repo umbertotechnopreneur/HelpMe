@@ -16,23 +16,34 @@
  *
  * VBWR E */
 
-
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Removes recognizable credentials before text is persisted or sent to a provider.</summary>
 public interface ISensitiveDataRedactor
 {
+    #region Methods
+
+    /// <summary>Replaces recognizable credentials while preserving non-sensitive surrounding text.</summary>
     string Redact(string value);
+
+    #endregion
 }
 
 /// <summary>Finds and redacts recognizable secrets before content is persisted or sent to a provider.</summary>
 public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
 {
+    #region Methods
+
     /// <summary>Redacts recognizable credentials while preserving ordinary prompt and command text.</summary>
     public string Redact(string value) => RedactText(value, 0);
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Decodes serialized JSON strings before inspecting credentials, with a bounded nesting depth.</summary>
     private static string RedactText(string value, int depth)
@@ -140,6 +151,7 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
         var output = new StringBuilder(text.Length);
         var copied = 0;
         var searchFrom = 0;
+
         while (CredentialAssignmentPattern().Match(text, searchFrom) is { Success: true } match)
         {
             var start = match.Index + match.Length;
@@ -149,10 +161,12 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
             {
                 name = JsonSerializer.Deserialize<string>($"\"{name}\"")!;
             }
+
             if (!CredentialFieldPolicy.IsSecret(name) || start == text.Length)
             {
                 continue;
             }
+
             if (name.Contains("authorization", StringComparison.OrdinalIgnoreCase))
             {
                 start = SkipAuthorizationScheme(text, start);
@@ -166,18 +180,25 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
             {
                 continue;
             }
+
             var value = text[start..end];
-            var content = quote.Length > 0 && value.Length >= quote.Length * 2 && value.EndsWith(quote, StringComparison.Ordinal)
+            var hasMatchingQuotes = quote.Length > 0
+                && value.Length >= quote.Length * 2
+                && value.EndsWith(quote, StringComparison.Ordinal);
+            var content = hasMatchingQuotes
                 ? value[quote.Length..^quote.Length]
                 : value;
             var replacement = IsRedactedMarker(content)
                 ? value
                 : quote + "[redacted-credential]" + quote;
+
+            // Copy untouched text once, then advance past the entire credential value.
             output.Append(text.AsSpan(copied, start - copied));
             output.Append(replacement);
             copied = end;
             searchFrom = end;
         }
+
         return copied == 0 ? text : output.Append(text.AsSpan(copied)).ToString();
     }
 
@@ -216,6 +237,7 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
                 index = close + 1;
             }
         }
+
         while (index < text.Length && !IsValueBoundary(text[index]))
         {
             if (text[index] is '{' or '[')
@@ -270,6 +292,8 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
                 return index + 1;
             }
         }
+
+        // Incomplete captured output must remain redacted through the end of the available text.
         return text.Length;
     }
 
@@ -357,4 +381,6 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
     /// <summary>Finds candidate field names; the shared policy decides which values require redaction.</summary>
     [GeneratedRegex("""(?i)(?:\\?["'](?<name>(?:\\u[0-9a-f]{4}|[A-Z0-9_ .-])+)\\?["']|\b(?<name>[A-Z0-9_][A-Z0-9_.-]*)(?:\\?["'])?)\s*(?<separator>[:=])\s*""", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex CredentialAssignmentPattern();
+
+    #endregion
 }

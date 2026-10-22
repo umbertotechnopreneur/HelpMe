@@ -42,6 +42,9 @@ internal readonly record struct FullscreenMenuSelection(int GroupIndex, int Item
 /// <summary>Presents numbered groups and inline commands with the shared fullscreen header, sidebar, and footer.</summary>
 internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationService text, ConsoleRenderOptions options)
 {
+
+    #region Fields
+
     private readonly FullscreenSectionNavigator _groupNavigator = new();
     private readonly FullscreenInput _input = new(console, text);
     private MenuFocus _focus = MenuFocus.Groups;
@@ -54,6 +57,10 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private string? _editorError;
     private FullscreenFrame? _lastFrame;
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Displays a disposable fullscreen menu and returns the selected grouped command or null for back.</summary>
     internal FullscreenMenuSelection? Select(string title, IReadOnlyList<FullscreenMenuGroup> groups, string backLabel,
         Func<FullscreenMenuSelection, IReadOnlyList<FullscreenMenuGroup>?>? handleInline = null)
@@ -61,10 +68,12 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(groups);
         ArgumentException.ThrowIfNullOrWhiteSpace(backLabel);
+
         if (groups.Count == 0)
         {
             throw new ArgumentException("A fullscreen menu needs at least one group.", nameof(groups));
         }
+
         if (!FullscreenViewport.CanUse(console))
         {
             throw new InvalidOperationException(text.Text("Form.Unavailable"));
@@ -80,10 +89,13 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         EnsureDraft(groups);
         _lastFrame = null;
         _input.Reset();
+
         try
         {
             FullscreenMenuSelection? selected = null;
+
             FullscreenViewport.Run(console, () => selected = RunLoop(title, groups, backLabel, handleInline));
+
             return selected;
         }
         catch (InteractiveFlowCanceledException)
@@ -97,17 +109,24 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Processes grouped commands, one back action, numeric shortcuts, and terminal resize.</summary>
     private FullscreenMenuSelection? RunLoop(string title, IReadOnlyList<FullscreenMenuGroup> groups, string backLabel,
         Func<FullscreenMenuSelection, IReadOnlyList<FullscreenMenuGroup>?>? handleInline)
     {
         FullscreenMenuSelection? result = null;
+
         bool HandleSelection(FullscreenMenuSelection selection)
         {
             var refreshed = handleInline?.Invoke(selection);
+
             if (refreshed is null)
             {
                 result = selection;
+
                 return true;
             }
 
@@ -115,10 +134,12 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
             _selectedGroupIndex = Math.Clamp(_groupNavigator.SelectedIndex, 0, groups.Count - 1);
             _groupNavigator.Reset(_selectedGroupIndex, groups.Count, _focus == MenuFocus.Groups);
             var items = groups[_groupNavigator.SelectedIndex].Items;
+
             _selectedItemIndex = items.Count == 0 ? 0 : Math.Clamp(_selectedItemIndex, 0, items.Count - 1);
             _itemOffset = Math.Min(_itemOffset, Math.Max(0, items.Count - 1));
             _detailOffset = 0;
             EnsureDraft(groups);
+
             return false;
         }
 
@@ -127,20 +148,26 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
             void Paint() => PaintScreen(title, groups, backLabel);
             Paint();
             var readKey = _input.ReadKey(Paint, _groupNavigator.PendingSelectionDeadline);
+
             if (readKey is null)
             {
                 var pendingBefore = _groupNavigator.SelectedIndex;
+
                 _groupNavigator.CompletePendingNumber(groups.Count);
+
                 if (_groupNavigator.SelectedIndex != pendingBefore)
                 {
                     ResetItems();
                     EnsureDraft(groups);
                 }
+
                 _focus = MenuFocus.Groups;
                 continue;
             }
+
             var key = readKey.Value;
             var items = groups[_groupNavigator.SelectedIndex].Items;
+
             if (_focus == MenuFocus.Editor && items.Count > 0)
             {
                 if (EditInput(key, items[_selectedItemIndex]))
@@ -151,17 +178,22 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
                         return result;
                     }
                 }
+
                 continue;
             }
+
             if (key.Key is ConsoleKey.Escape or ConsoleKey.Q)
             {
                 return null;
             }
+
             if (console.Profile.Width < 60 || console.Profile.Height < 20)
             {
                 continue;
             }
+
             var before = _groupNavigator.SelectedIndex;
+
             if (_groupNavigator.TrySelectNumber(key, groups.Count))
             {
                 if (_groupNavigator.SelectedIndex != before)
@@ -170,8 +202,10 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
                     EnsureDraft(groups);
                     _focus = MenuFocus.Groups;
                 }
+
                 continue;
             }
+
             switch (key.Key)
             {
                 case ConsoleKey.F6:
@@ -202,6 +236,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
                         {
                             return result;
                         }
+
                         break;
                     }
                     if (items.Count > 0)
@@ -221,6 +256,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
                         {
                             return result;
                         }
+
                         break;
                     }
                     if (_focus == MenuFocus.Groups && items.Count > 0)
@@ -308,16 +344,20 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private void PaintScreen(string title, IReadOnlyList<FullscreenMenuGroup> groups, string backLabel)
     {
         var frame = FullscreenViewport.BeginFrame(console, _lastFrame);
+
         _lastFrame = frame;
         var width = Math.Max(1, frame.Width - 1);
         var height = Math.Max(1, frame.Height - 1);
+
         if (frame.Width < 60 || frame.Height < 20)
         {
             console.Write(new Text(text.Text("Form.TooSmall"), Style.Parse(TerminalTheme.Warning)));
+
             return;
         }
 
         var bodyRows = height - FullscreenHeader.Height - FullscreenFooter.Height();
+
         _groupNavigator.IsFocused = _focus == MenuFocus.Groups;
         var active = groups[_groupNavigator.SelectedIndex];
         var content = Content(active, bodyRows);
@@ -333,6 +373,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
             actions,
             FullscreenFooter.Shortcuts(text.Text(footerKey, groups.Count),
                 text.Text(footerKey + "Compact", groups.Count), width - 4));
+
         console.Write(FullscreenWorkspace.Create(title, options, frame.Width, content,
             _groupNavigator.Render(groups, GroupLabel, bodyRows, text.Text("Form.Sections"), console.Profile.Capabilities.Unicode),
             footer, FullscreenFooter.NoticeRows));
@@ -349,10 +390,12 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
             new Text(" "),
             new FullscreenLine(text.Text("Lab.Commands"), Style.Parse("bold " + TerminalTheme.Primary))
         };
+
         if (group.Items.Count == 0)
         {
             rows.Add(new Text(" "));
             rows.Add(new FullscreenLine(text.Text("Lab.None"), Style.Parse(TerminalTheme.Muted)));
+
             return new Padder(new Rows(rows.ToArray()), new Padding(2, 0, 2, 0));
         }
 
@@ -362,13 +405,16 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         var inputRows = selectedItem.InputLabel is null ? 0 : selectedItem.MultilineInput ? 6 : 3;
         var detailRows = hasDetails ? DetailCapacity(bodyRows - inputRows) : 0;
         var visibleRows = Math.Max(1, bodyRows - 8 - inputRows - detailRows);
+
         EnsureItemVisible(group.Items.Count, visibleRows);
         var end = Math.Min(group.Items.Count, _itemOffset + visibleRows);
         var grid = new Grid().AddColumn(new GridColumn().RightAligned());
+
         if (group.ShowItemDescriptions)
         {
             grid.AddColumn(new GridColumn());
         }
+
         for (var index = _itemOffset; index < end; index++)
         {
             var item = group.Items[index];
@@ -380,6 +426,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
                     : selected ? "bold " + TerminalTheme.Primary : TerminalTheme.Primary);
             var marker = focused ? "> " : "  ";
             var label = new FullscreenLine(marker + ItemLabel(item), style);
+
             if (group.ShowItemDescriptions)
             {
                 grid.AddRow(label, new FullscreenLine(Safe(item.Description), style));
@@ -389,21 +436,26 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
                 grid.AddRow(label);
             }
         }
+
         rows.Add(grid);
+
         if (_itemOffset > 0 || end < group.Items.Count)
         {
             rows.Add(new FullscreenLine(text.Text("Lab.CommandPosition", _selectedItemIndex + 1, group.Items.Count),
                 Style.Parse(TerminalTheme.Muted)));
         }
+
         if (selectedItem.InputLabel is not null)
         {
             var editing = _focus == MenuFocus.Editor;
             var editorStyle = Style.Parse(editing
                 ? $"{TerminalTheme.SelectionForeground} on {TerminalTheme.SelectionBackground}"
                 : TerminalTheme.Primary);
+
             rows.Add(new Text(" "));
             rows.Add(new FullscreenLine((editing ? "> " : string.Empty) + selectedItem.InputLabel,
                 Style.Parse((editing ? "bold " : string.Empty) + TerminalTheme.Accent)));
+
             if (selectedItem.MultilineInput)
             {
                 rows.Add(TextArea(selectedItem, 4, editorStyle));
@@ -412,26 +464,32 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
             {
                 var editorWidth = Math.Max(8, console.Profile.Width
                     - FullscreenWorkspace.SidebarWidth(console.Profile.Width) - 12);
+
                 rows.Add(new FullscreenLine("[ " + EditorValue(selectedItem, editorWidth) + " ]", editorStyle));
             }
         }
+
         if (hasDetails)
         {
             var detailLines = SafeDetails(selectedItem.Details!).Split('\n');
+
             _detailOffset = Math.Clamp(_detailOffset, 0, Math.Max(0, detailLines.Length - detailRows));
             var detailEnd = Math.Min(detailLines.Length, _detailOffset + detailRows);
             var detailMarker = _focus == MenuFocus.Details ? "> " : string.Empty;
+
             rows.Add(new Text(" "));
             rows.Add(new FullscreenLine(detailMarker + text.Text("Lab.Package") + " — " + ItemLabel(selectedItem),
                 Style.Parse((_focus == MenuFocus.Details ? "bold " : string.Empty) + TerminalTheme.Accent)));
             rows.Add(new Text(string.Join('\n', detailLines[_detailOffset..detailEnd]),
                 Style.Parse(TerminalTheme.Primary)));
+
             if (_detailOffset > 0 || detailEnd < detailLines.Length)
             {
                 rows.Add(new FullscreenLine(text.Text("Lab.DetailPosition", _detailOffset + 1, detailLines.Length),
                     Style.Parse(TerminalTheme.Muted)));
             }
         }
+
         return new Padder(new Rows(rows.ToArray()), new Padding(2, 0, 2, 0));
     }
 
@@ -444,6 +502,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         }
 
         var item = group.Items[Math.Clamp(_selectedItemIndex, 0, group.Items.Count - 1)];
+
         return string.IsNullOrWhiteSpace(item.Description) ? group.Description : item.Description;
     }
 
@@ -451,20 +510,25 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private void MoveFocus(int itemCount, bool hasInput, bool hasDetails, int direction)
     {
         var areas = new List<MenuFocus> { MenuFocus.Groups };
+
         if (itemCount > 0)
         {
             areas.Add(MenuFocus.Commands);
         }
+
         if (hasInput)
         {
             areas.Add(MenuFocus.Editor);
         }
+
         if (hasDetails)
         {
             areas.Add(MenuFocus.Details);
         }
+
         areas.Add(MenuFocus.Back);
         var index = areas.IndexOf(_focus);
+
         _focus = areas[(index + direction + areas.Count) % areas.Count];
     }
 
@@ -472,12 +536,15 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private void MoveGroup(int delta, IReadOnlyList<FullscreenMenuGroup> groups)
     {
         var before = _groupNavigator.SelectedIndex;
+
         _groupNavigator.Move(delta, groups.Count);
+
         if (_groupNavigator.SelectedIndex != before)
         {
             ResetItems();
             EnsureDraft(groups);
         }
+
         _focus = MenuFocus.Groups;
     }
 
@@ -485,10 +552,12 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private void MoveItem(int delta, IReadOnlyList<FullscreenMenuItem> items)
     {
         _selectedItemIndex = (_selectedItemIndex + delta) % items.Count;
+
         if (_selectedItemIndex < 0)
         {
             _selectedItemIndex += items.Count;
         }
+
         _detailOffset = 0;
         EnsureDraft(items[_selectedItemIndex]);
     }
@@ -516,38 +585,51 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private bool EditInput(ConsoleKeyInfo key, FullscreenMenuItem item)
     {
         _editorError = null;
+
         if (key.Key == ConsoleKey.Escape)
         {
             _focus = MenuFocus.Commands;
+
             return false;
         }
+
         if (key.Key == ConsoleKey.F6)
         {
             _focus = MenuFocus.Groups;
+
             return false;
         }
+
         if (key.Key == ConsoleKey.Tab)
         {
             _focus = (key.Modifiers & ConsoleModifiers.Shift) != 0 ? MenuFocus.Commands
                 : string.IsNullOrWhiteSpace(item.Details) ? MenuFocus.Back : MenuFocus.Details;
+
             return false;
         }
+
         if (key.Key == ConsoleKey.Enter
             && (!item.MultilineInput || (key.Modifiers & ConsoleModifiers.Control) != 0))
         {
             if (!item.CanExecute || string.IsNullOrWhiteSpace(CurrentDraft(item)))
             {
                 _editorError = text.Text("Lab.Invalid");
+
                 return false;
             }
+
             return true;
         }
+
         if (!_editor.Apply(key, item.MultilineInput, 4096))
         {
             _editorError = text.Text("Lab.Invalid");
+
             return false;
         }
+
         SetDraft(_editor.Text);
+
         return false;
     }
 
@@ -555,6 +637,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private void EnsureDraft(IReadOnlyList<FullscreenMenuGroup> groups)
     {
         var items = groups[_groupNavigator.SelectedIndex].Items;
+
         if (items.Count > 0)
         {
             EnsureDraft(items[Math.Clamp(_selectedItemIndex, 0, items.Count - 1)]);
@@ -574,6 +657,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private string CurrentDraft(FullscreenMenuItem item)
     {
         EnsureDraft(item);
+
         return _drafts.GetValueOrDefault((_groupNavigator.SelectedIndex, _selectedItemIndex), string.Empty);
     }
 
@@ -587,10 +671,12 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private string EditorValue(FullscreenMenuItem item, int width)
     {
         var value = CurrentDraft(item);
+
         if (_focus != MenuFocus.Editor)
         {
             return Safe(value);
         }
+
         var sourceCaret = Math.Clamp(_editor.Caret, 0, value.Length);
         var beforeCaret = Safe(value[..sourceCaret]);
         var afterCaret = Safe(value[sourceCaret..]);
@@ -599,7 +685,9 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         var budget = Math.Max(1, width - 3);
         var start = Math.Max(0, caret - budget / 2);
         var end = Math.Min(safe.Length, start + budget);
+
         start = Math.Max(0, end - budget);
+
         return (start > 0 ? "…" : string.Empty) + safe[start..Math.Min(caret, end)] + "|"
             + safe[Math.Min(caret, end)..end] + (end < safe.Length ? "…" : string.Empty);
     }
@@ -613,6 +701,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         var lines = SafeDetails(marked).Split('\n');
         var caretLine = value[..sourceCaret].Count(character => character == '\n');
         var start = Math.Clamp(caretLine - visibleRows + 1, 0, Math.Max(0, lines.Length - visibleRows));
+
         return new Rows(lines.Skip(start).Take(visibleRows).Select((line, index) =>
             (IRenderable)new FullscreenLine((_focus == MenuFocus.Editor && start + index == caretLine ? "> " : "  ") + line,
                 style)).ToArray());
@@ -627,9 +716,12 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         if (!SelectedHasDetails(items))
         {
             _detailOffset = 0;
+
             return;
         }
+
         var lineCount = SafeDetails(items[_selectedItemIndex].Details!).Split('\n').Length;
+
         _detailOffset = delta == int.MaxValue
             ? Math.Max(0, lineCount - 1)
             : Math.Clamp(_detailOffset + delta, 0, Math.Max(0, lineCount - 1));
@@ -647,6 +739,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
     private void EnsureItemVisible(int itemCount, int visibleRows)
     {
         _selectedItemIndex = Math.Clamp(_selectedItemIndex, 0, itemCount - 1);
+
         if (_selectedItemIndex < _itemOffset)
         {
             _itemOffset = _selectedItemIndex;
@@ -655,6 +748,7 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         {
             _itemOffset = _selectedItemIndex - visibleRows + 1;
         }
+
         _itemOffset = Math.Clamp(_itemOffset, 0, Math.Max(0, itemCount - visibleRows));
     }
 
@@ -686,6 +780,11 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         .Select(character => char.IsControl(character) && character != '\n' && character != '\t' ? ' ' : character)
         .ToArray());
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Identifies the focused area of a fullscreen menu.</summary>
     private enum MenuFocus
     {
         Groups,
@@ -694,4 +793,6 @@ internal sealed class FullscreenMenuView(IAnsiConsole console, ILocalizationServ
         Details,
         Back
     }
+
+    #endregion
 }

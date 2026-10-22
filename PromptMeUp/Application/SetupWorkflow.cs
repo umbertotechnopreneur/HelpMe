@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -37,6 +36,9 @@ public sealed class SetupWorkflow(
     MemoryManagerWorkflow? memories = null,
     SettingsFeatureOverviewService? featureOverview = null)
 {
+
+    #region Methods
+
     /// <summary>Opens the shared settings screen with appearance selected.</summary>
     public Task<int> RunThemeAsync(AppSettings current, CancellationToken cancellationToken) =>
         RunAsync(current, cancellationToken, SettingsSection.Theme);
@@ -52,10 +54,12 @@ public sealed class SetupWorkflow(
         SettingsSection initialSection = SettingsSection.General)
     {
         ArgumentNullException.ThrowIfNull(current);
+
         if (!Enum.IsDefined(initialSection))
         {
             throw new ArgumentOutOfRangeException(nameof(initialSection));
         }
+
         var saved = false;
         while (true)
         {
@@ -74,6 +78,7 @@ public sealed class SetupWorkflow(
                 ContextBudgetOverridden = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PROMPTMEUP_CONTEXT_TOKENS")),
                 SaveSucceeded = saved
             });
+
             if (submission is null)
             {
                 if (!saved)
@@ -81,25 +86,30 @@ public sealed class SetupWorkflow(
                     shell.RenderNotice(text.Text("Setup.Cancelled"));
                     await activity.TryRecordAsync("setup", "cancelled", null, new { }).ConfigureAwait(false);
                 }
+
                 return 0;
             }
 
             var selectedTheme = themes?.Resolve(submission.Settings.Theme);
             var secretGuidance = new List<string>();
             await SaveSubmissionAsync(submission, secretGuidance, cancellationToken).ConfigureAwait(false);
+
             if (selectedTheme is not null)
             {
                 TerminalTheme.Apply(selectedTheme);
             }
+
             if (submission.Settings.Language != current.Language)
             {
                 text.SetLanguage(submission.Settings.Language);
             }
+
             shell.RenderSuccess(text.Text("Setup.Saved"));
             foreach (var guidance in secretGuidance)
             {
                 shell.RenderMuted(guidance);
             }
+
             await activity.TryRecordAsync(
                 "setup",
                 "completed",
@@ -116,19 +126,26 @@ public sealed class SetupWorkflow(
                     submission.Settings.MaxContextPercent,
                     FeaturePreferencesChanged = submission.Features is not null
                 }).ConfigureAwait(false);
+
             if (submission.TestConnection)
             {
                 await conversationWorkflow.RunConnectionTestAsync(submission.Settings, cancellationToken).ConfigureAwait(false);
             }
+
             if (!submission.KeepOpen)
             {
                 return 0;
             }
+
             current = submission.Settings;
             initialSection = submission.SelectedSection;
             saved = true;
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Persists feature consent before other settings and reports any later partial-save failure.</summary>
     private async Task SaveSubmissionAsync(SetupSubmission submission, List<string> secretGuidance, CancellationToken cancellationToken)
@@ -151,16 +168,20 @@ public sealed class SetupWorkflow(
                 {
                     text.SetLanguage(originalLanguage);
                 }
+
                 featuresSaved = true;
             }
+
             if (submission.ApiKey is not null)
             {
                 secretGuidance.Add(secrets.StoreForCurrentUser(submission.Settings.ApiKeyVariable, submission.ApiKey).Guidance);
             }
+
             if (submission.AdminKey is not null)
             {
                 secretGuidance.Add(secrets.StoreForCurrentUser(submission.Settings.AdminKeyVariable, submission.AdminKey).Guidance);
             }
+
             await settings.SaveAsync(submission.Settings, cancellationToken).ConfigureAwait(false);
         }
         catch
@@ -169,6 +190,7 @@ public sealed class SetupWorkflow(
             {
                 shell.RenderWarning(text.Text("Settings.FeaturesPartiallySaved"));
             }
+
             throw;
         }
     }
@@ -179,4 +201,7 @@ public sealed class SetupWorkflow(
         var workflow = memories ?? throw new InvalidOperationException("The memory manager is unavailable.");
         workflow.RunAsync(cancellationToken).GetAwaiter().GetResult();
     }
+
+    #endregion
+
 }

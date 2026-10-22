@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
@@ -26,10 +25,17 @@ namespace PromptMeUp.Application;
 /// <summary>Coordinates local saved-memory browsing, editing, and confirmed deletion without provider calls.</summary>
 public sealed class MemoryManagerWorkflow
 {
+
+    #region Fields
+
     private readonly PersistentMemoryService _memories;
     private readonly IMemoryManagerView _view;
     private readonly ILocalizationService _text;
     private readonly SkillsAndMemoryWorkflow? _skillsAndMemory;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Connects the passive memory manager to local persistence and localized operation feedback.</summary>
     public MemoryManagerWorkflow(
@@ -43,6 +49,10 @@ public sealed class MemoryManagerWorkflow
         _text = text ?? throw new ArgumentNullException(nameof(text));
         _skillsAndMemory = skillsAndMemory;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Returns the current saved notes for the compact settings preview.</summary>
     public Task<IReadOnlyList<PersistentMemory>> ListAsync(CancellationToken cancellationToken) =>
@@ -59,6 +69,7 @@ public sealed class MemoryManagerWorkflow
             cancellationToken.ThrowIfCancellationRequested();
             var memories = await _memories.ListAsync(cancellationToken).ConfigureAwait(false);
             var proposals = MemoryProposalWorkspace.Disabled;
+
             if (_skillsAndMemory is not null)
             {
                 try
@@ -71,6 +82,7 @@ public sealed class MemoryManagerWorkflow
                     feedbackIsError = true;
                 }
             }
+
             MemoryManagerSelection selection;
             try
             {
@@ -83,10 +95,12 @@ public sealed class MemoryManagerWorkflow
             {
                 return;
             }
+
             if (selection.Action == MemoryManagerAction.Close)
             {
                 return;
             }
+
             try
             {
                 switch (selection.Action)
@@ -151,6 +165,10 @@ public sealed class MemoryManagerWorkflow
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Saves reviewed inline text through the same authoritative validation used by chat memory commands.</summary>
     private async Task<string> SaveAsync(PersistentMemory? memory, string? draft, CancellationToken cancellationToken)
     {
@@ -158,6 +176,7 @@ public sealed class MemoryManagerWorkflow
         var saved = memory is null
             ? await _memories.RememberAsync(reviewed, true, cancellationToken).ConfigureAwait(false)
             : await _memories.UpdateAsync(memory.Id, reviewed, true, cancellationToken).ConfigureAwait(false);
+
         return _text.Text("Memory.Saved", saved.Id);
     }
 
@@ -172,4 +191,7 @@ public sealed class MemoryManagerWorkflow
         or System.Text.Json.JsonException
         or YamlDotNet.Core.YamlException
         or ArgumentException;
+
+    #endregion
+
 }

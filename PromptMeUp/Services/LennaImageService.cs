@@ -16,16 +16,21 @@
  *
  * VBWR E */
 
-
 using System.IO.Compression;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Loads the bundled Lenna illustration used by the terminal view.</summary>
 public interface ILennaImageService
 {
+    #region Methods
+
+    /// <summary>Loads the requested value from its configured local source.</summary>
     TerminalImage Load();
+
+    #endregion
 }
 
 /// <summary>Reads the bundled Lenna portrait without filesystem access or image decoder dependencies.</summary>
@@ -33,11 +38,17 @@ public sealed class LennaImageService(
     ILocalizationService text,
     ILogger<LennaImageService> logger) : ILennaImageService
 {
+    #region Fields
+
     private const string ResourceName = "PromptMeUp.Assets.lenna.rgb.gz";
     private const int ImageWidth = 78;
     private const int ImageHeight = 78;
     private const int PixelByteCount = ImageWidth * ImageHeight * 3;
     private const int MaximumResourceBytes = PixelByteCount + 1024;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Decodes exactly one bounded RGB portrait and reports damaged resources in the active language.</summary>
     public TerminalImage Load()
@@ -68,4 +79,6 @@ public sealed class LennaImageService(
             throw new InvalidOperationException(text.Text("Lenna.LoadError"), exception);
         }
     }
+
+    #endregion
 }

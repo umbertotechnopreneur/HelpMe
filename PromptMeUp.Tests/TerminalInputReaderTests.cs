@@ -22,8 +22,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies terminal input reader behavior.</summary>
 public sealed class TerminalInputReaderTests
 {
+
+    #region Methods
+
     /// <summary>Verifies pasted line endings, blank lines, and trailing whitespace remain input until a later Enter.</summary>
     [Fact]
     public void Read_MultilinePaste_PreservesTextBeforeSeparateEnter()
@@ -265,6 +269,10 @@ public sealed class TerminalInputReaderTests
         Assert.Equal('x', reader.Read().Key?.KeyChar);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a reader over raw character records with a bounded paste size.</summary>
     private static TerminalInputReader CreateReader(string text, int maximumCharacters = 100) =>
         new(new ScriptedConsoleInput(Keys(text)), maximumCharacters);
@@ -273,11 +281,23 @@ public sealed class TerminalInputReaderTests
     private static IEnumerable<ConsoleKeyInfo> Keys(string text) =>
         text.Select(character => new ConsoleKeyInfo(character, (ConsoleKey)0, false, false, false));
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Feeds scripted keyboard input to terminal tests without a real console.</summary>
     private sealed class ScriptedConsoleInput : IAnsiConsoleInput
     {
+
+        #region Fields
+
         private readonly Queue<ConsoleKeyInfo> _keys;
         private readonly bool _yieldBeforeRead;
         private readonly bool _waitAtEnd;
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Creates deterministic raw input with optional asynchronous boundaries or pending input.</summary>
         public ScriptedConsoleInput(IEnumerable<ConsoleKeyInfo> keys, bool yieldBeforeRead = false, bool waitAtEnd = false)
@@ -286,6 +306,10 @@ public sealed class TerminalInputReaderTests
             _yieldBeforeRead = yieldBeforeRead;
             _waitAtEnd = waitAtEnd;
         }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Reports whether the next scripted record can be consumed immediately.</summary>
         public bool IsKeyAvailable() => _keys.Count > 0;
@@ -315,5 +339,9 @@ public sealed class TerminalInputReaderTests
 
             return null;
         }
+
+        #endregion
     }
+
+    #endregion
 }

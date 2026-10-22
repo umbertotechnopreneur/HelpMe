@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -27,7 +26,13 @@ namespace PromptMeUp.Services.OpenAi;
 /// <summary>Builds validated OpenAI request payloads from normalized application data.</summary>
 internal static class OpenAiRequestBuilder
 {
+    #region Fields
+
     private const long MinimumExplicitCachePrefixTokens = 1_024;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Builds a provider payload without placing secrets in the serializable object.</summary>
     internal static IReadOnlyDictionary<string, object> BuildBody(
@@ -256,6 +261,10 @@ internal static class OpenAiRequestBuilder
             : configured;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Places an explicit cache breakpoint after the stable instruction for GPT-5.6 requests.</summary>
     private static IReadOnlyList<object> BuildExplicitCacheInput(
         string instructions,
@@ -389,10 +398,20 @@ internal static class OpenAiRequestBuilder
         || prompt.Metadata.GetValueOrDefault("response-format") == "promptmeup-console-response-v1"
         || SupportsAppGuide(prompt);
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Enables guide retrieval only for prompts declaring the versioned guide-aware response contract.</summary>
     internal static bool SupportsAppGuide(PromptDefinition prompt) =>
         prompt.Metadata.GetValueOrDefault("response-format") == "promptmeup-console-response-v2";
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Identifies the model family that supports explicit prompt-cache breakpoints.</summary>
     private static bool IsGpt56(string model) => model.StartsWith("gpt-5.6", StringComparison.OrdinalIgnoreCase);
+
+    #endregion
 }

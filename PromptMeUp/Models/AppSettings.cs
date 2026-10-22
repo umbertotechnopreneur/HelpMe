@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Stores persisted application preferences and bounded runtime limits.</summary>
 public sealed record AppSettings(
     bool SetupCompleted,
     string Language,
@@ -40,6 +40,9 @@ public sealed record AppSettings(
     string AdminKeyVariable,
     DateTimeOffset UpdatedAt)
 {
+
+    #region Properties
+
     /// <summary>Indicates that setup has never been saved successfully on this installation.</summary>
     public bool IsFirstRun => !SetupCompleted;
 
@@ -55,9 +58,17 @@ public sealed record AppSettings(
 
     public ScriptLanguage ScriptLanguage { get; init; } = ScriptLanguage.PowerShell;
 
+    #endregion
+
+    #region Fields
+
     public const string DefaultEndpoint = "https://api.openai.com/v1/responses";
     public const string DefaultApiKeyVariable = "OPENAI_API_KEY";
     public const string DefaultAdminKeyVariable = "OPENAI_ADMIN_KEY";
+
+    #endregion
+
+    #region Properties
 
     public static AppSettings Default => new(
         SetupCompleted: false,
@@ -79,4 +90,7 @@ public sealed record AppSettings(
         ApiKeyVariable: DefaultApiKeyVariable,
         AdminKeyVariable: DefaultAdminKeyVariable,
         UpdatedAt: DateTimeOffset.UtcNow);
+
+    #endregion
+
 }

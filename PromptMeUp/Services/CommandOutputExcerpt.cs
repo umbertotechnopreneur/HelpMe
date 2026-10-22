@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text;
 
 namespace PromptMeUp.Services;
@@ -24,13 +23,23 @@ namespace PromptMeUp.Services;
 /// <summary>Retains the beginning and a rolling end without growing with process output.</summary>
 internal sealed class CommandOutputExcerpt(int capacity = 32_768)
 {
+    #region Fields
+
     private readonly StringBuilder _head = new();
     private readonly char[] _tail = new char[capacity - capacity / 3];
     private int _next;
     private int _tailLength;
     private long _total;
 
+    #endregion
+
+    #region Properties
+
     internal bool Truncated => _total > capacity;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Adds normalized text while bounding retained storage.</summary>
     /// <param name="value">Text received from a command stream.</param>
@@ -44,6 +53,7 @@ internal sealed class CommandOutputExcerpt(int capacity = 32_768)
                 _head.Append(character);
                 continue;
             }
+
             _tail[_next] = character;
             _next = (_next + 1) % _tail.Length;
             _tailLength = Math.Min(_tailLength + 1, _tail.Length);
@@ -53,9 +63,18 @@ internal sealed class CommandOutputExcerpt(int capacity = 32_768)
     /// <summary>Returns a bounded excerpt with an explicit middle-omission marker.</summary>
     public override string ToString()
     {
-        var tail = new string(Enumerable.Range(0, _tailLength)
-            .Select(index => _tail[(_next - _tailLength + index + _tail.Length) % _tail.Length]).ToArray());
-        if (!Truncated) return _head + tail;
+        // The oldest retained character follows the last write when the circular buffer wraps.
+        var tailStart = _next - _tailLength + _tail.Length;
+        var tailCharacters = Enumerable.Range(0, _tailLength)
+            .Select(index => _tail[(tailStart + index) % _tail.Length])
+            .ToArray();
+        var tail = new string(tailCharacters);
+
+        if (!Truncated)
+        {
+            return _head + tail;
+        }
+
         // An isolated suffix can lose a credential's key or prefix before the redactor sees it.
         // Retain only complete trailing lines when the raw rolling buffer has dropped their beginning.
         return Join(_head.ToString(), tail, _total, capacity, completeTailLines: true);
@@ -66,6 +85,10 @@ internal sealed class CommandOutputExcerpt(int capacity = 32_768)
     /// <param name="limit">Maximum number of retained UTF-16 characters.</param>
     internal static string Limit(string value, int limit) => value.Length <= limit
         ? value : Join(value, value, value.Length, limit);
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Fits beginning, omission count, and ending inside one character budget.</summary>
     /// <param name="head">Beginning of the output.</param>
@@ -78,17 +101,27 @@ internal sealed class CommandOutputExcerpt(int capacity = 32_768)
         var marker = "\n[... output omitted ...]\n";
         var headLength = 0;
         var tailLength = 0;
+
+        // The omitted count changes the marker width; refit until that width settles.
         for (var pass = 0; pass < 4; pass++)
         {
-            if (limit <= marker.Length) return marker[..Math.Max(0, limit)];
+            if (limit <= marker.Length)
+            {
+                return marker[..Math.Max(0, limit)];
+            }
+
             headLength = Math.Min(head.Length, Math.Min(limit / 3, limit - marker.Length));
             var replacementStart = head.LastIndexOf("[redacted-", Math.Max(0, headLength - 1), StringComparison.Ordinal);
             if (replacementStart >= 0)
             {
                 var replacementEnd = head.IndexOf(']', replacementStart);
                 if (replacementEnd >= headLength)
+                {
+                    // Keep a redaction token whole, or omit it when its ending cannot fit.
                     headLength = replacementEnd < limit - marker.Length ? replacementEnd + 1 : replacementStart;
+                }
             }
+
             tailLength = Math.Min(tail.Length, limit - marker.Length - headLength);
             if (completeTailLines)
             {
@@ -97,13 +130,30 @@ internal sealed class CommandOutputExcerpt(int capacity = 32_768)
                 var newline = tail.IndexOf('\n', tail.Length - tailLength);
                 tailLength = newline >= 0 ? tail.Length - newline - 1 : 0;
             }
+
             // Never split a UTF-16 surrogate pair at either truncation boundary.
-            if (headLength > 0 && char.IsHighSurrogate(head[headLength - 1])) headLength--;
-            if (tailLength > 0 && char.IsLowSurrogate(tail[tail.Length - tailLength])) tailLength--;
-            var nextMarker = $"\n[... {total - headLength - tailLength} characters omitted ...]\n";
-            if (marker == nextMarker) break;
+            if (headLength > 0 && char.IsHighSurrogate(head[headLength - 1]))
+            {
+                headLength--;
+            }
+
+            if (tailLength > 0 && char.IsLowSurrogate(tail[tail.Length - tailLength]))
+            {
+                tailLength--;
+            }
+
+            var omittedCharacters = total - headLength - tailLength;
+            var nextMarker = $"\n[... {omittedCharacters} characters omitted ...]\n";
+            if (marker == nextMarker)
+            {
+                break;
+            }
+
             marker = nextMarker;
         }
+
         return head[..headLength] + marker + tail[^tailLength..];
     }
+
+    #endregion
 }

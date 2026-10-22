@@ -16,14 +16,21 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Routes parsed commands to the corresponding application workflow.</summary>
 public interface IApplicationCommandRouter
 {
+
+    #region Methods
+
+    /// <summary>Runs the workflow selected by the parsed command and returns its exit code.</summary>
     Task<int> DispatchAsync(CommandLineOptions options, AppSettings settings, int promptCount, CancellationToken cancellationToken);
+
+    #endregion
+
 }
 
 /// <summary>Routes initialized commands to the handler that owns their feature area.</summary>
@@ -35,15 +42,21 @@ internal sealed class ApplicationCommandRouter(
     AppLicenseGuard license,
     PromptMeUp.Views.IHelpView helpView) : IApplicationCommandRouter
 {
+
+    #region Methods
+
     /// <summary>Dispatches one command after common startup and first-run checks.</summary>
     public async Task<int> DispatchAsync(CommandLineOptions options, AppSettings settings, int promptCount, CancellationToken cancellationToken)
     {
         if (!await license.CheckAsync(options.Command, cancellationToken).ConfigureAwait(false)) return 3;
+
         if (options.Command == AppCommand.Help && !license.AllowsCommands)
         {
             helpView.RenderStatic();
+
             return 0;
         }
+
         return await (options.Command switch
         {
             AppCommand.Preview or AppCommand.Plan or AppCommand.Script or AppCommand.Diagnose or
@@ -61,4 +74,7 @@ internal sealed class ApplicationCommandRouter(
             _ => throw new ArgumentOutOfRangeException(nameof(options), "Unsupported application command.")
         }).ConfigureAwait(false);
     }
+
+    #endregion
+
 }

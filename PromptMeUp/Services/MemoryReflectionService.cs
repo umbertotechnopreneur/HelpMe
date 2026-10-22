@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using PromptMeUp.Models;
@@ -26,11 +25,17 @@ namespace PromptMeUp.Services;
 /// <summary>Builds bounded evidence and validates advisory reflection without granting execution or memory authority.</summary>
 public sealed class MemoryReflectionService(ISensitiveDataRedactor redactor, ILocalizationService text)
 {
+    #region Fields
+
     private const int MaximumEvidence = 24;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Selects complete observations from independent sessions before filling a bounded Dream batch.</summary>
     public MemoryReflectionBatch DreamBatch(IReadOnlyList<LearningObservation> observations, int maximumCharacters)
@@ -173,6 +178,10 @@ public sealed class MemoryReflectionService(ISensitiveDataRedactor redactor, ILo
         return trimmed;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Serializes complete records, including escaping and envelope overhead, before measuring the input budget.</summary>
     private static string Serialize(bool dream, IReadOnlyList<LearningObservation> observations, IReadOnlyList<PersistentMemory> memories) =>
         JsonSerializer.Serialize(new
@@ -276,4 +285,6 @@ public sealed class MemoryReflectionService(ISensitiveDataRedactor redactor, ILo
 
     /// <summary>Returns a localized validation error without echoing rejected provider data.</summary>
     private InvalidOperationException Invalid() => new(text.Text("Lab.Invalid"));
+
+    #endregion
 }

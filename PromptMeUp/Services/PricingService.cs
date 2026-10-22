@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -26,16 +25,25 @@ using PromptMeUp.Services.OpenAi;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Refreshes provider pricing and summarizes estimated usage costs.</summary>
 public interface IPricingService
 {
+    #region Methods
+
+    /// <summary>Refreshes cached pricing when its daily refresh window has elapsed.</summary>
     Task<PricingRefreshResult> RefreshDailyIfNeededAsync(AppSettings settings, bool force, CancellationToken cancellationToken);
 
+    /// <summary>Returns the current pricing and usage-cost overview.</summary>
     Task<CostOverview> GetOverviewAsync(CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Refreshes and reads OpenAI model prices from the configured public pricing source.</summary>
 public sealed class OpenAiPricingService : IPricingService
 {
+    #region Fields
+
     public const string PricingMarkdownUrl = "https://developers.openai.com/api/docs/pricing.md";
     private const string Provider = "openai";
     private readonly HttpClient _http;
@@ -43,6 +51,10 @@ public sealed class OpenAiPricingService : IPricingService
     private readonly IEnvironmentSecretService _secrets;
     private readonly ILogger<OpenAiPricingService> _logger;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the official pricing and optional organization-cost synchronization service.</summary>
     public OpenAiPricingService(
@@ -56,6 +68,10 @@ public sealed class OpenAiPricingService : IPricingService
         _secrets = secrets ?? throw new ArgumentNullException(nameof(secrets));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Refreshes standard prices and optional organization costs at most once per local day.</summary>
     public async Task<PricingRefreshResult> RefreshDailyIfNeededAsync(
@@ -123,6 +139,10 @@ public sealed class OpenAiPricingService : IPricingService
             requestSummary.TotalTokensToday,
             prices);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Downloads and atomically replaces the cached official standard-price table.</summary>
     private async Task<int> RefreshPricesAsync(CancellationToken cancellationToken)
@@ -231,11 +251,14 @@ public sealed class OpenAiPricingService : IPricingService
             ? property.GetString()
             : null;
 
+    #endregion
 }
 
 /// <summary>Parses the supported OpenAI pricing-table Markdown into normalized model prices.</summary>
 internal static class OpenAiPricingMarkdownParser
 {
+    #region Methods
+
     /// <summary>Parses the official Standard pricing table into normalized short/long rows.</summary>
     internal static IReadOnlyList<AiModelPrice> ParseStandardPricingData(
         string markdown,
@@ -292,6 +315,10 @@ internal static class OpenAiPricingMarkdownParser
 
         return prices;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Adds one validated USD price row.</summary>
     private static void AddPrice(
@@ -354,4 +381,6 @@ internal static class OpenAiPricingMarkdownParser
 
         return amount;
     }
+
+    #endregion
 }

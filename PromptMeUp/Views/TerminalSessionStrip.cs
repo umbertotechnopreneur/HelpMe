@@ -27,8 +27,15 @@ namespace PromptMeUp.Views;
 internal sealed class TerminalSessionStrip(ILocalizationService text, ShellRuntimeStatus? status,
     TerminalSession? session = null)
 {
+
+    #region Fields
+
     private const string Gap = "  │  ";
     internal const int MeterWidth = 13;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Drops secondary metrics before wrapping essential context categories as complete blocks.</summary>
     internal IReadOnlyList<string> Rows(int width, bool showBreakdown = true)
@@ -38,43 +45,59 @@ internal sealed class TerminalSessionStrip(ILocalizationService text, ShellRunti
         {
             Value(TerminalText.Clip(status?.Model ?? "PromptMeUp", Math.Max(1, width / 3)), TerminalTheme.Accent)
         };
+
         if (status is { ActiveContextTokens: { } used, ContextBudgetTokens: > 0 })
         {
             var percentage = Math.Clamp(used * 100d / status.ContextBudgetTokens, 0d, 100d);
+
             primary.Add(Value($"~{Tokens(used)}/{Tokens(status.ContextBudgetTokens)} · {percentage:0}%", TerminalTheme.Info));
         }
 
         // Priority order is intentional: state and mode survive before cost, elapsed time, and the meter.
         var optional = new List<Block>();
+
         if (session is not null)
         {
             optional.Add(Value(TerminalActivityRow.Symbol(session.State, !session.Options.NoEmoji) + " "
                 + text.Text("Terminal.State." + session.State), TerminalActivityRow.Color(session.State)));
             var modeKey = status?.ConversationMode is { } mode ? "Terminal.Mode." + mode : session.ModeKey;
+
             optional.Add(Value(text.Text(modeKey), TerminalTheme.AccentSecondary));
         }
+
         if (status is { SessionCostKnown: true })
         {
             optional.Add(Value(text.Text("Shell.SessionCost") + ": ~$"
                 + status.RunningCostUsd.ToString("0.0000", CultureInfo.InvariantCulture), TerminalTheme.Success));
         }
+
         if (session is not null) optional.Add(Value(TerminalActivityRow.Duration(session.Elapsed), TerminalTheme.Muted));
+
         if (status is { HasContextBreakdown: true, ContextBudgetTokens: > 0 }) optional.Add(Meter(status));
+
         foreach (var block in optional)
         {
             if (Width(primary) + TerminalText.Width(Gap) + block.Width <= width) primary.Add(block);
         }
 
         var rows = Pack(primary, width);
+
         if (showBreakdown && status is { HasContextBreakdown: true, ActiveContextTokens: { }, ContextBudgetTokens: > 0 })
         {
             var metrics = ContextBlocks(status, compact: width < 100);
+
             // System, user, tool and assistant counts are never dropped to make space for optional metrics.
             rows.AddRange(Pack(Width(metrics) <= width ? metrics : metrics.Take(4).ToArray(), width));
+
             if (Width(metrics) > width && width >= 80) rows.AddRange(Pack(metrics.Skip(4).ToArray(), width));
         }
+
         return rows;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Builds the same numeric role breakdown used in the full context summary.</summary>
     private Block[] ContextBlocks(ShellRuntimeStatus current, bool compact)
@@ -88,10 +111,12 @@ internal sealed class TerminalSessionStrip(ILocalizationService text, ShellRunti
             ("Shell.ContextFree", "·", Math.Max(0, current.ContextBudgetTokens - current.ActiveContextTokens!.Value), TerminalTheme.Muted),
             ("Shell.ContextGuideIncluded", "G⊂S", current.GuideTokens, TerminalTheme.Warning)
         ];
+
         return metrics.Select(metric =>
         {
             var label = compact ? metric.Short : text.Text(metric.Key);
             var value = "~" + Tokens(metric.Count);
+
             return new Block(label + " " + value,
                 $"[{metric.Color}]{Markup.Escape(label)}[/] [{TerminalTheme.Primary}]{value}[/]");
         }).ToArray();
@@ -104,6 +129,7 @@ internal sealed class TerminalSessionStrip(ILocalizationService text, ShellRunti
         string[] colors = [TerminalTheme.Warning, TerminalTheme.Info, TerminalTheme.Accent, TerminalTheme.Success, TerminalTheme.Divider];
         var markup = string.Concat(cells.Select((count, index) =>
             $"[{colors[index]}]{new string(index == 4 ? '─' : '━', count)}[/]"));
+
         return new Block(new string('─', MeterWidth), markup);
     }
 
@@ -112,17 +138,22 @@ internal sealed class TerminalSessionStrip(ILocalizationService text, ShellRunti
     {
         var rows = new List<string>();
         var current = new List<Block>();
+
         foreach (var source in blocks)
         {
             var block = source.Width > width ? Value(TerminalText.Clip(source.Plain, width), TerminalTheme.Primary) : source;
+
             if (current.Count > 0 && Width(current) + TerminalText.Width(Gap) + block.Width > width)
             {
                 rows.Add(Join(current));
                 current.Clear();
             }
+
             current.Add(block);
         }
+
         if (current.Count > 0) rows.Add(Join(current));
+
         return rows;
     }
 
@@ -145,9 +176,20 @@ internal sealed class TerminalSessionStrip(ILocalizationService text, ShellRunti
         _ => value.ToString("N0", CultureInfo.InvariantCulture)
     };
 
+    #endregion
+
+    #region Types
+
     /// <summary>Keeps the measurement and styled representation of one indivisible metric together.</summary>
     private sealed record Block(string Plain, string Markup)
     {
+
+        #region Properties
+
         internal int Width => TerminalText.Width(Plain);
+
+        #endregion
     }
+
+    #endregion
 }

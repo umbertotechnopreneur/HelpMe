@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json.Serialization;
 
 namespace PromptMeUp.Models;
@@ -39,6 +38,9 @@ public sealed record TerminalThemeColors(
 /// <summary>Describes one versioned terminal theme with a stable persisted identifier.</summary>
 public sealed record TerminalThemeDefinition(int Version, string Id, string Name, TerminalThemeColors Colors)
 {
+
+    #region Properties
+
     public string? Author { get; init; }
 
     public string? Website { get; init; }
@@ -60,4 +62,7 @@ public sealed record TerminalThemeDefinition(int Version, string Id, string Name
         Website = "https://github.com/umbertotechnopreneur/PromptMeUp",
         Description = "Bright cyan and blue accents on a deep blue background."
     };
+
+    #endregion
+
 }

@@ -24,16 +24,30 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Receives streamed output for one visible command execution.</summary>
 public interface ICommandOutputSession : IDisposable
 {
+
+    #region Properties
+
     CancellationToken StopToken { get; }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>Appends new text or redraws only a simple line owned by this command.</summary>
     void Write(CommandOutputUpdate update);
+
+    #endregion
 }
 
 /// <summary>Shows live simple output without allowing child processes to address the surrounding terminal.</summary>
 internal sealed class TerminalCommandOutput : ICommandOutputSession
 {
+
+    #region Fields
+
     private readonly IAnsiConsole _console;
     private readonly ILocalizationService _text;
     private readonly TimeSpan _silenceNoticeInterval;
@@ -49,6 +63,10 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
     private long _lastNotice;
     private bool _disposed;
 
+    #endregion
+
+    #region Initialization
+
     /// <summary>Starts a command-owned output region and a bounded keyboard/status polling loop.</summary>
     /// <param name="console">The terminal receiving live output.</param>
     /// <param name="text">Localized status messages.</param>
@@ -59,13 +77,23 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
         _text = text;
         _silenceNoticeInterval = silenceNoticeInterval;
         _console.MarkupLine($"[{TerminalTheme.Info}]{Markup.Escape(text.Text("Command.Running"))}[/]");
+
         if (console.Profile.Capabilities.Interactive)
             _console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Command.LiveKeys"))}[/]");
+
         _console.WriteLine();
         _monitor = Task.Run(MonitorAsync);
     }
 
+    #endregion
+
+    #region Properties
+
     public CancellationToken StopToken => _stop.Token;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Appends new text or redraws only a simple line owned by this command.</summary>
     /// <param name="update">Normalized spans containing no terminal control characters.</param>
@@ -74,8 +102,10 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
         lock (_gate)
         {
             if (_disposed) return;
+
             var plain = string.Concat(update.Spans.Select(span => span.Text));
             var skip = 0;
+
             if (_stream == update.IsError && plain.StartsWith(_rendered, StringComparison.Ordinal))
             {
                 skip = _rendered.Length;
@@ -89,21 +119,29 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
                 }
                 else _console.WriteLine();
             }
+
             var rendered = new Paragraph();
+
             foreach (var span in update.Spans)
             {
                 var offset = Math.Min(skip, span.Text.Length);
+
                 skip -= offset;
+
                 if (offset == span.Text.Length) continue;
+
                 var foreground = Foreground(span.Foreground, update.IsError);
+
                 rendered.Append(span.Text[offset..], Style.Parse(span.Bold ? $"bold {foreground}" : foreground));
             }
+
             _console.Write(rendered);
             _console.Profile.Out.Writer.Flush();
             _stream = update.IsError;
             _rendered = plain;
             _renderWidth = _console.Profile.Width;
             _lastOutput = _elapsed.ElapsedMilliseconds;
+
             if (update.CompleteLine) FinishLine();
         }
     }
@@ -112,18 +150,24 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
     public void Dispose()
     {
         _shutdown.Cancel();
+
         try { _monitor.GetAwaiter().GetResult(); }
         finally
         {
             lock (_gate)
             {
                 if (_stream.HasValue) FinishLine();
+
                 _disposed = true;
             }
             _shutdown.Dispose();
             _stop.Dispose();
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Polls Escape without leaving pending reads and reports elapsed time during silence.</summary>
     private async Task MonitorAsync()
@@ -140,6 +184,7 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
                         var key = await (_console.Input is EscapeAwareConsoleInput wrapped
                             ? wrapped.ReadRawKeyAsync(true, _shutdown.Token)
                             : _console.Input.ReadKeyAsync(true, _shutdown.Token)).ConfigureAwait(false);
+
                         if (key is { Key: ConsoleKey.Escape })
                         {
                             await _stop.CancelAsync().ConfigureAwait(false);
@@ -147,13 +192,16 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
                         }
                     }
                 }
+
                 lock (_gate)
                 {
                     var milliseconds = _elapsed.ElapsedMilliseconds;
+
                     if (milliseconds - _lastOutput >= _silenceNoticeInterval.TotalMilliseconds
                         && milliseconds - _lastNotice >= _silenceNoticeInterval.TotalMilliseconds)
                     {
                         if (_stream.HasValue) FinishLine();
+
                         _console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(_text.Text("Command.Quiet", _elapsed.Elapsed.ToString(@"hh\:mm\:ss")))}[/]");
                         _lastNotice = milliseconds;
                     }
@@ -205,4 +253,6 @@ internal sealed class TerminalCommandOutput : ICommandOutputSession
         97 => "white",
         _ => isError ? TerminalTheme.Warning : TerminalTheme.Primary
     };
+
+    #endregion
 }

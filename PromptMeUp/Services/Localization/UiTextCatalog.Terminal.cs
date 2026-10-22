@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the shared identities and quiet status vocabulary for all waterfall surfaces.</summary>
     private static void AddTerminalEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -67,4 +69,6 @@ internal static partial class UiTextCatalog
             "↑/↓ choisir {0}/{1} · Entrée confirmer · Esc annuler", "↑/↓ wählen {0}/{1} · Enter bestätigen · Esc abbrechen",
             "↑/↓ elegir {0}/{1} · Intro confirmar · Esc cancelar", "↑/↓ chọn {0}/{1} · Enter xác nhận · Esc hủy"));
     }
+
+    #endregion
 }

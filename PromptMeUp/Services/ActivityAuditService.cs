@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
@@ -25,8 +24,12 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Records session lifecycles and audit events without retaining unredacted sensitive data.</summary>
 public interface IActivityAuditService
 {
+    #region Methods
+
+    /// <summary>Starts an audit session with the supplied execution context.</summary>
     Task StartSessionAsync(
         string sessionId,
         string kind,
@@ -34,31 +37,42 @@ public interface IActivityAuditService
         object? metadata,
         CancellationToken cancellationToken);
 
+    /// <summary>Records the final state and completion time of an audit session.</summary>
     Task CloseSessionAsync(
         string sessionId,
         string status,
         CancellationToken cancellationToken);
 
+    /// <summary>Appends a typed event to the current audit session.</summary>
     Task AppendSessionEventAsync(
         string sessionId,
         string eventType,
         object payload,
         CancellationToken cancellationToken);
 
+    /// <summary>Records a redacted activity audit entry.</summary>
     Task RecordAsync(
         string activityType,
         string outcome,
         string? sessionId,
         object payload,
         CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Persists bounded, redacted activity records for the local audit history.</summary>
 public sealed class ActivityAuditService : IActivityAuditService
 {
+    #region Fields
+
     private readonly IDatabaseService _database;
     private readonly ISensitiveDataRedactor _redactor;
     private readonly ILogger<ActivityAuditService> _logger;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the JSON-backed activity and session ledger.</summary>
     public ActivityAuditService(IDatabaseService database, ISensitiveDataRedactor redactor, ILogger<ActivityAuditService>? logger = null)
@@ -67,6 +81,10 @@ public sealed class ActivityAuditService : IActivityAuditService
         _redactor = redactor ?? throw new ArgumentNullException(nameof(redactor));
         _logger = logger ?? NullLogger<ActivityAuditService>.Instance;
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Creates an idempotent AI work-session header.</summary>
     public Task StartSessionAsync(
@@ -147,6 +165,10 @@ public sealed class ActivityAuditService : IActivityAuditService
             cancellationToken);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Serializes arbitrary audit data and redacts values whose property names indicate credentials.</summary>
     private string SerializeSafe(object payload)
     {
@@ -193,4 +215,6 @@ public sealed class ActivityAuditService : IActivityAuditService
             }
         }
     }
+
+    #endregion
 }

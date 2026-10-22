@@ -23,9 +23,16 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Displays the current application and conversation status.</summary>
 public interface IStatusView
 {
+
+    #region Methods
+
+    /// <summary>Renders configuration, secrets, prompts, storage, and synchronization status as a readable dashboard.</summary>
     void Render(AppStatus status);
+
+    #endregion
 }
 
 /// <summary>Displays the current local application status with readable terminal hierarchy.</summary>
@@ -34,6 +41,9 @@ public sealed class StatusView(
     ILocalizationService text,
     IConsoleShellView shell) : IStatusView
 {
+
+    #region Methods
+
     /// <summary>Renders configuration, secrets, prompts, storage, and synchronization status as a readable dashboard.</summary>
     public void Render(AppStatus status)
     {
@@ -47,6 +57,7 @@ public sealed class StatusView(
             TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "🔐", "K") + text.Text("Status.AdminKey"), status.HasAdminKey ? text.Text("Status.Ready") : text.Text("Status.Missing"), status.HasAdminKey ? TerminalTheme.Success : TerminalTheme.Warning),
             TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "↻", "~") + text.Text("Status.Pricing"), status.LastPricingSync?.ToLocalTime().ToString("g", text.Culture) ?? text.Text("Costs.Unavailable"), TerminalTheme.Info)
         ], preferredPairs: 3, width: console.Profile.Width);
+
         TerminalTheme.WriteRule(console, $"{TerminalTheme.IconPrefix(shell.Options, "⚙", "~")}{text.Text("Status.Configuration")}", TerminalTheme.Accent);
         console.Write(configuration);
         console.WriteLine();
@@ -65,16 +76,26 @@ public sealed class StatusView(
             TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "▤", "#") + text.Text("Status.Logs"), status.LogsDirectory),
             TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "✦", "*") + text.Text("Status.Prompts"), $"{status.PromptCount} · {status.PromptDirectory}")
         ], preferredPairs: 1, width: console.Profile.Width);
+
         TerminalTheme.WriteRule(console, $"{TerminalTheme.IconPrefix(shell.Options, "💾", "#")}{text.Text("Status.LocalData")}", TerminalTheme.Accent);
         console.Write(localData);
         console.WriteLine();
     }
 
+    #endregion
+
 }
 
+/// <summary>Displays provider usage and cost information.</summary>
 public interface ICostsView
 {
+
+    #region Methods
+
+    /// <summary>Renders configuration, secrets, prompts, storage, and synchronization status as a readable dashboard.</summary>
     void Render(CostOverview overview);
+
+    #endregion
 }
 
 /// <summary>Displays normalized model prices and the current local cost overview.</summary>
@@ -83,6 +104,9 @@ public sealed class CostsView(
     ILocalizationService text,
     IConsoleShellView shell) : ICostsView
 {
+
+    #region Methods
+
     /// <summary>Renders local usage estimates and cached official prices with semantic pricing chips.</summary>
     public void Render(CostOverview overview)
     {
@@ -101,6 +125,7 @@ public sealed class CostsView(
             TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "◌", "~")}{text.Text("Costs.Tokens")}", overview.TotalTokensToday.ToString("N0", text.Culture)),
             TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "↻", "~")}{text.Text("Costs.LastSync")}", overview.LastPricingSync?.ToLocalTime().ToString("g", text.Culture) ?? text.Text("Costs.Unavailable"))
         ], preferredPairs: 3, width: console.Profile.Width);
+
         TerminalTheme.WriteRule(console, $"{TerminalTheme.IconPrefix(shell.Options, "📈", "=")}{text.Text("Costs.Overview")}", TerminalTheme.Accent);
         console.Write(metrics);
         console.WriteLine();
@@ -108,6 +133,12 @@ public sealed class CostsView(
         console.Write(ModelPricingTable.Create(text, shell.Options, overview.Prices.OrderBy(price => price.Model, StringComparer.OrdinalIgnoreCase).ToArray()));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Formats USD amounts using invariant decimal notation.</summary>
     private static string FormatUsd(decimal value) => $"${value:0.########}";
+
+    #endregion
 }

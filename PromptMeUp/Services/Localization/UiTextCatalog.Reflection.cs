@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds all six translations for explicit reflection consent, evidence review, and memory maintenance.</summary>
     private static void AddReflectionEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -49,4 +51,6 @@ internal static partial class UiTextCatalog
         entries.Add("Lab.Kind.correction", new("Correction", "Correzione", "Correction", "Korrektur", "Corrección", "Sửa sai"));
         entries.Add("Lab.Kind.preference", new("Preference", "Preferenza", "Préférence", "Präferenz", "Preferencia", "Sở thích"));
     }
+
+    #endregion
 }

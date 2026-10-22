@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds all six translations for the dedicated memory workspace and its passive editing flows.</summary>
     private static void AddMemoryManagerEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -207,4 +209,6 @@ internal static partial class UiTextCatalog
             Spanish: "Tab: acciones | Intro: elegir | Esc: cancelar",
             Vietnamese: "Tab: thao tác | Enter: chọn | Esc: hủy"));
     }
+
+    #endregion
 }

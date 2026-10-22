@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text;
 using PromptMeUp.Models;
 
@@ -25,6 +24,8 @@ namespace PromptMeUp.Services;
 /// <summary>Estimates text token usage locally to keep request context within its budget.</summary>
 internal static class ContextTokenEstimator
 {
+    #region Methods
+
     /// <summary>Estimates text tokens locally from UTF-8 bytes without claiming provider tokenization accuracy.</summary>
     internal static long Text(string text) => string.IsNullOrEmpty(text)
         ? 0
@@ -33,4 +34,6 @@ internal static class ContextTokenEstimator
     /// <summary>Includes the same per-message overhead in memory budgeting and provider request estimates.</summary>
     internal static long Messages(IEnumerable<ChatMessage> messages) =>
         messages.Sum(message => Text(message.Content) + 4);
+
+    #endregion
 }

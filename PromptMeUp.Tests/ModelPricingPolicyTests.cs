@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies model pricing policy behavior.</summary>
 public sealed class ModelPricingPolicyTests
 {
+
+    #region Methods
+
     /// <summary>Verifies model-specific long-context thresholds, dated aliases, and mini/nano exceptions.</summary>
     [Theory]
     [InlineData("gpt-5.6-sol", 272000, "gpt-5.6-sol", "short")]
@@ -62,4 +66,6 @@ public sealed class ModelPricingPolicyTests
         Assert.NotNull(await fixture.Database.FindModelPriceAsync("openai", "gpt-5.6-terra", 272_000, default));
         Assert.Null(await fixture.Database.FindModelPriceAsync("openai", "gpt-5.6-terra", 272_001, default));
     }
+
+    #endregion
 }

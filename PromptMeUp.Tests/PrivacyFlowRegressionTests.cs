@@ -24,8 +24,12 @@ using PromptMeUp.Models;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies privacy flow regression behavior.</summary>
 public sealed class PrivacyFlowRegressionTests
 {
+
+    #region Methods
+
     /// <summary>Verifies structural credential detection protects both SQLite ledgers without removing token accounting.</summary>
     [Fact]
     public async Task Audit_NestedCredentialProperties_RedactsBothLedgersAndPreservesUsage()
@@ -109,9 +113,21 @@ public sealed class PrivacyFlowRegressionTests
         Assert.Equal(21L, await fixture.ScalarAsync("SELECT total_tokens FROM ai_requests;"));
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Captures outgoing provider content and supplies an in-memory response.</summary>
     private sealed class CapturingHandler : HttpMessageHandler
     {
+
+        #region Properties
+
         public string Body { get; private set; } = string.Empty;
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Captures synthetic provider input and returns an in-memory response without network access.</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -122,5 +138,9 @@ public sealed class PrivacyFlowRegressionTests
                 Content = new StringContent(RegressionFixture.ResponseJson(), Encoding.UTF8)
             };
         }
+
+        #endregion
     }
+
+    #endregion
 }

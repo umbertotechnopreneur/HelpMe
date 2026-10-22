@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies executable location service behavior.</summary>
 public sealed class ExecutableLocationServiceTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that location inspection is absolute, internally consistent, and non-mutating.</summary>
     [Fact]
     public void Resolve_ReturnsExecutableDirectoryAndChangeDirectoryCommand()
@@ -37,4 +41,6 @@ public sealed class ExecutableLocationServiceTests
             result.OpenFolderPreview,
             StringComparison.Ordinal);
     }
+
+    #endregion
 }

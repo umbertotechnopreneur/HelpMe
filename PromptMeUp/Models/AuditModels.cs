@@ -16,9 +16,9 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
+/// <summary>Records the lifecycle and metadata of one audited application session.</summary>
 public sealed record AiSessionRecord(
     string Id,
     DateTimeOffset StartedAt,
@@ -29,6 +29,7 @@ public sealed record AiSessionRecord(
     string Status,
     string MetadataJson);
 
+/// <summary>Records a timestamped event within an audited session.</summary>
 public sealed record AiSessionEventRecord(
     string Id,
     string SessionId,
@@ -36,6 +37,7 @@ public sealed record AiSessionEventRecord(
     string EventType,
     string PayloadJson);
 
+/// <summary>Describes one locally persisted audit action and its structured metadata.</summary>
 public sealed record ActivityAuditRecord(
     string Id,
     DateTimeOffset OccurredAt,

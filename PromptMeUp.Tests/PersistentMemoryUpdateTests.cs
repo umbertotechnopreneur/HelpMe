@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies persistent memory update behavior.</summary>
 public sealed class PersistentMemoryUpdateTests
 {
+
+    #region Methods
+
     /// <summary>Editing a note preserves its identifier and global storage regardless of the legacy scope flag.</summary>
     [Theory]
     [InlineData(false)]
@@ -153,6 +157,10 @@ public sealed class PersistentMemoryUpdateTests
         Assert.Equal(saved, Assert.Single(await service.ListAsync(default)));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates the production memory service against the fixture's isolated database and credential policy.</summary>
     private static PersistentMemoryService CreateService(RegressionFixture fixture) => new(
         fixture.Paths, new SensitiveDataRedactor(), new LocalizationService(), NullLogger<PersistentMemoryService>.Instance);
@@ -165,4 +173,6 @@ public sealed class PersistentMemoryUpdateTests
         INSERT INTO persistent_memories (id, scope_key, body, updated_unix)
         SELECT printf('%032x', number), 'global', 'Synthetic update note ' || number, number FROM notes;
         """, ("$count", count));
+
+    #endregion
 }

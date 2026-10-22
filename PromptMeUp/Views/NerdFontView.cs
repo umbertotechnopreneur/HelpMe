@@ -23,11 +23,19 @@ using Spectre.Console;
 
 namespace PromptMeUp.Views;
 
+/// <summary>Previews the optional terminal font change and displays its result.</summary>
 public interface INerdFontView
 {
+
+    #region Methods
+
+    /// <summary>Shows the exact opt-in font command and asks for authorization unless --yes was supplied.</summary>
     bool PreviewAndConfirm(bool dryRun, bool preauthorized);
 
+    /// <summary>Renders the font helper result and terminal-profile hint.</summary>
     void RenderResult(FontInstallResult result);
+
+    #endregion
 }
 
 /// <summary>Presents optional Nerd Font installation details and captures an explicit confirmation.</summary>
@@ -36,10 +44,14 @@ public sealed class NerdFontView(
     ILocalizationService text,
     IConsoleShellView shell) : INerdFontView
 {
+
+    #region Methods
+
     /// <summary>Shows the exact opt-in font command and asks for authorization unless --yes was supplied.</summary>
     public bool PreviewAndConfirm(bool dryRun, bool preauthorized)
     {
         var operation = "oh-my-posh font install JetBrainsMono --headless";
+
         TerminalTheme.WriteRule(
             console,
             TerminalTheme.IconPrefix(shell.Options, "✎", "#") + text.Text("Font.Title"),
@@ -49,6 +61,7 @@ public sealed class NerdFontView(
             dryRun ? text.Text("Font.DryRun") : text.Text("Command.Preview"),
             operation,
             TerminalTheme.Accent);
+
         return preauthorized || console.Prompt(new ConfirmationPrompt(Markup.Escape(text.Text("Font.Confirm")))
         {
             DefaultValue = false
@@ -65,11 +78,13 @@ public sealed class NerdFontView(
         var color = result.DryRun ? TerminalTheme.Info : result.Changed ? TerminalTheme.Success : TerminalTheme.Warning;
         var icon = result.DryRun ? "🧪" : result.Changed ? "✅" : "⚠";
         var fallbackIcon = result.DryRun ? "~" : result.Changed ? "+" : "!";
+
         TerminalTheme.WriteRule(
             console,
             TerminalTheme.IconPrefix(shell.Options, icon, fallbackIcon) + text.Text("Font.Title"),
             color);
         console.MarkupLine($"[bold {color}]{Markup.Escape(message)}[/]");
+
         if (result.Changed && !string.IsNullOrWhiteSpace(result.Message))
         {
             console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(result.Message)}[/]");
@@ -80,4 +95,6 @@ public sealed class NerdFontView(
             console.MarkupLine($"[{TerminalTheme.Warning}]{Markup.Escape(text.Text("Font.TerminalHint"))}[/]");
         }
     }
+
+    #endregion
 }

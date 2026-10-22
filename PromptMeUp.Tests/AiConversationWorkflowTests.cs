@@ -27,8 +27,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies AI conversation workflow behavior.</summary>
 public sealed class AiConversationWorkflowTests
 {
+
+    #region Methods
+
     /// <summary>Includes a paid classifier in the final totals when the following answer fails or the user cancels.</summary>
     [Theory]
     [InlineData(false)]
@@ -540,6 +544,10 @@ public sealed class AiConversationWorkflowTests
         Assert.Equal(100, status.ContextBudgetTokens);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a real isolated memory store using only the fixture database and a silent logger.</summary>
     private static PersistentMemoryService CreatePersistentMemory(RegressionFixture fixture) => new(
         fixture.Paths, new SensitiveDataRedactor(), new LocalizationService(), NullLogger<PersistentMemoryService>.Instance);
@@ -560,46 +568,54 @@ public sealed class AiConversationWorkflowTests
         Action<string>? displayAnswer = null,
         IAuthorizedCommandWorkflow? authorizedCommands = null,
         IDatabaseService? snapshotDatabase = null,
-        Action<string>? displayWarning = null) => new(
-        new ConversationMemoryService(),
-        openAi,
-        new YamlPromptCatalogService(fixture.Paths, NullLogger<YamlPromptCatalogService>.Instance),
-        TestProxy.Create<IPricingService>((method, _) => throw new NotSupportedException(method.Name)),
-        fixture.Audit,
-        authorizedCommands ?? TestProxy.Create<IAuthorizedCommandWorkflow>((method, _) => throw new NotSupportedException(method.Name)),
-        TestProxy.Create<IChatView>((method, args) =>
+        Action<string>? displayWarning = null)
+    {
+        var conversationMemory = new ConversationMemoryService();
+        var prompts = new YamlPromptCatalogService(fixture.Paths, NullLogger<YamlPromptCatalogService>.Instance);
+        var pricing = TestProxy.Create<IPricingService>((method, _) => throw new NotSupportedException(method.Name));
+        var commands = authorizedCommands
+            ?? TestProxy.Create<IAuthorizedCommandWorkflow>((method, _) => throw new NotSupportedException(method.Name));
+
+        var chatView = TestProxy.Create<IChatView>((method, args) =>
         {
             if (method.Name == "RenderAssistant")
             {
                 displayAnswer?.Invoke((string)args[0]!);
                 return null;
             }
+
             return method.Name switch
             {
                 "ReadMessage" => readMessage(),
                 "RenderIntro" or "RenderMemoryHint" or "RenderUser" or "RenderMemoryPruned" => null,
                 _ => throw new NotSupportedException(method.Name)
             };
-        }),
-        TestProxy.Create<ICommandSuggestionView>((_, _) => new CommandSuggestionDecision(CommandSuggestionAction.DoNotExecute, null)),
-        TestProxy.Create<ICostsView>((method, _) => throw new NotSupportedException(method.Name)),
-        TestProxy.Create<IConsoleShellView>((method, args) =>
+        });
+
+        var commandSuggestions = TestProxy.Create<ICommandSuggestionView>((_, _) =>
+            new CommandSuggestionDecision(CommandSuggestionAction.DoNotExecute, null));
+        var costsView = TestProxy.Create<ICostsView>((method, _) => throw new NotSupportedException(method.Name));
+
+        var shellView = TestProxy.Create<IConsoleShellView>((method, args) =>
         {
             if (method.Name == "RenderRuntimeStatus")
             {
                 snapshots.Add((ShellRuntimeStatus)args[0]!);
                 return null;
             }
+
             if (method.Name == "RenderError" && displayError is not null)
             {
                 displayError((string)args[0]!);
                 return null;
             }
+
             if (method.Name == "RenderWarning")
             {
                 displayWarning?.Invoke((string)args[0]!);
                 return null;
             }
+
             return method.Name switch
             {
                 "RunWithStatusAsync" => ((Delegate)args[1]!).DynamicInvoke(),
@@ -607,23 +623,60 @@ public sealed class AiConversationWorkflowTests
                 "RenderMuted" or "RenderSuccess" or "RenderNotice" or "RenderWarning" => null,
                 _ => throw new NotSupportedException(method.Name)
             };
-        }),
-        new LocalizationService(),
-        CreatePersistentMemory(fixture),
-        TestProxy.Create<IMemoryView>((method, args) =>
+        });
+
+        var text = new LocalizationService();
+        var persistentMemory = CreatePersistentMemory(fixture);
+        var memoryView = TestProxy.Create<IMemoryView>((method, args) =>
         {
             Assert.Equal("Render", method.Name);
             displayMemories?.Invoke((IReadOnlyList<PersistentMemory>)args[0]!);
             return null;
-        }),
-        snapshotDatabase ?? fixture.Database, CreateAppGuide(fixture), NullLogger<AiConversationWorkflow>.Instance);
+        });
 
+        // Keep each collaborator named so individual tests can override one behavior at a time.
+        return new AiConversationWorkflow(
+            conversationMemory,
+            openAi,
+            prompts,
+            pricing,
+            fixture.Audit,
+            commands,
+            chatView,
+            commandSuggestions,
+            costsView,
+            shellView,
+            text,
+            persistentMemory,
+            memoryView,
+            snapshotDatabase ?? fixture.Database,
+            CreateAppGuide(fixture),
+            NullLogger<AiConversationWorkflow>.Instance);
+    }
+
+    #endregion
+
+    #region Types
+
+    /// <summary>Records conversation and display-classification requests and supplies isolated responses.</summary>
     private sealed class RecordingConversationHandler : HttpMessageHandler
     {
+
+        #region Fields
+
         private readonly Func<int, string> _response;
         private readonly Func<string> _displayResponse;
+
+        #endregion
+
+        #region Properties
+
         public List<string> RequestBodies { get; } = [];
         public List<string> ConversationRequestBodies { get; } = [];
+
+        #endregion
+
+        #region Initialization
 
         /// <summary>Supplies synthetic responses while preserving every outgoing request body for regression assertions.</summary>
         internal RecordingConversationHandler(Func<int, string> response, Func<string>? displayResponse = null)
@@ -632,22 +685,34 @@ public sealed class AiConversationWorkflowTests
             _displayResponse = displayResponse ?? (() => RegressionFixture.DisplayIntentResponseJson());
         }
 
+        #endregion
+
+        #region Methods
+
         /// <summary>Records local request content and returns an in-memory response without network access.</summary>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var body = await request.Content!.ReadAsStringAsync(cancellationToken);
             RequestBodies.Add(body);
+
             var displayIntent = RegressionFixture.IsDisplayIntentRequest(body);
             if (!displayIntent)
             {
                 ConversationRequestBodies.Add(body);
             }
+
+            var responseBody = displayIntent
+                ? _displayResponse()
+                : _response(ConversationRequestBodies.Count);
+
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(displayIntent
-                    ? _displayResponse()
-                    : _response(ConversationRequestBodies.Count))
+                Content = new StringContent(responseBody)
             };
         }
+
+        #endregion
     }
+
+    #endregion
 }

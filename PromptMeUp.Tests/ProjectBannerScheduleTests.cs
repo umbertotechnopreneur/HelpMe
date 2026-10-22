@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies project banner schedule behavior.</summary>
 public sealed class ProjectBannerScheduleTests
 {
+
+    #region Methods
+
     /// <summary>Verifies the opening tip appears once per local day across invocations without suppressing the footer.</summary>
     [Fact]
     public void OpeningTip_UsesIndependentPersistedDailyMarker()
@@ -56,12 +60,28 @@ public sealed class ProjectBannerScheduleTests
         }
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Returns a configured instant so time-dependent assertions remain deterministic.</summary>
     private sealed class FixedClock : TimeProvider
     {
+
+        #region Properties
+
         internal DateTimeOffset Now { get; set; } = new(2030, 5, 20, 12, 0, 0, TimeSpan.Zero);
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 
+        #endregion
+
+        #region Methods
+
         /// <summary>Provides a deterministic date while exercising the production local-day conversion.</summary>
         public override DateTimeOffset GetUtcNow() => Now;
+
+        #endregion
     }
+
+    #endregion
 }

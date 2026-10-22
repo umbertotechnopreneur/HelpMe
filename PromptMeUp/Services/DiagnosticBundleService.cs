@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
@@ -34,8 +33,14 @@ public sealed record DiagnosticBundleResult(string Path, int LogFileCount, long 
 public sealed class DiagnosticBundleService(AppPaths paths, ISensitiveDataRedactor redactor,
     ILogger<DiagnosticBundleService> logger)
 {
+    #region Fields
+
     private const int MaximumLogFiles = 14;
     private const int MaximumBytesPerLog = 4 * 1024 * 1024;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Writes machine metadata and recent redacted logs to a new ZIP in the requested directory.</summary>
     public async Task<DiagnosticBundleResult> PrepareAsync(string outputDirectory, CancellationToken cancellationToken)
@@ -84,6 +89,10 @@ public sealed class DiagnosticBundleService(AppPaths paths, ISensitiveDataRedact
             throw;
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reserves a timestamped filename without replacing an existing support archive.</summary>
     private static string ReservePath(string directory)
@@ -159,6 +168,10 @@ public sealed class DiagnosticBundleService(AppPaths paths, ISensitiveDataRedact
         return await ReadLogTailAsync(stream, MaximumBytesPerLog, cancellationToken).ConfigureAwait(false);
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Reads a fixed byte window so a growing log cannot extend the snapshot.</summary>
     /// <param name="stream">Caller-owned seekable log stream.</param>
     /// <param name="maximumBytes">Maximum source bytes retained before decoding and redaction.</param>
@@ -193,6 +206,10 @@ public sealed class DiagnosticBundleService(AppPaths paths, ISensitiveDataRedact
         return truncated ? "[Earlier log content omitted by support bundle size limit.]\n" + content : content;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Applies credential redaction and replaces current-user path roots with neutral tokens.</summary>
     private string Sanitize(string content)
     {
@@ -222,4 +239,6 @@ public sealed class DiagnosticBundleService(AppPaths paths, ISensitiveDataRedact
         await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
         await writer.WriteAsync(content.AsMemory(), cancellationToken).ConfigureAwait(false);
     }
+
+    #endregion
 }

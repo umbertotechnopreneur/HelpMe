@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -27,9 +26,15 @@ namespace PromptMeUp.Services;
 [SupportedOSPlatform("windows")]
 internal static class WindowsCredentialStore
 {
+    #region Fields
+
     private const uint Generic = 1;
     private const uint LocalMachine = 2;
     private const int NotFound = 1168;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reads a vault entry, distinguishing a missing credential from a vault failure.</summary>
     internal static string? Read(string name)
@@ -81,9 +86,16 @@ internal static class WindowsCredentialStore
         }
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Matches the native Windows credential layout used for credential-store access.</summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct Credential
     {
+        #region Fields
+
         public uint Flags;
         public uint Type;
         public string? TargetName;
@@ -96,7 +108,13 @@ internal static class WindowsCredentialStore
         public IntPtr Attributes;
         public string? TargetAlias;
         public string? UserName;
+
+        #endregion
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads one generic credential through the Windows credential API.</summary>
     [DllImport("advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -111,4 +129,6 @@ internal static class WindowsCredentialStore
     /// <summary>Releases memory allocated by the Windows credential API.</summary>
     [DllImport("advapi32.dll")]
     private static extern void CredFree(IntPtr credential);
+
+    #endregion
 }

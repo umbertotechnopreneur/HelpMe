@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies sensitive data redactor behavior.</summary>
 public sealed class SensitiveDataRedactorTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that recognizable OpenAI, bearer, and environment credentials never survive persistence redaction.</summary>
     [Fact]
     public void Redact_CredentialShapes_RemovesSecretValues()
@@ -36,4 +40,6 @@ public sealed class SensitiveDataRedactorTests
         Assert.DoesNotContain("abcdefghijklmnop", result, StringComparison.Ordinal);
         Assert.Contains("plain text", result, StringComparison.Ordinal);
     }
+
+    #endregion
 }

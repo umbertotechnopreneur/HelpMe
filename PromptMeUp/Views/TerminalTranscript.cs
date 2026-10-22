@@ -24,29 +24,45 @@ namespace PromptMeUp.Views;
 /// <summary>Keeps a bounded, memory-only history for local navigation, separate from provider context and persisted chat.</summary>
 internal sealed class TerminalTranscript
 {
+
+    #region Fields
+
     internal const int MaximumTurns = 128;
     internal const int MaximumCharacters = 2_000_000;
     private readonly List<TerminalTurn> _turns = [];
     private int _characters;
     private int _sequence;
 
+    #endregion
+
+    #region Properties
+
     internal IReadOnlyList<TerminalTurn> Turns => _turns;
     internal int? SelectedIndex { get; private set; }
+
     internal bool HasDetails => _turns.Any(turn => turn.HasDetails);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Retains one rendered entry, evicting oldest entries before either local retention limit is exceeded.</summary>
     internal bool Add(TerminalTurnKind kind, string title, IRenderable content, int characters, bool hasDetails = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(characters);
+
         if (characters > MaximumCharacters) return false;
+
         while (_turns.Count >= MaximumTurns || _characters + characters > MaximumCharacters)
         {
             _characters -= _turns[0].Characters;
             _turns.RemoveAt(0);
         }
+
         _turns.Add(new TerminalTurn(++_sequence, kind, TerminalText.Safe(title), content, characters, hasDetails));
         _characters += characters;
         SelectedIndex = null;
+
         return true;
     }
 
@@ -54,6 +70,7 @@ internal sealed class TerminalTranscript
     internal void Move(int direction)
     {
         if (_turns.Count == 0) return;
+
         SelectedIndex = SelectedIndex is { } index
             ? Math.Clamp(index + direction, 0, _turns.Count - 1) : _turns.Count - 1;
     }
@@ -62,8 +79,11 @@ internal sealed class TerminalTranscript
     internal bool SelectLatestDetails()
     {
         var index = _turns.FindLastIndex(turn => turn.HasDetails);
+
         if (index < 0) return false;
+
         SelectedIndex = index;
+
         return true;
     }
 
@@ -75,6 +95,8 @@ internal sealed class TerminalTranscript
         _sequence = 0;
         SelectedIndex = null;
     }
+
+    #endregion
 }
 
 /// <summary>Stores an immutable presentation snapshot and its retention weight without filesystem persistence.</summary>

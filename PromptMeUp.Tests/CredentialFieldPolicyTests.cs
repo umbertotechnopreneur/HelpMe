@@ -21,8 +21,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies credential field policy behavior.</summary>
 public sealed class CredentialFieldPolicyTests
 {
+
+    #region Methods
+
     /// <summary>Recognizes common credential fields in JSON, configuration, and environment output.</summary>
     [Theory]
     [InlineData("accessToken")]
@@ -81,4 +85,6 @@ public sealed class CredentialFieldPolicyTests
     {
         Assert.False(CredentialFieldPolicy.IsSecret(field));
     }
+
+    #endregion
 }

@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies runtime context service behavior.</summary>
 public sealed class RuntimeContextServiceTests
 {
+
+    #region Methods
+
     /// <summary>Verifies every supported platform produces only a family, numeric version, and the fixed approved-command shell.</summary>
     [Theory]
     [InlineData("Windows", "Windows 11.0.22631")]
@@ -100,4 +104,6 @@ public sealed class RuntimeContextServiceTests
         Assert.DoesNotContain("\\Users\\", promptBlock, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Preferred script interpreter: PowerShell 7", promptBlock, StringComparison.Ordinal);
     }
+
+    #endregion
 }

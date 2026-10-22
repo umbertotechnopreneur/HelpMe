@@ -16,23 +16,34 @@
  *
  * VBWR E */
 
-
 using System.Globalization;
 using System.Text.Json;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Resolves the supported terminal color themes.</summary>
 public interface IThemeCatalogService
 {
+    #region Properties
+
     IReadOnlyList<TerminalThemeDefinition> Themes { get; }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>Resolves the requested value using the supported application configuration.</summary>
     TerminalThemeDefinition Resolve(string id);
+
+    #endregion
 }
 
 /// <summary>Loads bounded local theme files and rejects unsupported or unreadable palettes.</summary>
 public sealed class ThemeCatalogService : IThemeCatalogService
 {
+    #region Fields
+
     private const int MaximumThemeCount = 32;
     private const int MaximumThemeFileBytes = 16 * 1024;
     private static readonly string[] DefinitionProperties = ["version", "id", "name", "author", "website", "description", "colors"];
@@ -41,6 +52,10 @@ public sealed class ThemeCatalogService : IThemeCatalogService
         "background", "primary", "muted", "accent", "accentSecondary", "info", "divider", "success", "warning", "error",
         "selectionBackground", "selectionForeground"
     ];
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Loads every JSON theme from the specified application theme directory.</summary>
     public ThemeCatalogService(string directory)
@@ -76,7 +91,15 @@ public sealed class ThemeCatalogService : IThemeCatalogService
         }
     }
 
+    #endregion
+
+    #region Properties
+
     public IReadOnlyList<TerminalThemeDefinition> Themes { get; }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Returns the exact configured theme or rejects a missing identifier.</summary>
     public TerminalThemeDefinition Resolve(string id)
@@ -94,6 +117,10 @@ public sealed class ThemeCatalogService : IThemeCatalogService
     internal static bool IsValidId(string? id) => id is { Length: >= 1 and <= 32 }
         && id[0] is >= 'a' and <= 'z'
         && id.All(character => character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-');
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Reads at most the supported file size and reports errors against the theme filename.</summary>
     private static TerminalThemeDefinition ReadTheme(string file)
@@ -228,6 +255,10 @@ public sealed class ThemeCatalogService : IThemeCatalogService
         }
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Computes the relative luminance ratio between two validated RGB colors.</summary>
     internal static double ContrastRatio(string first, string second)
     {
@@ -235,6 +266,10 @@ public sealed class ThemeCatalogService : IThemeCatalogService
         var secondLuminance = Luminance(second);
         return (Math.Max(firstLuminance, secondLuminance) + 0.05d) / (Math.Min(firstLuminance, secondLuminance) + 0.05d);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Converts sRGB channels to linear light before applying luminance weights.</summary>
     private static double Luminance(string color) =>
@@ -248,4 +283,6 @@ public sealed class ThemeCatalogService : IThemeCatalogService
         var value = int.Parse(channel, NumberStyles.HexNumber, CultureInfo.InvariantCulture) / 255d;
         return value <= 0.04045d ? value / 12.92d : Math.Pow((value + 0.055d) / 1.055d, 2.4d);
     }
+
+    #endregion
 }

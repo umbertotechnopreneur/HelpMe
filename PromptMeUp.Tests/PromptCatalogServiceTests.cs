@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies prompt catalog service behavior.</summary>
 public sealed class PromptCatalogServiceTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that every memory wrapper uses the user role and leaves room for bounded saved-note data.</summary>
     [Fact]
     public async Task GetAsync_MemoryContext_ProvidesBoundedLocalizedUserDataWrapper()
@@ -94,4 +98,6 @@ public sealed class PromptCatalogServiceTests
             }
         }
     }
+
+    #endregion
 }

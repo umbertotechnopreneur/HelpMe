@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using PromptMeUp.Application;
@@ -32,6 +31,9 @@ namespace PromptMeUp;
 /// <summary>Configures the composition root and starts the console application.</summary>
 internal static class Program
 {
+
+    #region Implementation
+
     /// <summary>Bootstraps UTF-8 output, Serilog, dependency injection, cancellation, and the PromptMeUp application.</summary>
     private static async Task<int> Main(string[] args)
     {
@@ -75,16 +77,19 @@ internal static class Program
             shell = provider.GetRequiredService<IConsoleShellView>();
             text = provider.GetRequiredService<ILocalizationService>();
             exitCode = await provider.GetRequiredService<IPromptMeUpApplication>().RunAsync(args, shutdown.Token);
+
             return exitCode;
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
             exitCode = 130;
+
             return exitCode;
         }
         catch (InteractiveFlowCanceledException)
         {
             exitCode = 0;
+
             return exitCode;
         }
         catch (Exception exception)
@@ -92,12 +97,15 @@ internal static class Program
             var cause = exception.GetBaseException();
             Log.Fatal("PromptMeUp terminated unexpectedly. ExceptionType={ExceptionType}, CauseType={CauseType}, StackTrace={StackTrace}",
                 exception.GetType().FullName, cause.GetType().FullName, new System.Diagnostics.StackTrace(cause, fNeedFileInfo: false).ToString());
+
             if (text is null)
             {
                 text = new LocalizationService();
                 text.SetLanguage(SupportedLanguages.ResolveSystemLanguage());
             }
+
             AnsiConsole.MarkupLine($"[{TerminalTheme.Error}]{Markup.Escape(text.Text("Startup.Failed", cause.GetType().Name, paths.LogsDirectory))}[/]");
+
             if (args.Length == 0 && !Console.IsInputRedirected && !Console.IsOutputRedirected && !shutdown.IsCancellationRequested)
             {
                 AnsiConsole.MarkupLine($"[{TerminalTheme.Primary}]{Markup.Escape(text.Text("Startup.PressEnter"))}[/]");
@@ -105,6 +113,7 @@ internal static class Program
                 catch (OperationCanceledException) when (shutdown.IsCancellationRequested) { }
                 catch (IOException) { }
             }
+
             return exitCode;
         }
         finally
@@ -121,5 +130,7 @@ internal static class Program
             }
         }
     }
+
+    #endregion
 
 }

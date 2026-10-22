@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.IO.Enumeration;
 using PromptMeUp.Models;
 
@@ -25,7 +24,13 @@ namespace PromptMeUp.Services;
 /// <summary>Reads a bounded local file preview and explains unsupported or unsafe input.</summary>
 public sealed class FilePreviewService(ILocalizationService text, BoundedTextInput input)
 {
+    #region Fields
+
     public const int MaximumFiles = 1_000;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Builds a bounded, non-recursive local file-effect snapshot without running shell or provider code.</summary>
     public FilePreview Build(CommandLineOptions options)
@@ -160,6 +165,10 @@ public sealed class FilePreviewService(ILocalizationService text, BoundedTextInp
         });
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Checks every existing path component and rejects symbolic links and reparse points.</summary>
     private void EnsureUnlinked(string path)
     {
@@ -177,4 +186,6 @@ public sealed class FilePreviewService(ILocalizationService text, BoundedTextInp
     /// <summary>Builds visible link-ancestry guards that run again after the user's approval.</summary>
     private static string ParentGuard(string error) =>
         $"while ($null -ne $parent) {{ if (!$parent.Exists -or ($parent.Attributes -band [IO.FileAttributes]::ReparsePoint)) {{ throw {error} }}; $parent = $parent.Parent }}; ";
+
+    #endregion
 }

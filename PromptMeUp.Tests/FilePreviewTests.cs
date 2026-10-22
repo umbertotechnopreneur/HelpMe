@@ -23,10 +23,18 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies file preview behavior.</summary>
 public sealed class FilePreviewTests : IDisposable
 {
+
+    #region Fields
+
     private readonly string _directory = CreateDirectory();
     private readonly LocalizationService _text = new();
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Shows exact prefix-renaming effects without changing any source file.</summary>
     [Fact]
@@ -136,6 +144,10 @@ public sealed class FilePreviewTests : IDisposable
         }
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a real, non-linked temporary root on supported test platforms.</summary>
     private static string CreateDirectory()
     {
@@ -159,4 +171,6 @@ public sealed class FilePreviewTests : IDisposable
         new CommandExecutionService(NullLogger<CommandExecutionService>.Instance).ExecuteAsync(
             ApprovedCommand.Create(command, new CommandRiskAssessment(60, CommandRiskLevel.High, "Disposable test files.", false, null)),
             TimeSpan.FromSeconds(30), CancellationToken.None);
+
+    #endregion
 }

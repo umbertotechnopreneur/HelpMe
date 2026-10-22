@@ -28,16 +28,33 @@ public enum HomeAction { Exit, Chat, Script, Diagnose, Memories, Skills, Setting
 /// <summary>Provides the numbered home menu and bounded prompts for destinations that need input.</summary>
 public interface IHomeView
 {
+
+    #region Methods
+
+    /// <summary>Waits for a single numbered key without requiring Enter or clearing terminal history.</summary>
     Task<HomeAction> ChooseAsync(CancellationToken ct);
+
+    /// <summary>Collects a request for a script or an error, with an empty response returning to the menu.</summary>
     Task<string> ReadRequestAsync(HomeAction action, int maximumCharacters, CancellationToken ct);
+
+    /// <summary>Gives redirected invocations a short useful response without waiting for keyboard input.</summary>
     void RenderNonInteractive();
+
+    #endregion
 }
 
 /// <summary>Replaces the no-argument text wall with a compact keyboard menu and a shared ASCII banner.</summary>
 public sealed class HomeView(IAnsiConsole console, ILocalizationService text, IConsoleShellView shell) : IHomeView
 {
+
+    #region Fields
+
     private const string WebsiteUrl = "https://umbertogiacobbi.biz";
     private const string RepositoryUrl = "https://github.com/umbertotechnopreneur/PromptMeUp";
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Waits for a single numbered key without requiring Enter or clearing terminal history.</summary>
     public async Task<HomeAction> ChooseAsync(CancellationToken ct)
@@ -57,6 +74,7 @@ public sealed class HomeView(IAnsiConsole console, ILocalizationService text, IC
         var choices = rows.Select((row, index) => new TerminalMenuChoice<int>(index + 1,
             TerminalTheme.IconPrefix(shell.Options, row.Item1, ">") + text.Text("Home." + row.Item2),
             text.Text("Home." + row.Item2 + "Hint"))).ToArray();
+
         console.Write(TerminalChoiceMenu.Numbered(choices, showDescriptions));
         console.WriteLine();
         console.Write(TerminalChoiceMenu.Numbered(
@@ -64,17 +82,21 @@ public sealed class HomeView(IAnsiConsole console, ILocalizationService text, IC
             showDetails: false));
         console.Write(new ThemeSeparator());
         console.MarkupLine($"[{TerminalTheme.Info}]{Markup.Escape(text.Text("Home.Hint"))}[/]");
+
         while (true)
         {
             var key = await console.Input.ReadKeyAsync(intercept: true, ct).ConfigureAwait(false);
+
             if (key is null || key.Value.Key == ConsoleKey.Escape || key.Value.KeyChar == '0')
             {
                 return HomeAction.Exit;
             }
+
             if ((key.Value.Modifiers & (ConsoleModifiers.Control | ConsoleModifiers.Alt)) == 0
                 && key.Value.KeyChar is >= '1' and <= '7')
             {
                 console.WriteLine();
+
                 return (HomeAction)(key.Value.KeyChar - '0');
             }
         }
@@ -90,11 +112,15 @@ public sealed class HomeView(IAnsiConsole console, ILocalizationService text, IC
             HomeAction.Diagnose => "Home.ErrorRequest",
             _ => throw new ArgumentOutOfRangeException(nameof(action))
         };
+
         console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Home.InputHelp"))}[/]");
         console.MarkupLine($"[bold {TerminalTheme.Accent}]{Markup.Escape(text.Text(title))}[/]");
+
         return Task.FromResult(new MultilineChatPrompt(console, text).Read(">", maximumCharacters));
     }
 
     /// <summary>Gives redirected invocations a short useful response without waiting for keyboard input.</summary>
     public void RenderNonInteractive() => console.MarkupLine(Markup.Escape(text.Text("Home.Redirected")));
+
+    #endregion
 }

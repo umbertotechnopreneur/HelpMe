@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
@@ -31,12 +30,16 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
     IConsoleShellView shell, ILocalizationService text, IDesktopLauncherService desktop, ILogger<FirstRunWorkflow> logger,
     CommandGuideWorkflow guide)
 {
+
+    #region Methods
+
     /// <summary>Completes three guided steps without opening the general settings screen.</summary>
     public async Task<int> RunAsync(AppSettings current, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(current);
         logger.LogInformation("Onboarding started. Language={Language}, ProtectedStorage={ProtectedStorage}", current.Language, OperatingSystem.IsWindows());
         var result = await RunStepsAsync(current, ct).ConfigureAwait(false);
+
         if (!result.Completed)
         {
             return 0;
@@ -62,12 +65,18 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
 
         view.RenderReady(result.Name, guide.DocumentPath);
         logger.LogInformation("Onboarding completed.");
+
         if (await view.ChooseGuideAsync(ct).ConfigureAwait(false))
         {
             guide.Open();
         }
+
         return 0;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Collects and persists three resumable onboarding steps in ordinary terminal scrollback.</summary>
     private async Task<FirstRunResult> RunStepsAsync(AppSettings current, CancellationToken ct)
@@ -78,45 +87,62 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
         while (true)
         {
             ct.ThrowIfCancellationRequested();
+
             if (step == 1)
             {
                 logger.LogInformation("Onboarding step opened. Step=1, Name=Language");
                 var language = await view.ChooseLanguageAsync(current.Language, ct).ConfigureAwait(false);
                 logger.LogInformation("Onboarding step answered. Step=1, Action={Action}, Language={Language}", language.Action, language.Value);
+
                 if (language.Action == FirstRunAction.Exit) { return new(false, current.PreferredName); }
+
                 text.SetLanguage(language.Value);
                 current = current with { Language = language.Value, SetupCompleted = false, UpdatedAt = DateTimeOffset.UtcNow };
                 await settings.SaveAsync(current, ct).ConfigureAwait(false);
                 step = 2;
             }
+
             if (step == 2)
             {
                 logger.LogInformation("Onboarding step opened. Step=2, Name=Connection");
                 var key = await view.ReadKeyAsync(secrets.IsConfigured(current.ApiKeyVariable), OperatingSystem.IsWindows(), ct)
                     .ConfigureAwait(false);
                 logger.LogInformation("Onboarding step answered. Step=2, Action={Action}", key.Action);
+
                 if (key.Action == FirstRunAction.Exit) { return new(false, current.PreferredName); }
+
                 if (key.Action == FirstRunAction.Back) { step = 1; continue; }
+
                 var candidate = key.Value ?? secrets.Load(current.ApiKeyVariable)
                     ?? throw new InvalidOperationException(text.Text("Oobe.InvalidKey"));
                 var result = await VerifyAndStoreAsync(candidate, current, ct).ConfigureAwait(false);
+
                 if (result == FirstRunAction.Exit) { return new(false, current.PreferredName); }
+
                 if (result == FirstRunAction.Back) { continue; }
+
                 verified = true;
                 shell.RenderSuccess(text.Text("Oobe.Connected"));
                 step = 3;
             }
+
             logger.LogInformation("Onboarding step opened. Step=3, Name=Personalization");
             var overview = await features.ReadAsync(ct).ConfigureAwait(false);
+
             if (overview.CatalogUnavailable)
             {
                 throw new InvalidOperationException(text.Text("Lab.Invalid"));
             }
+
             var selection = await view.ReadPreferencesAsync(current.PreferredName, overview, ct).ConfigureAwait(false);
             logger.LogInformation("Onboarding step answered. Step=3, Action={Action}", selection.Action);
+
             if (selection.Action == FirstRunAction.Exit) { return new(false, current.PreferredName); }
+
             if (selection.Action == FirstRunAction.Back) { step = 3; continue; }
+
             if (!verified) { throw new InvalidOperationException("Onboarding requires a verified OpenAI connection."); }
+
             var selectedSkills = selection.Value.EnabledSkills.ToHashSet(StringComparer.Ordinal);
             var preferences = overview.Settings with
             {
@@ -143,6 +169,7 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
             await settings.SaveAsync(current, ct).ConfigureAwait(false);
             logger.LogInformation("Onboarding preferences saved. MemoriesEnabled={MemoriesEnabled}, LearningCapture={LearningCapture}, DirectMode={DirectMode}",
                 preferences.Enabled, preferences.CaptureObservations, current.DirectModeEnabled);
+
             return new(true, current.PreferredName);
         }
     }
@@ -176,6 +203,7 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
             }
             catch (HttpRequestException) { error = "NetworkError"; }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested) { error = "NetworkError"; }
+
             if (error.Length == 0)
             {
                 ct.ThrowIfCancellationRequested();
@@ -183,6 +211,7 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
                 {
                     secrets.StoreForCurrentUser(current.ApiKeyVariable, candidate);
                     logger.LogInformation("Onboarding connection verified and credential stored. Attempt={Attempt}, ElapsedMs={ElapsedMs}", attempt, timer.ElapsedMilliseconds);
+
                     return FirstRunAction.Next;
                 }
                 catch (Exception exception) when (exception is Win32Exception or IOException or UnauthorizedAccessException)
@@ -190,12 +219,17 @@ public sealed class FirstRunWorkflow(ISettingsService settings, IEnvironmentSecr
                     error = "StorageError";
                 }
             }
+
             logger.LogWarning("Onboarding connection check failed. Attempt={Attempt}, Category={Category}, ElapsedMs={ElapsedMs}", attempt, error, timer.ElapsedMilliseconds);
             var action = await view.ReadConnectionFailureAsync(error, ct).ConfigureAwait(false);
             logger.LogInformation("Onboarding connection recovery selected. Action={Action}", action);
+
             if (action != FirstRunAction.Next) { return action; }
         }
     }
+
+    #endregion
+
 }
 
 /// <summary>Reports whether onboarding finished and carries the safe display name to the final screen.</summary>

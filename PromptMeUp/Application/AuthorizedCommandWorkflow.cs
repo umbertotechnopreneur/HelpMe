@@ -16,15 +16,19 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 using PromptMeUp.Services;
 using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Reviews commands locally and coordinates approved execution and result analysis.</summary>
 public interface IAuthorizedCommandWorkflow
 {
+
+    #region Methods
+
+    /// <summary>Reviews a command and returns its bounded result after authorized execution.</summary>
     Task<CommandExecutionResult?> RunForResultAsync(
         string sessionId,
         string command,
@@ -32,17 +36,24 @@ public interface IAuthorizedCommandWorkflow
         CancellationToken cancellationToken,
         CommandExecutionMode executionMode = CommandExecutionMode.Confirm);
 
+    /// <summary>Reviews and executes a command, then prepares redacted evidence for AI follow-up.</summary>
     Task<string?> RunAsync(
         string sessionId,
         string command,
         AppSettings settings,
         CancellationToken cancellationToken,
         CommandExecutionMode executionMode = CommandExecutionMode.Confirm);
+
+    #endregion
+
 }
 
 /// <summary>Coordinates risk assessment, authorization, execution, and output review for local commands.</summary>
 public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
 {
+
+    #region Fields
+
     private readonly ICommandRiskAssessmentService _riskAssessment;
     private readonly ICommandExecutionService _commandExecution;
     private readonly IActivityAuditService _audit;
@@ -51,6 +62,10 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
     private readonly IConsoleShellView _shell;
     private readonly ILocalizationService _text;
     private readonly IPromptCatalogService _prompts;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates the command workflow that preserves assessment, authorization, execution, and redaction boundaries.</summary>
     public AuthorizedCommandWorkflow(
@@ -73,6 +88,10 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
         _prompts = prompts ?? throw new ArgumentNullException(nameof(prompts));
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Assesses, previews, authorizes, executes, audits, and prepares bounded command output for the next AI turn.</summary>
     public async Task<string?> RunAsync(
         string sessionId,
@@ -83,6 +102,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
     {
         var prompt = await _prompts.GetAsync("command-result", cancellationToken).ConfigureAwait(false);
         var result = await RunForResultAsync(sessionId, command, settings, cancellationToken, executionMode).ConfigureAwait(false);
+
         return result is null ? null : CreateFollowUp(result, settings, prompt.ResolveText(_text.Language));
     }
 
@@ -97,10 +117,12 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(settings);
+
         if (!Enum.IsDefined(executionMode))
         {
             throw new ArgumentOutOfRangeException(nameof(executionMode));
         }
+
         cancellationToken.ThrowIfCancellationRequested();
         var assessment = await _riskAssessment.AssessAsync(
             sessionId,
@@ -115,11 +137,13 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
             new { command, assessment, executionMode },
             cancellationToken).ConfigureAwait(false);
         _commandView.RenderPreview(command, assessment);
+
         if (executionMode == CommandExecutionMode.Direct && !assessment.CanRunDirect)
         {
             _shell.RenderWarning(_text.Text(assessment.UsedAi ? "Direct.Blocked" : "Direct.ReviewRequired"));
             await _audit.RecordAsync("command_authorization", "blocked", sessionId,
                 new { command, assessment.Score, assessment.Level, executionMode }, cancellationToken).ConfigureAwait(false);
+
             return null;
         }
 
@@ -142,6 +166,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
                 sessionId,
                 new { command, assessment.Score, executionMode },
                 cancellationToken).ConfigureAwait(false);
+
             return null;
         }
 
@@ -182,26 +207,37 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
         return prepared.Cancelled ? null : prepared;
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Prepares evidence once after local rendering so audit and follow-up share identical privacy and size boundaries.</summary>
     private CommandExecutionResult PrepareResult(CommandExecutionResult result, int streamLimit)
     {
         var output = _redactor.Redact(result.StandardOutput);
         var error = _redactor.Redact(result.StandardError);
+
+        // Redaction can change text length; apply the transmission limit to the redacted evidence.
+        var outputExceedsLimit = output.Length > streamLimit;
+        var errorExceedsLimit = error.Length > streamLimit;
+
         return result with
         {
             Command = _redactor.Redact(result.Command),
             StandardOutput = Limit(output, streamLimit),
             StandardError = Limit(error, streamLimit),
-            OutputTruncated = result.OutputTruncated || output.Length > streamLimit || error.Length > streamLimit
+            OutputTruncated = result.OutputTruncated || outputExceedsLimit || errorExceedsLimit
         };
     }
 
     /// <summary>Formats already prepared evidence with the versioned localized result-analysis prompt.</summary>
     private static string CreateFollowUp(CommandExecutionResult result, AppSettings settings, string template)
     {
+        var exitCodeText = result.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "null";
         var followUp = string.Format(System.Globalization.CultureInfo.InvariantCulture, template,
-            result.Command, result.ExitCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "null",
+            result.Command, exitCodeText,
             result.StandardOutput, result.StandardError, result.TimedOut, result.OutputTruncated);
+
         return Limit(followUp, settings.MaxMessageCharacters);
     }
 
@@ -209,4 +245,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
     /// <param name="value">Already-redacted text.</param>
     /// <param name="maximumCharacters">The final character budget.</param>
     private static string Limit(string value, int maximumCharacters) => CommandOutputExcerpt.Limit(value, maximumCharacters);
+
+    #endregion
+
 }

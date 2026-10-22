@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the home menu and optional desktop launcher copy in all six supported languages.</summary>
     private static void AddHomeEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -249,4 +251,6 @@ internal static partial class UiTextCatalog
             Spanish: "No se pudo crear el acceso directo. Puedes iniciar la aplicación con hm.",
             Vietnamese: "Không thể tạo lối tắt. Bạn vẫn có thể mở ứng dụng bằng hm."));
     }
+
+    #endregion
 }

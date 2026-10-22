@@ -26,8 +26,12 @@ using Xunit;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies first run workflow behavior.</summary>
 public sealed class FirstRunWorkflowTests
 {
+
+    #region Methods
+
     /// <summary>Completes only after verification and persists independent memory and learning choices.</summary>
     [Theory]
     [InlineData(false, false, false)]
@@ -158,6 +162,10 @@ public sealed class FirstRunWorkflowTests
         Assert.Equal(outer, secrets.Load(AppSettings.DefaultApiKeyVariable));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds the workflow over isolated real preferences while rejecting unrelated provider calls.</summary>
     private static FirstRunWorkflow CreateWorkflow(RegressionFixture fixture, ILocalizationService text,
         SkillsAndMemoryStore store, IEnvironmentSecretService secrets, IOpenAiService openAi, IFirstRunView view,
@@ -206,10 +214,21 @@ public sealed class FirstRunWorkflowTests
     /// <summary>Creates a visibly synthetic candidate that is never sent to a provider.</summary>
     private static string SyntheticKey() => "sk-" + new string('x', 32);
 
+    #endregion
+
+    #region Types
+
     /// <summary>Captures operational diagnostics to ensure credentials and nicknames never enter logs.</summary>
     private sealed class RecordingLogger : Microsoft.Extensions.Logging.ILogger<FirstRunWorkflow>
     {
+
+        #region Properties
+
         internal List<string> Messages { get; } = [];
+
+        #endregion
+
+        #region Methods
 
         /// <summary>Provides an unused scope without retaining user data.</summary>
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
@@ -220,12 +239,21 @@ public sealed class FirstRunWorkflowTests
         /// <summary>Captures only the formatted diagnostic event emitted by the workflow.</summary>
         public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId,
             TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
+
+        #endregion
     }
 
     /// <summary>Tracks disposal of a fake credential scope.</summary>
     private sealed class Scope(Action dispose) : IDisposable
     {
+
+        #region Methods
+
         /// <summary>Records the end of validation.</summary>
         public void Dispose() => dispose();
+
+        #endregion
     }
+
+    #endregion
 }

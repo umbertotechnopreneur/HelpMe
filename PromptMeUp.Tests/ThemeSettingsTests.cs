@@ -22,8 +22,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies theme settings behavior.</summary>
 public sealed class ThemeSettingsTests
 {
+
+    #region Methods
+
     /// <summary>Upgrades settings that predate themes while preserving all preferences and explicit memories.</summary>
     [Fact]
     public async Task Database_VersionTwoMigration_AddsCyanAndPreservesExistingData()
@@ -114,4 +118,6 @@ public sealed class ThemeSettingsTests
         Assert.False(result.Succeeded);
         Assert.NotNull(result.Error);
     }
+
+    #endregion
 }

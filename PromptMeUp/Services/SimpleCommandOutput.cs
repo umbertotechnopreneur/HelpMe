@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text;
 using PromptMeUp.Models;
 
@@ -25,6 +24,8 @@ namespace PromptMeUp.Services;
 /// <summary>Understands ordinary lines and basic SGR/erase-line controls without emulating a terminal.</summary>
 internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpdate>? publish)
 {
+    #region Fields
+
     private const int MaximumLineLength = 32_768;
     private readonly List<Cell> _line = [];
     private readonly StringBuilder _parameters = new();
@@ -36,7 +37,15 @@ internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpda
     private bool _oversizedControl;
     private ParseState _state;
 
+    #endregion
+
+    #region Properties
+
     internal bool Truncated => _excerpt.Truncated;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Processes one input block, retaining parser state across arbitrary read boundaries.</summary>
     /// <param name="input">The next decoded output characters.</param>
@@ -46,15 +55,25 @@ internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpda
         {
             if (_state == ParseState.String)
             {
-                if (character is '\a' or '\u009c') _state = ParseState.Text;
-                else if (character == '\u001b') _state = ParseState.StringEscape;
+                // Discard control-string payloads until their terminator arrives, even across reads.
+                if (character is '\a' or '\u009c')
+                {
+                    _state = ParseState.Text;
+                }
+                else if (character == '\u001b')
+                {
+                    _state = ParseState.StringEscape;
+                }
+
                 continue;
             }
+
             if (_state == ParseState.StringEscape)
             {
                 _state = character == '\\' ? ParseState.Text : ParseState.String;
                 continue;
             }
+
             if (_state == ParseState.Escape)
             {
                 _state = character switch
@@ -68,60 +87,120 @@ internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpda
                 _oversizedControl = false;
                 continue;
             }
+
             if (_state == ParseState.EscapeIntermediate)
             {
-                if (character is >= '0' and <= '~') _state = ParseState.Text;
+                if (character is >= '0' and <= '~')
+                {
+                    _state = ParseState.Text;
+                }
+
                 continue;
             }
+
             if (_state == ParseState.Csi)
             {
                 if (character is >= '@' and <= '~')
                 {
-                    if (!_oversizedControl) ApplyControl(character);
+                    if (!_oversizedControl)
+                    {
+                        ApplyControl(character);
+                    }
+
                     _state = ParseState.Text;
                 }
-                else if (_parameters.Length < 128) _parameters.Append(character);
-                else _oversizedControl = true;
+                else if (_parameters.Length < 128)
+                {
+                    _parameters.Append(character);
+                }
+                else
+                {
+                    _oversizedControl = true;
+                }
+
                 continue;
             }
+
             switch (character)
             {
-                case '\u001b': _state = ParseState.Escape; break;
-                case '\u009b': _state = ParseState.Csi; _parameters.Clear(); _oversizedControl = false; break;
+                case '\u001b':
+                    _state = ParseState.Escape;
+                    break;
+                case '\u009b':
+                    _state = ParseState.Csi;
+                    _parameters.Clear();
+                    _oversizedControl = false;
+                    break;
                 case '\u009d':
                 case '\u0090':
                 case '\u0098':
                 case '\u009e':
                 case '\u009f':
-                    _state = ParseState.String; break;
-                case '\r': _cursor = 0; break;
-                case '\b': _cursor = Math.Max(0, _cursor - 1); break;
-                case '\n': CommitLine(true); break;
+                    _state = ParseState.String;
+                    break;
+                case '\r':
+                    _cursor = 0;
+                    break;
+                case '\b':
+                    _cursor = Math.Max(0, _cursor - 1);
+                    break;
+                case '\n':
+                    CommitLine(true);
+                    break;
                 case '\t':
                     var spaces = 8 - _cursor % 8;
-                    for (var index = 0; index < spaces; index++) WriteCharacter(' ');
+                    for (var index = 0; index < spaces; index++)
+                    {
+                        WriteCharacter(' ');
+                    }
+
                     break;
                 default:
-                    if (!char.IsControl(character)) WriteCharacter(character);
+                    if (!char.IsControl(character))
+                    {
+                        WriteCharacter(character);
+                    }
+
                     break;
             }
         }
-        if (_dirty) Publish(false);
+
+        if (_dirty)
+        {
+            Publish(false);
+        }
     }
 
     /// <summary>Finishes an unterminated line and returns normalized first/last evidence.</summary>
     internal string Complete()
     {
-        if (_line.Count > 0) _excerpt.Append(new string(_line.Select(cell => cell.Character).ToArray()));
+        if (_line.Count > 0)
+        {
+            var remainingText = new string(_line.Select(cell => cell.Character).ToArray());
+            _excerpt.Append(remainingText);
+        }
+
         return _excerpt.ToString().TrimEnd();
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Updates only the current line, spilling exceptionally long lines in bounded fragments.</summary>
     /// <param name="character">The printable character to place at the current column.</param>
     private void WriteCharacter(char character)
     {
-        if (_cursor >= MaximumLineLength) CommitLine(false);
-        while (_line.Count <= _cursor) _line.Add(new Cell(' ', -1, false));
+        if (_cursor >= MaximumLineLength)
+        {
+            CommitLine(false);
+        }
+
+        while (_line.Count <= _cursor)
+        {
+            _line.Add(new Cell(' ', -1, false));
+        }
+
         _line[_cursor++] = new Cell(character, _foreground, _bold);
         _dirty = true;
     }
@@ -130,7 +209,9 @@ internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpda
     /// <param name="newline">Whether the child emitted a newline.</param>
     private void CommitLine(bool newline)
     {
-        _excerpt.Append(new string(_line.Select(cell => cell.Character).ToArray()) + (newline ? "\n" : ""));
+        var lineText = new string(_line.Select(cell => cell.Character).ToArray());
+        var lineEnding = newline ? "\n" : "";
+        _excerpt.Append(lineText + lineEnding);
         Publish(true);
         _line.Clear();
         _cursor = 0;
@@ -145,17 +226,29 @@ internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpda
             var spans = new List<CommandOutputSpan>();
             var start = 0;
             var length = _line.Count;
-            if (!completeLine && length > 0 && char.IsHighSurrogate(_line[length - 1].Character)) length--;
+            // Keep a trailing surrogate for the next block rather than publishing half a character.
+            if (!completeLine && length > 0 && char.IsHighSurrogate(_line[length - 1].Character))
+            {
+                length--;
+            }
+
             while (start < length)
             {
                 var cell = _line[start];
                 var end = start + 1;
-                while (end < length && _line[end].Foreground == cell.Foreground && _line[end].Bold == cell.Bold) end++;
-                spans.Add(new CommandOutputSpan(new string(_line.Skip(start).Take(end - start).Select(value => value.Character).ToArray()), cell.Foreground, cell.Bold));
+                while (end < length && _line[end].Foreground == cell.Foreground && _line[end].Bold == cell.Bold)
+                {
+                    end++;
+                }
+
+                var spanText = new string(_line.Skip(start).Take(end - start).Select(value => value.Character).ToArray());
+                spans.Add(new CommandOutputSpan(spanText, cell.Foreground, cell.Bold));
                 start = end;
             }
+
             publish(new CommandOutputUpdate(spans, isError, completeLine));
         }
+
         _dirty = false;
     }
 
@@ -164,33 +257,81 @@ internal sealed class SimpleCommandOutput(bool isError, Action<CommandOutputUpda
     private void ApplyControl(char final)
     {
         var values = _parameters.ToString().Split(';');
-        if (values.Any(value => value.Length > 0 && !int.TryParse(value, out _))) return;
-        var codes = values.Select(value => value.Length == 0 ? 0 : int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        var containsInvalidCode = values.Any(value => value.Length > 0 && !int.TryParse(value, out _));
+        if (containsInvalidCode)
+        {
+            return;
+        }
+
+        var codes = values
+            .Select(value => value.Length == 0 ? 0 : int.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
+            .ToArray();
+
         if (final == 'm')
         {
             for (var index = 0; index < codes.Length; index++)
             {
                 var code = codes[index];
-                if (code == 0) { _foreground = -1; _bold = false; }
-                else if (code == 1) _bold = true;
-                else if (code == 22) _bold = false;
-                else if (code == 39) _foreground = -1;
-                else if (code is >= 30 and <= 37 or >= 90 and <= 97) _foreground = code;
+                if (code == 0)
+                {
+                    _foreground = -1;
+                    _bold = false;
+                }
+                else if (code == 1)
+                {
+                    _bold = true;
+                }
+                else if (code == 22)
+                {
+                    _bold = false;
+                }
+                else if (code == 39)
+                {
+                    _foreground = -1;
+                }
+                else if (code is >= 30 and <= 37 or >= 90 and <= 97)
+                {
+                    _foreground = code;
+                }
                 // Skip unsupported extended color arguments instead of interpreting components as commands.
                 else if (code is 38 or 48 or 58 && index + 1 < codes.Length)
-                    index += codes[index + 1] == 2 ? 4 : codes[index + 1] == 5 ? 2 : 1;
+                {
+                    var colorEncoding = codes[index + 1];
+                    var argumentCount = colorEncoding == 2 ? 4 : colorEncoding == 5 ? 2 : 1;
+                    index += argumentCount;
+                }
             }
         }
         else if (final == 'K' && codes.Length == 1)
         {
-            if (codes[0] == 0 && _cursor < _line.Count) _line.RemoveRange(_cursor, _line.Count - _cursor);
+            if (codes[0] == 0 && _cursor < _line.Count)
+            {
+                _line.RemoveRange(_cursor, _line.Count - _cursor);
+            }
             else if (codes[0] == 1)
-                for (var index = 0; index <= _cursor && index < _line.Count; index++) _line[index] = new Cell(' ', -1, false);
-            else if (codes[0] == 2) _line.Clear();
+            {
+                for (var index = 0; index <= _cursor && index < _line.Count; index++)
+                {
+                    _line[index] = new Cell(' ', -1, false);
+                }
+            }
+            else if (codes[0] == 2)
+            {
+                _line.Clear();
+            }
+
             _dirty = true;
         }
     }
 
+    #endregion
+
+    #region Types
+
+    /// <summary>Stores one displayed character with its foreground color and bold style.</summary>
     private readonly record struct Cell(char Character, int Foreground, bool Bold);
+    /// <summary>Tracks incomplete terminal control sequences across streamed input blocks.</summary>
     private enum ParseState { Text, Escape, EscapeIntermediate, Csi, String, StringEscape }
+
+    #endregion
 }

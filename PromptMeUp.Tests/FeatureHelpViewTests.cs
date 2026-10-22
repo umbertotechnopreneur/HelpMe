@@ -25,8 +25,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies feature help view behavior.</summary>
 public sealed class FeatureHelpViewTests
 {
+
+    #region Fields
+
     private static readonly (string Command, string HelpKey, string OldKey)[] Commands =
     [
         ("--skills", "Help.Skills", "Lab.Skills"),
@@ -35,6 +39,10 @@ public sealed class FeatureHelpViewTests
         ("--dream", "Help.Dream", "Lab.NeedSessions"),
         ("--heartbeat", "Help.Heartbeat", "Lab.Heartbeat")
     ];
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Both help surfaces share purpose descriptions, not generic titles or operational consent messages.</summary>
     [Theory]
@@ -123,6 +131,10 @@ public sealed class FeatureHelpViewTests
         Assert.True(opened);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates passive help with in-memory output and no interactive, filesystem, or provider operations.</summary>
     private static (HelpView View, LocalizationService Text, StringWriter Output) Create(string language, int width)
     {
@@ -144,4 +156,6 @@ public sealed class FeatureHelpViewTests
 
     /// <summary>Ignores terminal wrapping while retaining every visible command and explanatory character.</summary>
     private static string Compact(string value) => Regex.Replace(value, @"\s+", string.Empty, RegexOptions.CultureInvariant);
+
+    #endregion
 }

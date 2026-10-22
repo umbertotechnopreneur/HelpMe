@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies request summary regression behavior.</summary>
 public sealed class RequestSummaryRegressionTests
 {
+
+    #region Methods
+
     /// <summary>Verifies the production summary query performs a bounded search through the existing time index.</summary>
     [Fact]
     public async Task GetAiRequestSummaryAsync_QueryPlan_UsesBoundedTimeIndex()
@@ -79,9 +83,15 @@ public sealed class RequestSummaryRegressionTests
         Assert.Equal(expectedRequests * 12L, summary.TotalTokensToday);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Builds one synthetic ledger row with deterministic usage and the specified period and outcome.</summary>
     private static AiRequestLog Request(DateTime occurred, decimal? cost, bool succeeded = true) => new(
         Guid.NewGuid().ToString("N"), "summary-test", "query-system", new DateTimeOffset(occurred), new DateTimeOffset(occurred),
         "example.invalid", "gpt-5.6-terra", "gpt-5.6-terra", "Synthetic question", "Synthetic answer",
         new AiUsageMetrics(10, 0, 0, 2, 0, 12), cost, 200, 1, null, null, succeeded, succeeded ? null : "synthetic_error");
+
+    #endregion
 }

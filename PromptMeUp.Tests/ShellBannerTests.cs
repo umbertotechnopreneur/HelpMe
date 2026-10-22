@@ -25,8 +25,12 @@ using Spectre.Console;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies shell banner behavior.</summary>
 public sealed class ShellBannerTests
 {
+
+    #region Methods
+
     /// <summary>Verifies that help ends with the shared banner and process exit does not duplicate it.</summary>
     [Theory]
     [InlineData(48, true)]
@@ -146,6 +150,10 @@ public sealed class ShellBannerTests
         Assert.DoesNotContain(Compact(text.Text("Shell.SessionOutput")), compact, StringComparison.Ordinal);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a fixed-width in-memory console without touching the process environment.</summary>
     private static (IAnsiConsole Console, StringWriter Output, LocalizationService Text, ConsoleShellView Shell) CreateConsole(
         int width, bool noEmoji)
@@ -168,4 +176,6 @@ public sealed class ShellBannerTests
     /// <summary>Removes ANSI formatting, layout whitespace, and panel borders while preserving wrapped visible text.</summary>
     private static string Compact(string value) =>
         Regex.Replace(value, @"\x1B\[[0-?]*[ -/]*[@-~]|[\s│]", string.Empty, RegexOptions.CultureInvariant);
+
+    #endregion
 }

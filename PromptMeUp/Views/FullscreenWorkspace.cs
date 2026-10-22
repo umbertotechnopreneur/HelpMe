@@ -25,6 +25,9 @@ namespace PromptMeUp.Views;
 /// <summary>Shares the open header, sidebar, content, and footer geometry of terminal workspaces.</summary>
 internal static class FullscreenWorkspace
 {
+
+    #region Methods
+
     /// <summary>Reserves the same responsive sidebar width for help, settings, and interactive menus.</summary>
     internal static int SidebarWidth(int terminalWidth) => Math.Clamp(terminalWidth / 4, 20, 30);
 
@@ -32,6 +35,7 @@ internal static class FullscreenWorkspace
     internal static IRenderable SectionHeading(string title, bool focused, bool showDivider = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
         return new Rows(
             new FullscreenLine($"{(focused ? "> " : "  ")}{title}", Style.Parse("bold " + TerminalTheme.Accent)),
             showDivider ? new ThemeSeparator() : new Text(" "));
@@ -46,6 +50,7 @@ internal static class FullscreenWorkspace
             new Layout("header", FullscreenHeader.Create(title, options, showRepository)).Size(FullscreenHeader.Height),
             new Layout("body"),
             new Layout("footer", footer).Size(FullscreenFooter.Height(noticeRows)));
+
         if (sidebar is null)
         {
             root["body"].Update(content);
@@ -56,6 +61,9 @@ internal static class FullscreenWorkspace
                 new Layout("sections", sidebar).Size(sidebarWidth ?? SidebarWidth(terminalWidth)),
                 new Layout("content", content));
         }
+
         return new FormSurface(root);
     }
+
+    #endregion
 }

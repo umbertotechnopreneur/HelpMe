@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds localized theme metadata, palette semantics, and bundled names for every supported language.</summary>
     private static void AddThemeEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -172,4 +174,6 @@ internal static partial class UiTextCatalog
             Spanish: "Grafito",
             Vietnamese: "Than chì"));
     }
+
+    #endregion
 }

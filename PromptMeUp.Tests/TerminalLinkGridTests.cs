@@ -23,8 +23,12 @@ using Spectre.Console.Rendering;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies terminal link grid behavior.</summary>
 public sealed class TerminalLinkGridTests
 {
+
+    #region Methods
+
     /// <summary>Preserves complete destinations without hyperlinks while adapting the label-above-address layout.</summary>
     [Theory]
     [InlineData(80, 1)]
@@ -64,4 +68,6 @@ public sealed class TerminalLinkGridTests
         }
         Assert.DoesNotContain("…", visibleOutput, StringComparison.Ordinal);
     }
+
+    #endregion
 }

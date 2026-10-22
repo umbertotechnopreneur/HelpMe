@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds section names and keyboard guidance for the fullscreen command reference in all supported languages.</summary>
     private static void AddHelpBrowserEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -131,4 +133,6 @@ internal static partial class UiTextCatalog
             Spanish: "Amplía el terminal a un mínimo de 60 columnas y 20 filas. Esc o Q cierra la ayuda.",
             Vietnamese: "Mở rộng cửa sổ dòng lệnh đến ít nhất 60 cột và 20 dòng. Nhấn Esc hoặc Q để đóng trợ giúp."));
     }
+
+    #endregion
 }

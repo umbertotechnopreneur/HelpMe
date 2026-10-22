@@ -16,11 +16,29 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
-public enum PlanStepStatus { Pending, Running, NeedsReview, Completed }
+/// <summary>Identifies whether a saved plan step is pending, running, awaiting review, or complete.</summary>
+public enum PlanStepStatus
+{
+    Pending,
+    Running,
+    NeedsReview,
+    Completed
+}
 
-public sealed record PlanStep(string Label, string Command, string Verification, string Expected, PlanStepStatus Status = PlanStepStatus.Pending);
+/// <summary>Describes a plan command, its verification, and its persisted execution state.</summary>
+public sealed record PlanStep(
+    string Label,
+    string Command,
+    string Verification,
+    string Expected,
+    PlanStepStatus Status = PlanStepStatus.Pending);
 
-public sealed record ExecutionPlan(int Version, string Id, string Goal, string Directory, List<PlanStep> Steps);
+/// <summary>Stores the goal, working directory, and ordered steps of a resumable plan.</summary>
+public sealed record ExecutionPlan(
+    int Version,
+    string Id,
+    string Goal,
+    string Directory,
+    List<PlanStep> Steps);

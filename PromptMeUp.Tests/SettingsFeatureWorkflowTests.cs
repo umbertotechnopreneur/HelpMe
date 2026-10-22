@@ -25,8 +25,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies settings feature workflow behavior.</summary>
 public sealed class SettingsFeatureWorkflowTests
 {
+
+    #region Methods
+
     /// <summary>Opening and cancelling settings leaves project defaults and consent untouched.</summary>
     [Fact]
     public async Task RunAsync_Cancel_PreservesDisabledDefaults()
@@ -272,6 +276,10 @@ public sealed class SettingsFeatureWorkflowTests
         Assert.True((await Store(fixture).SettingsAsync(default)).Enabled);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a feature store over the isolated test database.</summary>
     private static SkillsAndMemoryStore Store(RegressionFixture fixture) =>
         new(fixture.Paths, new SensitiveDataRedactor(), new LocalizationService());
@@ -305,4 +313,6 @@ public sealed class SettingsFeatureWorkflowTests
             TestProxy.Create<ISetupView>((_, args) => collect((SetupViewState)args[0]!)), shell, text,
             featureOverview: new SettingsFeatureOverviewService(store, catalog));
     }
+
+    #endregion
 }

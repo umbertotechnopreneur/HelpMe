@@ -16,11 +16,13 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Services;
 
+/// <summary>Provides localized terminal messages in all six supported languages.</summary>
 internal static partial class UiTextCatalog
 {
+    #region Implementation
+
     /// <summary>Adds the complete six-language setup UI catalog.</summary>
     private static void AddSetupEntries(Dictionary<string, LocalizedText> entries)
     {
@@ -515,4 +517,6 @@ internal static partial class UiTextCatalog
             Spanish: "CONFIGURACIÓN DE IA // PMU-SETUP-01",
             Vietnamese: "THIẾT LẬP AI // PMU-SETUP-01"));
     }
+
+    #endregion
 }

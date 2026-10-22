@@ -16,7 +16,6 @@
  *
  * VBWR E */
 
-
 using System.Text.Json;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
@@ -27,8 +26,13 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Application;
 
+/// <summary>Runs questions, chat sessions, and provider connection diagnostics.</summary>
 public interface IAiConversationWorkflow
 {
+
+    #region Methods
+
+    /// <summary>Answers one question and offers command actions or a continuation into chat.</summary>
     Task RunQueryAsync(
         string query,
         AppSettings settings,
@@ -38,14 +42,22 @@ public interface IAiConversationWorkflow
         CommandExecutionMode executionMode = CommandExecutionMode.Confirm,
         bool directModeOverride = false);
 
+    /// <summary>Runs an interactive conversation using the current settings.</summary>
     Task RunChatAsync(AppSettings settings, CancellationToken cancellationToken);
 
+    /// <summary>Checks the configured provider with the localized diagnostic prompt.</summary>
     Task RunConnectionTestAsync(AppSettings settings, CancellationToken cancellationToken);
+
+    #endregion
+
 }
 
 /// <summary>Coordinates AI conversations, command reviews, memory context, and terminal presentation.</summary>
 public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
 {
+
+    #region Fields
+
     private static readonly JsonSerializerOptions MemoryJsonOptions = new()
     {
         Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
@@ -71,6 +83,10 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
     private readonly SkillsAndMemoryWorkflow? _skillsAndMemoryWorkflow;
     private readonly ReminderService? _reminders;
     private readonly MemoryManagerWorkflow? _memoryManagerWorkflow;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Connects query and chat sessions to the model, local data, and terminal output.</summary>
     public AiConversationWorkflow(
@@ -119,6 +135,10 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         _memoryManagerWorkflow = memoryManagerWorkflow;
     }
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Runs a single-turn session and offers a safe continuation into chat after the model response.</summary>
     /// <param name="query">The user's question.</param>
     /// <param name="settings">The active application settings.</param>
@@ -141,10 +161,12 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         ArgumentNullException.ThrowIfNull(settings);
+
         if (directModeOverride && executionMode != CommandExecutionMode.Direct)
         {
             throw new ArgumentException("A direct-mode override requires direct execution.", nameof(directModeOverride));
         }
+
         var memory = new ConversationState(_memoryService.Create(settings), promptId)
         {
             ExecutionMode = executionMode,
@@ -159,11 +181,13 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
             {
                 _shell.RenderNotice(_text.Text("Direct.Active"));
             }
+
             if (renderQuery)
             {
                 _chatView.RenderMemoryHint();
                 _chatView.RenderUser(query);
             }
+
             var startChat = await SendAndOfferActionsAsync(
                 session.Id,
                 query,
@@ -174,6 +198,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                 cancellationToken,
                 classifyDisplayIntent: true,
                 captureObservation: promptId == "query-system").ConfigureAwait(false);
+
             if (startChat)
             {
                 _chatView.RenderIntro();
@@ -213,20 +238,24 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         try
         {
             _chatView.RenderIntro();
+
             if (memory.ExecutionMode == CommandExecutionMode.Direct)
             {
                 _shell.RenderNotice(_text.Text("Direct.Active"));
             }
+
             if (_skillsAndMemory is not null)
             {
                 var skillsAndMemory = await _skillsAndMemory.SettingsAsync(cancellationToken).ConfigureAwait(false);
                 var lastRun = await _skillsAndMemory.GetAsync("last-heartbeat", cancellationToken).ConfigureAwait(false);
+
                 if (skillsAndMemory.Enabled && skillsAndMemory.MaintenanceReminder
                     && (lastRun is null || !DateTimeOffset.TryParse(lastRun, out var last) || DateTimeOffset.UtcNow - last > TimeSpan.FromDays(7)))
                 {
                     _shell.RenderNotice(_text.Text("Lab.Due"));
                 }
             }
+
             session.Outcome = await RunChatLoopAsync(session.Id, memory, settings, cancellationToken).ConfigureAwait(false);
         }
         catch (ApplicationExitRequestedException)
@@ -239,6 +268,10 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
             await RenderFinalSnapshotAsync(session.Id, memory, settings).ConfigureAwait(false);
         }
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Runs user chat turns until exit while keeping every command path behind the authorization workflow.</summary>
     private async Task<AuditSessionOutcome> RunChatLoopAsync(
@@ -259,18 +292,23 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                             .ToString("yyyy-MM-dd HH:mm zzz", System.Globalization.CultureInfo.InvariantCulture), reminder.Message)),
                         cancellationToken).ConfigureAwait(false);
                 }
+
                 var promptStatus = await CreateSessionSnapshotAsync(sessionId, memory, settings, cancellationToken).ConfigureAwait(false);
                 var input = _chatView.ReadMessage(settings.MaxMessageCharacters, settings.PreferredName, promptStatus).Trim();
+
                 if (input.Equals("/exit", StringComparison.OrdinalIgnoreCase))
                 {
                     _shell.RenderMuted(_text.Text("Chat.Exit"));
+
                     return AuditSessionOutcome.Completed;
                 }
+
                 if (input.Equals("/help", StringComparison.OrdinalIgnoreCase))
                 {
                     _chatView.RenderCommandGuide();
                     continue;
                 }
+
                 if (input.Equals("/clear", StringComparison.OrdinalIgnoreCase))
                 {
                     memory.Memory.Clear();
@@ -281,22 +319,26 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                     _shell.RenderMuted(_text.Text("Chat.Cleared"));
                     continue;
                 }
+
                 if (input.Equals("/costs", StringComparison.OrdinalIgnoreCase))
                 {
                     _costsView.Render(await _pricing.GetOverviewAsync(cancellationToken).ConfigureAwait(false));
                     continue;
                 }
+
                 if (input.Equals("/status", StringComparison.OrdinalIgnoreCase)
                     || input.Equals("/context", StringComparison.OrdinalIgnoreCase))
                 {
                     await RenderActiveSnapshotAsync(sessionId, memory, settings, cancellationToken, force: true).ConfigureAwait(false);
                     continue;
                 }
+
                 if (await HandleSkillsAndMemoryCommandAsync(input, settings, cancellationToken).ConfigureAwait(false)
                     || await HandleMemoryCommandAsync(input, cancellationToken).ConfigureAwait(false))
                 {
                     continue;
                 }
+
                 if (TryParseRunCommand(input, out var command))
                 {
                     if (command.Length == 0)
@@ -311,6 +353,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                         settings,
                         cancellationToken,
                         memory.ExecutionMode).ConfigureAwait(false);
+
                     if (commandFollowUp is not null)
                     {
                         await SendAndOfferActionsAsync(
@@ -323,8 +366,10 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                             cancellationToken,
                             isToolOutput: true).ConfigureAwait(false);
                     }
+
                     continue;
                 }
+
                 if (string.IsNullOrWhiteSpace(input))
                 {
                     continue;
@@ -364,6 +409,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         var response = await SendTurnAsync(
             sessionId, userText, memory, settings, promptId, cancellationToken, classifyDisplayIntent, captureObservation,
             isToolOutput).ConfigureAwait(false);
+
         return await OfferSuggestedActionsAsync(
             sessionId, response, memory, settings, offerChatContinuation, promptId, cancellationToken).ConfigureAwait(false);
     }
@@ -380,8 +426,17 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentException.ThrowIfNullOrWhiteSpace(promptId);
-        if ((!IsInteractive && memory.ExecutionMode != CommandExecutionMode.Direct)
-            || ((!memory.ShowCommandSuggestions || response.SuggestedCommands.Count == 0) && !offerChatContinuation))
+
+        var requiresInteractiveSelection = memory.ExecutionMode != CommandExecutionMode.Direct;
+
+        if (!IsInteractive && requiresInteractiveSelection)
+        {
+            return false;
+        }
+
+        var hasVisibleSuggestions = memory.ShowCommandSuggestions && response.SuggestedCommands.Count > 0;
+
+        if (!hasVisibleSuggestions && !offerChatContinuation)
         {
             return false;
         }
@@ -389,10 +444,12 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         var activeResponse = response;
         var canStartChat = offerChatContinuation;
         var directCommands = 0;
+
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             IReadOnlyList<SuggestedCommand> suggestions = memory.ShowCommandSuggestions ? activeResponse.SuggestedCommands : [];
+
             if (suggestions.Count == 0 && !canStartChat)
             {
                 return false;
@@ -403,14 +460,23 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                 "command_suggestions_presented",
                 new { count = suggestions.Count, canStartChat },
                 cancellationToken).ConfigureAwait(false);
-            if (memory.ExecutionMode == CommandExecutionMode.Direct && suggestions.Count > 0 && directCommands >= 8)
+            // Count completed commands across follow-up responses so direct mode cannot loop indefinitely.
+            var directStepLimitReached = memory.ExecutionMode == CommandExecutionMode.Direct
+                && suggestions.Count > 0
+                && directCommands >= 8;
+
+            if (directStepLimitReached)
             {
                 _shell.RenderWarning(_text.Text("Direct.StepLimit"));
+
                 return offerChatContinuation;
             }
-            var selection = memory.ExecutionMode == CommandExecutionMode.Direct && suggestions.Count == 1
+            // A single direct suggestion still passes through the shared authorization workflow below.
+            var canSelectDirectly = memory.ExecutionMode == CommandExecutionMode.Direct && suggestions.Count == 1;
+            var selection = canSelectDirectly
                 ? new CommandSuggestionDecision(CommandSuggestionAction.SelectCommand, suggestions[0])
                 : _suggestionView.Select(suggestions, canStartChat);
+
             switch (selection.Action)
             {
                 case CommandSuggestionAction.DoNotExecute:
@@ -469,6 +535,10 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
             && string.Equals(candidate.Command, selected.Command, StringComparison.Ordinal))
         ?? throw new InvalidOperationException("The selected command was not part of the current model response.");
 
+    #endregion
+
+    #region Methods
+
     /// <summary>Runs the YAML diagnostic prompt and renders its localized response status.</summary>
     public async Task RunConnectionTestAsync(AppSettings settings, CancellationToken cancellationToken)
     {
@@ -483,6 +553,10 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         _shell.RenderSuccess(_text.Text("Test.Success", result.Response.ElapsedMilliseconds));
         RenderTurnSnapshot(result.Response, settings, result.Response.EstimatedCostUsd ?? 0m, SessionSummaryTiming.WorkflowEnd);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Adds one bounded user turn, calls OpenAI, renders the parsed answer, and updates the session snapshot.</summary>
     private async Task<AiResponse> SendTurnAsync(
@@ -500,20 +574,25 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         memory.SummaryRenderedSinceLastResult = false;
         var captureRevision = captureObservation && _skillsAndMemory is not null
             ? await _skillsAndMemory.RevisionAsync(cancellationToken).ConfigureAwait(false) : null;
+
         if (userText.Length > settings.MaxMessageCharacters)
         {
             throw new ConversationLimitException(_text.Text("Chat.InputTooLong", settings.MaxMessageCharacters));
         }
+
         var envelope = await PrepareMemoryAsync(
             sessionId, memory, settings, promptId, userText, cancellationToken, pendingMessage: userText).ConfigureAwait(false);
+
         if (envelope.Skills.Count > 0)
         {
             _shell.RenderActiveSkills(envelope.Skills);
         }
+
         foreach (var warning in envelope.SkillWarnings)
         {
             _shell.RenderWarning(warning);
         }
+
         var update = memory.Memory.Add("user", userText, isToolOutput);
         await AuditPruningAsync(sessionId, update.PrunedMessages, cancellationToken).ConfigureAwait(false);
         var response = await _shell.RunWithStatusAsync(
@@ -523,12 +602,15 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         memory.LastResponse = response;
         var assistantUpdate = memory.Memory.Add("assistant", response.Text);
         _chatView.RenderAssistant(response.Text, animate: true, cancellationToken);
+
         if (captureObservation && _skillsAndMemory is not null)
         {
             await _skillsAndMemory.CaptureAsync(sessionId, userText, cancellationToken, captureRevision).ConfigureAwait(false);
         }
+
         await AuditPruningAsync(sessionId, assistantUpdate.PrunedMessages, cancellationToken).ConfigureAwait(false);
         await RenderActiveSnapshotAsync(sessionId, memory, settings, cancellationToken).ConfigureAwait(false);
+
         return response;
     }
 
@@ -566,6 +648,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         memory.LastResponse = classification with { TurnCostUsd = classification.EstimatedCostUsd };
         var intent = ChatDisplayIntentParser.Parse(classification.Text, classification.HttpStatusCode);
         var response = classification with { TurnCostUsd = classification.EstimatedCostUsd };
+
         if (intent.ContinueChat)
         {
             var answer = await SendWithGuideAsync(sessionId, memory, settings, promptId, envelope, userText,
@@ -581,14 +664,17 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
 
         // Save a display change only after the answer succeeds.
         var confirmation = await ApplyDisplayIntentAsync(sessionId, memory, settings, intent, cancellationToken).ConfigureAwait(false);
+
         if (!intent.ContinueChat)
         {
             return response with { Text = confirmation };
         }
+
         if (confirmation.Length == 0)
         {
             return response;
         }
+
         return response with { Text = $"{confirmation}\n\n{response.Text}" };
     }
 
@@ -606,30 +692,36 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         }
 
         var confirmations = new List<string>();
+
         if (intent.ShowSessionSummary is { } showSummary)
         {
             await SaveSessionSummaryPreferenceAsync(settings, showSummary, cancellationToken).ConfigureAwait(false);
             memory.ShowSessionSummaryDuringWork = showSummary;
             confirmations.Add(_text.Text(showSummary ? "Chat.SessionSummaryShown" : "Chat.SessionSummaryHidden"));
         }
+
         if (intent.RequireExecutionConfirmation is { } requireConfirmation)
         {
             await SaveDirectModePreferenceAsync(settings, !requireConfirmation, cancellationToken).ConfigureAwait(false);
+
             if (!memory.DirectModeOverride)
             {
                 memory.ExecutionMode = requireConfirmation ? CommandExecutionMode.Confirm : CommandExecutionMode.Direct;
             }
+
             confirmations.Add(_text.Text(requireConfirmation && memory.DirectModeOverride
                 ? "Chat.ExecutionConfirmationSavedForLater"
                 : requireConfirmation
                     ? "Chat.ExecutionConfirmationRequired"
                     : "Chat.DirectExecutionEnabled"));
         }
+
         if (intent.ShowCommandSuggestions is { } showCommands)
         {
             memory.ShowCommandSuggestions = showCommands;
             confirmations.Add(_text.Text(showCommands ? "Chat.CommandSuggestionsShown" : "Chat.CommandSuggestionsHidden"));
         }
+
         await _audit.AppendSessionEventAsync(sessionId, "chat_display_changed", new
         {
             showSessionSummaryDuringWork = memory.ShowSessionSummaryDuringWork,
@@ -638,6 +730,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
             directModeOverride = memory.DirectModeOverride
         }, cancellationToken).ConfigureAwait(false);
         var icon = TerminalTheme.IconPrefix(_shell.Options, "✅", "+");
+
         return string.Join("\n\n", confirmations.Select(confirmation => icon + confirmation));
     }
 
@@ -685,6 +778,7 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
             CombineMessages(envelope, memory.Memory.Snapshot().Messages), settings, _text.Language,
             cancellationToken, memory.Guide).ConfigureAwait(false);
         memory.LastResponse = first with { TurnCostUsd = first.EstimatedCostUsd };
+
         if (first.GuideTopics.Count == 0)
         {
             return first with { TurnCostUsd = first.EstimatedCostUsd };
@@ -727,11 +821,13 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
                 : null
         };
         memory.LastResponse = completed;
+
         if (final.GuideTopics.Count != 0)
         {
             throw new OpenAiRequestException("The AI requested another guide instead of completing its answer.",
                 "app_guide_round_limit", final.HttpStatusCode);
         }
+
         return completed;
     }
 
@@ -759,40 +855,52 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         {
             return new MemoryEnvelope(null, 0, 0);
         }
+
         var selection = await _persistentMemory.SelectAsync(query, cancellationToken).ConfigureAwait(false);
         var notes = selection.Memories.ToList();
         var template = notes.Count == 0 ? string.Empty
             : (await _prompts.GetAsync("memory-context", cancellationToken).ConfigureAwait(false)).ResolveText(_text.Language);
         var memoryText = string.Empty;
+
+        // Selection ranks the notes; discard the lowest-priority tail until the serialized envelope fits.
         while (notes.Count > 0)
         {
             var payload = JsonSerializer.Serialize(notes.Select(note => note.Text), MemoryJsonOptions);
             var message = new ChatMessage("user", template.Replace("{memories}", payload, StringComparison.Ordinal));
             var tokens = ContextTokenEstimator.Messages([message]);
+
             if (tokens <= 800)
             {
                 memoryText = message.Content;
                 break;
             }
+
             notes.RemoveAt(notes.Count - 1);
         }
+
         var skillWarnings = new List<string>();
         var selectedSkills = _skills is null ? [] : await _skills.SelectAsync(query, cancellationToken, skillWarnings).ConfigureAwait(false);
         var combined = memoryText;
+
         if (selectedSkills.Count > 0)
         {
             combined += "\n\n" + await _skills!.ContextAsync(selectedSkills, cancellationToken).ConfigureAwait(false);
         }
+
         if (string.IsNullOrWhiteSpace(combined))
         {
             return new MemoryEnvelope(null, 0, 0) { SkillWarnings = skillWarnings };
         }
+
         var envelopeMessage = new ChatMessage("user", combined.Trim());
         var envelopeTokens = ContextTokenEstimator.Messages([envelopeMessage]);
+
+        // The combined budget includes both recalled notes and skill instructions.
         if (envelopeTokens > 3200)
         {
             throw new ConversationLimitException(_text.Text("Chat.ContextLimit"));
         }
+
         return new MemoryEnvelope(envelopeMessage, notes.Count, envelopeTokens) { Skills = selectedSkills, SkillWarnings = skillWarnings };
     }
 
@@ -812,15 +920,22 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         var pendingTokens = pendingMessage is null
             ? 0
             : ContextTokenEstimator.Messages([new ChatMessage("user", pendingMessage)]);
-        if (baseline.InputTokens + pendingTokens > baseline.InputBudgetTokens)
+
+        var requiredInputTokens = baseline.InputTokens + pendingTokens;
+
+        if (requiredInputTokens > baseline.InputBudgetTokens)
         {
             throw new ConversationLimitException(_text.Text("Input.ContextBudget",
-                baseline.InputTokens + pendingTokens, baseline.InputBudgetTokens, baseline.ReservedOutputTokens));
+                requiredInputTokens, baseline.InputBudgetTokens, baseline.ReservedOutputTokens));
         }
-        var update = memory.Memory.SetTokenBudget(baseline.InputBudgetTokens - baseline.InputTokens);
+
+        // Only the budget left after fixed instructions is available for recent conversation turns.
+        var conversationTokenBudget = baseline.InputBudgetTokens - baseline.InputTokens;
+        var update = memory.Memory.SetTokenBudget(conversationTokenBudget);
         await AuditPruningAsync(sessionId, update.PrunedMessages, cancellationToken).ConfigureAwait(false);
         memory.PromptId = promptId;
         memory.Envelope = envelope;
+
         return envelope;
     }
 
@@ -828,9 +943,16 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
     private static IReadOnlyList<ChatMessage> CombineMessages(MemoryEnvelope envelope, IReadOnlyList<ChatMessage> messages) =>
         envelope.Message is null ? messages : [envelope.Message, .. messages];
 
+    #endregion
+
+    #region Types
+
     /// <summary>Tracks the memory and selected prompt for one active conversation.</summary>
     private sealed class ConversationState(ConversationMemory memory, string promptId)
     {
+
+        #region Properties
+
         public ConversationMemory Memory { get; } = memory;
 
         public CommandExecutionMode ExecutionMode { get; set; }
@@ -850,13 +972,30 @@ public sealed partial class AiConversationWorkflow : IAiConversationWorkflow
         public bool SummaryRenderedSinceLastResult { get; set; }
 
         public bool ShowCommandSuggestions { get; set; } = true;
+
+        #endregion
+
     }
 
+    /// <summary>Carries bounded recalled notes and selected skills outside conversation history.</summary>
     private sealed record MemoryEnvelope(ChatMessage? Message, int Count, long Tokens)
     {
+
+        #region Properties
+
         public IReadOnlyList<SkillDefinition> Skills { get; init; } = [];
         public IReadOnlyList<string> SkillWarnings { get; init; } = [];
+
+        #endregion
+
     }
 
+    #endregion
+
+    #region Properties
+
     private static bool IsInteractive => !Console.IsInputRedirected && !Console.IsOutputRedirected;
+
+    #endregion
+
 }

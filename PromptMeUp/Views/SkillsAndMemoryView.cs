@@ -26,7 +26,14 @@ namespace PromptMeUp.Views;
 /// <summary>Displays skills and memory workflows using the shared palette without owning I/O services.</summary>
 public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationService text, IConsoleShellView shell)
 {
+
+    #region Fields
+
     private readonly FullscreenMenuView _skillsMenu = new(console, text, shell.Options);
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Shows right-aligned labels and left-aligned values with intentional whitespace.</summary>
     public void Render(string title, IEnumerable<(string Label, string Value)> fields)
@@ -34,6 +41,7 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
         console.WriteLine();
         TerminalTheme.WriteRule(console, title, TerminalTheme.Accent);
         var grid = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn(new GridColumn());
+
         foreach (var (label, value) in fields)
         {
             grid.AddRow(new Text(label, Style.Parse(TerminalTheme.Muted)), new Text(Safe(value), Style.Parse(TerminalTheme.Primary)));
@@ -47,6 +55,7 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
     {
         TerminalTheme.WriteRule(console, title, TerminalTheme.Accent);
         var menu = choices.Select((label, index) => new TerminalMenuChoice<int>(index, Safe(label))).ToArray();
+
         return TerminalChoiceMenu.Select(console, menu, pageSize: 10);
     }
 
@@ -54,10 +63,12 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
     internal T Choose<T>(string title, IReadOnlyList<(T Value, string Label)> choices)
     {
         ArgumentNullException.ThrowIfNull(choices);
+
         if (choices.Count == 0)
         {
             throw new ArgumentException("A menu needs at least one choice.", nameof(choices));
         }
+
         return choices[Choose(title, choices.Select(choice => choice.Label).ToArray())].Value;
     }
 
@@ -67,10 +78,12 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(groups);
+
         if (groups.Count == 0)
         {
             throw new ArgumentException("The skills menu needs at least one group.", nameof(groups));
         }
+
         if (!FullscreenViewport.CanUse(console))
         {
             var choices = new[] { (Value: (SkillMenuItem?)null, Label: text.Text("Lab.Back")) }
@@ -78,6 +91,7 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
                     (Value: (SkillMenuItem?)item, Label: group.Label + " — " + item.Label))))
                 .ToArray();
             var item = Choose(title, choices);
+
             return item is null ? null : new SkillMenuSelection(item,
                 item.InputLabel is null ? null : Read(item.InputLabel, item.InitialInput));
         }
@@ -87,16 +101,23 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
         {
             var updated = handleInline?.Invoke(new SkillMenuSelection(
                 currentGroups[value.GroupIndex].Items[value.ItemIndex], value.Input));
+
             if (updated is not null)
             {
                 currentGroups = updated;
             }
+
             return updated is null ? null : ToFullscreenGroups(updated);
         });
+
         return selected is { } value
             ? new SkillMenuSelection(currentGroups[value.GroupIndex].Items[value.ItemIndex], value.Input)
             : null;
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Maps skill groups to the shared fullscreen menu without the redundant right-hand metadata column.</summary>
     private IReadOnlyList<FullscreenMenuGroup> ToFullscreenGroups(IReadOnlyList<SkillMenuGroup> groups) =>
@@ -113,6 +134,7 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
         {
             return null;
         }
+
         var lines = new List<string>
         {
             text.Text("Lab.Source") + ": " + skill.Directory,
@@ -120,30 +142,44 @@ public sealed class SkillsAndMemoryView(IAnsiConsole console, ILocalizationServi
             string.Empty,
             skill.Instructions
         };
+
         foreach (var script in skill.Scripts)
         {
             lines.Add(string.Empty);
             lines.Add(script.Key + ".ps1");
             lines.Add(script.Value);
         }
+
         return string.Join('\n', lines);
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reads one bounded text field without interpreting it as markup.</summary>
     public string Read(string label, string initial = "")
     {
         var prompt = new TextPrompt<string>(Markup.Escape(label) + ": ").AllowEmpty()
             .Validate(value => value.Length <= 4096 ? ValidationResult.Success() : ValidationResult.Error(text.Text("Lab.Invalid")));
+
         if (initial.Length > 0)
         {
             prompt.DefaultValue(initial);
         }
+
         return console.Prompt(prompt).Trim();
     }
 
     /// <summary>Defaults every state-changing confirmation to cancellation.</summary>
     public bool Confirm(string message) => Choose(message, text.Text("Lab.Cancel"), text.Text("Lab.Confirm")) == 1;
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Removes terminal controls from untrusted package and proposal text.</summary>
     private static string Safe(string value) => string.Concat(value.Where(character => !char.IsControl(character) || character is '\n' or '\t'));
+
+    #endregion
 }

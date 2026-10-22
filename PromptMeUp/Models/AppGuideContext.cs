@@ -16,11 +16,16 @@
  *
  * VBWR E */
 
-
 namespace PromptMeUp.Models;
 
 /// <summary>Contains bounded, localized product documentation added to the system instructions.</summary>
 public sealed record AppGuideContext(IReadOnlyList<string> Topics, string Text, long Tokens)
 {
+
+    #region Properties
+
     public static AppGuideContext Empty { get; } = new([], string.Empty, 0);
+
+    #endregion
+
 }

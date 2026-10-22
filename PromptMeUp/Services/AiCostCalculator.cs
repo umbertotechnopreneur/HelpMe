@@ -16,21 +16,29 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Calculates request costs from token usage and the selected model pricing.</summary>
 public interface IAiCostCalculator
 {
+    #region Methods
+
+    /// <summary>Calculates the total estimated cost for the supplied token usage.</summary>
     decimal Calculate(AiUsageMetrics usage, AiModelPrice price);
 
+    /// <summary>Calculates separate input, cached-input, and output token costs.</summary>
     AiCostBreakdown CalculateBreakdown(AiUsageMetrics usage, AiModelPrice price);
+
+    #endregion
 }
 
 /// <summary>Calculates model usage costs from normalized token metrics and current prices.</summary>
 public sealed class AiCostCalculator : IAiCostCalculator
 {
+    #region Methods
+
     /// <summary>Returns the combined locally estimated USD amount for one provider usage record.</summary>
     public decimal Calculate(AiUsageMetrics usage, AiModelPrice price)
     {
@@ -56,6 +64,12 @@ public sealed class AiCostCalculator : IAiCostCalculator
         return new AiCostBreakdown(input, cached, cacheWrite, output, Round(input + cached + cacheWrite + output));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Normalizes local USD estimates to eight fractional digits.</summary>
     private static decimal Round(decimal value) => decimal.Round(value, 8, MidpointRounding.AwayFromZero);
+
+    #endregion
 }

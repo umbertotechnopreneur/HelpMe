@@ -16,29 +16,45 @@
  *
  * VBWR E */
 
-
 using Microsoft.Extensions.Logging;
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Plans and applies user-approved changes that expose the command on PATH.</summary>
 public interface IPortablePathService
 {
+    #region Methods
+
+    /// <summary>Describes the changes required to expose the command on the user PATH.</summary>
     PortablePathPlan CreatePlan(PortablePathAction action);
 
+    /// <summary>Applies the user-approved PATH integration plan.</summary>
     Task<PortablePathResult> ApplyAsync(PortablePathPlan plan, CancellationToken cancellationToken);
+
+    #endregion
 }
 
 /// <summary>Inspects and applies the optional portable command path without elevating the process.</summary>
 public sealed class PortablePathService : IPortablePathService
 {
+    #region Fields
+
     private const string MarkerStart = "# >>> PromptMeUp hm PATH >>>";
     private const string MarkerEnd = "# <<< PromptMeUp hm PATH <<<";
     private readonly ILogger<PortablePathService> _logger;
 
+    #endregion
+
+    #region Initialization
+
     /// <summary>Creates the portable PATH manager.</summary>
     public PortablePathService(ILogger<PortablePathService> logger) =>
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Builds a human-readable, non-mutating PATH operation preview.</summary>
     public PortablePathPlan CreatePlan(PortablePathAction action)
@@ -90,6 +106,10 @@ public sealed class PortablePathService : IPortablePathService
             isPresent);
         return new PortablePathResult(plan.Action, plan.ExecutableDirectory, plan.PersistenceTarget, true, isPresent);
     }
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Adds or removes the executable directory from the Windows user PATH.</summary>
     private static void ApplyWindowsPath(PortablePathPlan plan)
@@ -245,7 +265,13 @@ public sealed class PortablePathService : IPortablePathService
     /// <summary>Identifies fish configuration because its PATH syntax differs from POSIX shells.</summary>
     private static bool IsFishProfile(string profile) => profile.EndsWith("config.fish", StringComparison.OrdinalIgnoreCase);
 
+    #endregion
+
+    #region Properties
+
     private static StringComparer PathComparer { get; } = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
+
+    #endregion
 }

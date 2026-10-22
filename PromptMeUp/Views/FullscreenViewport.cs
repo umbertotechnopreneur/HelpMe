@@ -25,10 +25,14 @@ namespace PromptMeUp.Views;
 /// <summary>Owns the disposable alternate-buffer lifecycle shared by fullscreen terminal surfaces.</summary>
 internal static class FullscreenViewport
 {
+
+    #region Methods
+
     /// <summary>Checks whether the active terminal can safely host an interactive alternate-buffer surface.</summary>
     internal static bool CanUse(IAnsiConsole console)
     {
         ArgumentNullException.ThrowIfNull(console);
+
         return console.Profile.Capabilities.Ansi && console.Profile.Capabilities.AlternateBuffer
             && console.Profile.Capabilities.Interactive && console.Profile.Out.IsTerminal
             && !Console.IsInputRedirected && !Console.IsOutputRedirected
@@ -43,6 +47,7 @@ internal static class FullscreenViewport
         console.AlternateScreen(() =>
         {
             console.Cursor.Hide();
+
             try
             {
                 interaction();
@@ -60,6 +65,7 @@ internal static class FullscreenViewport
     {
         ArgumentNullException.ThrowIfNull(console);
         var frame = new FullscreenFrame(console.Profile.Width, console.Profile.Height, TerminalTheme.Current.Id);
+
         console.WriteAnsi(writer =>
         {
             if (!previous.HasValue || previous.Value != frame)
@@ -68,10 +74,14 @@ internal static class FullscreenViewport
                 writer.Background(Style.Parse(TerminalTheme.Background).Foreground);
                 writer.EraseInDisplay(2);
             }
+
             writer.CursorHome();
         });
+
         return frame;
     }
+
+    #endregion
 }
 
 /// <summary>Identifies the terminal shape and visual theme used for the most recent fullscreen render.</summary>
@@ -80,7 +90,14 @@ internal readonly record struct FullscreenFrame(int Width, int Height, string Th
 /// <summary>Waits for one key while preserving a pending read across resize and numeric-shortcut timeouts.</summary>
 internal sealed class FullscreenInput(IAnsiConsole console, ILocalizationService text, TerminalInputReader? reader = null)
 {
+
+    #region Fields
+
     private Task<ConsoleKeyInfo?>? _pendingRead;
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Reads one key, repaints on resize, and returns null when a caller-owned deadline expires.</summary>
     internal ConsoleKeyInfo? ReadKey(Action repaint, DateTimeOffset? deadline = null)
@@ -88,29 +105,39 @@ internal sealed class FullscreenInput(IAnsiConsole console, ILocalizationService
         ArgumentNullException.ThrowIfNull(repaint);
         var pending = _pendingRead ??= ReadKeyAsync();
         var dimensions = (console.Profile.Width, console.Profile.Height);
+
         while (!pending.IsCompleted)
         {
             var remaining = deadline is { } value ? value - DateTimeOffset.UtcNow : TimeSpan.FromMilliseconds(100);
+
             if (remaining <= TimeSpan.Zero)
             {
                 return null;
             }
+
             Task.WhenAny(pending, Task.Delay(TimeSpan.FromMilliseconds(Math.Min(100, remaining.TotalMilliseconds))))
                 .GetAwaiter().GetResult();
             var current = (console.Profile.Width, console.Profile.Height);
+
             if (current != dimensions)
             {
                 dimensions = current;
                 repaint();
             }
         }
+
         _pendingRead = null;
+
         return pending.GetAwaiter().GetResult()
             ?? throw new IOException(text.Text("Form.EndOfInput"));
     }
 
     /// <summary>Forgets a completed surface's key task before the next independent interaction starts.</summary>
     internal void Reset() => _pendingRead = null;
+
+    #endregion
+
+    #region Implementation
 
     /// <summary>Lets each fullscreen view handle Escape while preserving global shutdown cancellation.</summary>
     private async Task<ConsoleKeyInfo?> ReadKeyAsync()
@@ -121,10 +148,14 @@ internal sealed class FullscreenInput(IAnsiConsole console, ILocalizationService
                 ? await wrapped.ReadRawKeyAsync(true, CancellationToken.None).ConfigureAwait(false)
                 : await console.Input.ReadKeyAsync(true, CancellationToken.None).ConfigureAwait(false);
         }
+
         while (true)
         {
             var input = await reader.ReadAsync().ConfigureAwait(false);
+
             if (input.Key is { } key) return key;
         }
     }
+
+    #endregion
 }

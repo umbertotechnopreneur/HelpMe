@@ -21,8 +21,12 @@ using Microsoft.Data.Sqlite;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Releases only the connection pools belonging to an isolated test database.</summary>
 internal static class SqliteTestPool
 {
+
+    #region Methods
+
     /// <summary>Releases the database and memory connection pools for one isolated test database.</summary>
     internal static void Clear(string databasePath)
     {
@@ -44,10 +48,16 @@ internal static class SqliteTestPool
         ClearPool(settings);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Closes idle handles belonging to one exact connection-string pool.</summary>
     private static void ClearPool(SqliteConnectionStringBuilder settings)
     {
         using var connection = new SqliteConnection(settings.ToString());
         SqliteConnection.ClearPool(connection);
     }
+
+    #endregion
 }

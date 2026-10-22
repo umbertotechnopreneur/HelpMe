@@ -23,8 +23,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies settings feature save behavior.</summary>
 public sealed class SettingsFeatureSaveTests
 {
+
+    #region Methods
+
     /// <summary>Reading and editing a discarded settings draft leaves project consent and package approvals untouched.</summary>
     [Fact]
     public async Task DraftWithoutSave_DoesNotMutatePreferencesOrApprovals()
@@ -355,6 +359,10 @@ public sealed class SettingsFeatureSaveTests
         Assert.False(File.Exists(fixture.Paths.DatabasePath));
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates real settings persistence and catalog services against a fresh disposable database.</summary>
     private static async Task<(SkillsAndMemoryStore Store, SkillCatalogService Catalog, SettingsFeatureOverviewService Service)> PrepareAsync(RegressionFixture fixture)
     {
@@ -382,4 +390,6 @@ public sealed class SettingsFeatureSaveTests
             $"---\nname: {name}\ndescription: Synthetic settings save package\nversion: 1.0.0\n{metadata}---\n{instructions}");
         return catalog.Inspect(directory);
     }
+
+    #endregion
 }

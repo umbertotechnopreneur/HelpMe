@@ -16,34 +16,49 @@
  *
  * VBWR E */
 
-
 using PromptMeUp.Models;
 
 namespace PromptMeUp.Services;
 
+/// <summary>Creates isolated conversation windows using configured context limits.</summary>
 public interface IConversationMemoryService
 {
+    #region Methods
+
+    /// <summary>Creates the requested instance or local integration using the supplied configuration.</summary>
     ConversationMemory Create(AppSettings settings);
+
+    #endregion
 }
 
 /// <summary>Creates conversation memory with the limits derived from the active settings.</summary>
 public sealed class ConversationMemoryService : IConversationMemoryService
 {
+    #region Methods
+
     /// <summary>Creates one isolated in-memory sliding window for a short AI work session.</summary>
     public ConversationMemory Create(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         return new ConversationMemory(settings);
     }
+
+    #endregion
 }
 
 /// <summary>Collects bounded conversation messages and exposes their current context state.</summary>
 public sealed class ConversationMemory
 {
+    #region Fields
+
     private readonly AppSettings _settings;
     private long _tokenBudget;
     private readonly List<ChatMessage> _messages = [];
     private int _totalPrunedMessages;
+
+    #endregion
+
+    #region Initialization
 
     /// <summary>Creates a bounded memory using the configured turn, message, and context limits.</summary>
     internal ConversationMemory(AppSettings settings)
@@ -53,6 +68,10 @@ public sealed class ConversationMemory
         var configuredBudget = checked(contextWindow * settings.MaxContextPercent / 100);
         _tokenBudget = Math.Max(1, configuredBudget);
     }
+
+    #endregion
+
+    #region Methods
 
     /// <summary>Adds one user, assistant, or tool-output message and prunes the oldest complete turns when needed.</summary>
     public ConversationMemoryUpdate Add(string role, string content, bool isToolOutput = false)
@@ -107,6 +126,10 @@ public sealed class ConversationMemory
         EstimateMessages(_messages),
         _tokenBudget);
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Removes oldest turn groups until both the turn count and estimated token budget are satisfied.</summary>
     private int PruneToLimits()
     {
@@ -115,10 +138,12 @@ public sealed class ConversationMemory
                 || EstimateMessages(_messages) > _tokenBudget)
                && _messages.Count > 0)
         {
-            var nextTurn = _messages.FindIndex(1, message => message.Role == "user");
-            var count = nextTurn > 0 ? nextTurn : _messages.Count;
-            _messages.RemoveRange(0, count);
-            removed += count;
+            // Remove a complete user/assistant turn so the retained window never starts halfway through it.
+            var nextTurnStart = _messages.FindIndex(1, message => message.Role == "user");
+            var messagesToRemove = nextTurnStart > 0 ? nextTurnStart : _messages.Count;
+
+            _messages.RemoveRange(0, messagesToRemove);
+            removed += messagesToRemove;
         }
 
         return removed;
@@ -132,14 +157,20 @@ public sealed class ConversationMemory
     private static string NormalizeRole(string role) => role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
         ? "assistant"
         : "user";
+
+    #endregion
 }
 
 /// <summary>Signals that adding a message would exceed the configured conversation limit.</summary>
 public sealed class ConversationLimitException : Exception
 {
+    #region Initialization
+
     /// <summary>Creates a user-visible bounded-memory validation error.</summary>
     public ConversationLimitException(string message)
         : base(message)
     {
     }
+
+    #endregion
 }

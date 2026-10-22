@@ -24,8 +24,12 @@ using PromptMeUp.Services;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies script artifact behavior.</summary>
 public sealed class ScriptArtifactTests
 {
+
+    #region Methods
+
     /// <summary>Keeps persisted language identifiers, extensions, and validation support centralized and stable.</summary>
     [Theory]
     [InlineData(ScriptLanguage.PowerShell, "powershell", ".ps1", true)]
@@ -112,6 +116,12 @@ public sealed class ScriptArtifactTests
         Assert.False(parser.Parse(["--status", "--output", "new.ps1"]).Succeeded);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a real artifact validator without provider or user data dependencies.</summary>
     private static ScriptArtifactService Create() => new(new SensitiveDataRedactor(), new LocalizationService(), new ScriptLanguageCatalog());
+
+    #endregion
 }

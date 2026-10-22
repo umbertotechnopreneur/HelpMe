@@ -21,8 +21,12 @@ using PromptMeUp.Views;
 
 namespace PromptMeUp.Tests;
 
+/// <summary>Verifies chat input buffer behavior.</summary>
 public sealed class ChatInputBufferTests
 {
+
+    #region Methods
+
     /// <summary>Verifies rejected paste leaves both the existing draft and insertion position unchanged.</summary>
     [Fact]
     public void Insert_OversizedPaste_RejectsAtomically()
@@ -173,6 +177,12 @@ public sealed class ChatInputBufferTests
         Assert.Equal(cursor, buffer.Cursor);
     }
 
+    #endregion
+
+    #region Implementation
+
     /// <summary>Creates a keyboard action without adding printable characters to the draft.</summary>
     private static ConsoleKeyInfo Key(ConsoleKey key) => new('\0', key, false, false, false);
+
+    #endregion
 }
