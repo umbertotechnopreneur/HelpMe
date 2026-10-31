@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -17,7 +17,7 @@
 # VBWR E
 
 name: Feature request
-description: Propose a focused improvement to PromptMeUp.
+description: Propose a focused improvement to HelpMe.
 title: "feature: "
 labels:
   - enhancement

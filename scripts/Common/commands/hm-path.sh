@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -30,12 +30,12 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repository_root=$(dirname -- "$script_dir")
 if [ -x "$script_dir/hm" ]; then
   executable="$script_dir/hm"
-elif [ -x "$repository_root/PromptMeUp/bin/Release/net10.0/hm" ]; then
-  executable="$repository_root/PromptMeUp/bin/Release/net10.0/hm"
+elif [ -x "$repository_root/HelpMe/bin/Release/net10.0/hm" ]; then
+  executable="$repository_root/HelpMe/bin/Release/net10.0/hm"
 elif command -v hm >/dev/null 2>&1; then
   executable=$(command -v hm)
 else
-  echo "hm was not found. Publish or build PromptMeUp first." >&2
+  echo "hm was not found. Publish or build HelpMe first." >&2
   exit 1
 fi
 

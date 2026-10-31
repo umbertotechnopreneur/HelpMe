@@ -2,7 +2,7 @@
 
 ## Real app screenshots
 
-The project owner supplied four Italian PromptMeUp screenshots on September 20, 2026. The help and About screens show version 0.1.5. These are captures of the application, not generated interfaces.
+The project owner supplied four Italian HelpMe screenshots on September 20, 2026. The help and About screens show version 0.1.5. These are captures of the application, not generated interfaces.
 
 | Asset | Content | Privacy mask |
 | --- | --- | --- |

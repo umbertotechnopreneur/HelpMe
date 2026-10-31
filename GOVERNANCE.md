@@ -1,6 +1,6 @@
-# How PromptMeUp is run
+# How HelpMe is run
 
-I'm [Umberto Giacobbi](https://github.com/umbertotechnopreneur), the maintainer of PromptMeUp. I built it over a weekend and kept using it for daily terminal work. A few contributors help with the project.
+I'm [Umberto Giacobbi](https://github.com/umbertotechnopreneur), the maintainer of HelpMe. I built it over a weekend and kept using it for daily terminal work. A few contributors help with the project.
 
 I decide what goes into the project and when to release it. Contributions are welcome: help make terminal work easier while keeping the app small, portable, and careful with commands and private data. For a big change, start a discussion before writing the code.
 
@@ -24,4 +24,4 @@ Please [report security problems privately](https://github.com/umbertotechnopren
 
 You keep the copyright to your contributions and share them under the project's [MIT License](LICENSE). If you add someone else's work, include its source and license. Work made with AI tools gets the same review as everything else. You remain responsible for its accuracy, permissions, and credits.
 
-Linking to another project doesn't mean its creators endorse PromptMeUp. Everyone taking part should follow the [code of conduct](CODE_OF_CONDUCT.md).
+Linking to another project doesn't mean its creators endorse HelpMe. Everyone taking part should follow the [code of conduct](CODE_OF_CONDUCT.md).

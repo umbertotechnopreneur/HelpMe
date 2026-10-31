@@ -1,0 +1,71 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+using System.Globalization;
+using HelpMe.Models;
+
+namespace HelpMe.Services;
+
+/// <summary>Defines the configurable limits applied to generated artifact content and files.</summary>
+public static class ArtifactLimitConfiguration
+{
+    #region Methods
+
+    /// <summary>Loads non-secret MiB settings without changing persistent application preferences.</summary>
+    public static ArtifactLimits Load(Func<string, string?> readVariable, ILocalizationService text) => new(
+        Read("HELPME_MAX_SCRIPT_MIB", 1, readVariable, text),
+        Read("HELPME_MAX_PLAN_MIB", 8, readVariable, text),
+        ReadOutputTokens(readVariable, text));
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Loads a separate artifact generation budget without changing ordinary chat verbosity.</summary>
+    private static int ReadOutputTokens(Func<string, string?> readVariable, ILocalizationService text)
+    {
+        const string name = "HELPME_MAX_ARTIFACT_OUTPUT_TOKENS";
+        var value = readVariable(name);
+        if (value is null)
+        {
+            return ArtifactLimits.Default.MaxOutputTokens;
+        }
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var tokens) || tokens is < 1 or > 65_536)
+        {
+            throw new InvalidOperationException(text.Text("Artifact.OutputConfiguration", name));
+        }
+        return tokens;
+    }
+
+    /// <summary>Rejects malformed configuration explicitly instead of silently replacing it with defaults.</summary>
+    private static int Read(string name, int fallback, Func<string, string?> readVariable, ILocalizationService text)
+    {
+        var value = readVariable(name);
+        if (value is null)
+        {
+            return fallback * ArtifactLimits.Mebibyte;
+        }
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var mebibytes) || mebibytes is < 1 or > 64)
+        {
+            throw new InvalidOperationException(text.Text("Artifact.Configuration", name));
+        }
+        return mebibytes * ArtifactLimits.Mebibyte;
+    }
+
+    #endregion
+}

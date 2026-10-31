@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -24,7 +24,7 @@ tags:
   - learning
   - proposals
 metadata:
-  owner: PromptMeUp
+  owner: HelpMe
   role: system
   source: packaged-local-guide
 texts:

@@ -1,6 +1,6 @@
 ﻿# VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -18,7 +18,7 @@
 
 <#
 .SYNOPSIS
-  Read-only preflight for the PromptMeUp repository.
+  Read-only preflight for the HelpMe repository.
 #>
 [CmdletBinding()]
 param([switch]$Help)
@@ -32,15 +32,15 @@ $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 . (Join-Path $PSScriptRoot '..\preflight-checks.ps1')
 
 $started = Get-Date
-Show-Banner -Title 'PromptMeUp' -Subtitle 'Repository preflight (read-only)'
+Show-Banner -Title 'HelpMe' -Subtitle 'Repository preflight (read-only)'
 
 $ok = Invoke-CommonPreflight `
     -Title 'Required tooling and files' `
     -RequiredCommands @('pwsh', 'dotnet', 'git') `
     -RequiredFiles @(
-        (Join-Path $root 'PromptMeUp.slnx'),
-        (Join-Path $root 'PromptMeUp\PromptMeUp.csproj')
+        (Join-Path $root 'HelpMe.slnx'),
+        (Join-Path $root 'HelpMe\HelpMe.csproj')
     )
 
-Show-Footer -ScriptName 'PromptMeUp.ps1 -Command preflight' -Status $(if ($ok) { 'COMPLETED' } else { 'FAILED' }) -StartTime $started -EndTime (Get-Date)
-if (-not $ok) { throw 'PromptMeUp repository preflight failed.' }
+Show-Footer -ScriptName 'HelpMe.ps1 -Command preflight' -Status $(if ($ok) { 'COMPLETED' } else { 'FAILED' }) -StartTime $started -EndTime (Get-Date)
+if (-not $ok) { throw 'HelpMe repository preflight failed.' }

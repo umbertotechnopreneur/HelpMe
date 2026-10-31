@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -34,7 +34,7 @@ $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 if ($IsWindows -and -not $Runtime.StartsWith('win-')) {
     throw 'Build Unix archives on a Unix host to preserve executable permissions.'
 }
-[xml]$project = Get-Content (Join-Path $root 'PromptMeUp/PromptMeUp.csproj') -Raw
+[xml]$project = Get-Content (Join-Path $root 'HelpMe/HelpMe.csproj') -Raw
 $version = [string]$project.Project.PropertyGroup.Version
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'The project version must contain three numeric parts.' }
 $outputRoot = [System.IO.Path]::GetFullPath($OutputDirectory, $root)
@@ -46,7 +46,7 @@ $payload = Join-Path $outputRoot "$version/$Runtime/payload"
 $archiveRoot = Join-Path $outputRoot 'packages'
 if (Test-Path -LiteralPath $payload) { throw 'Payload already exists. Choose a fresh -OutputDirectory below artifacts for another rehearsal.' }
 New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
-$publishArgs = @('publish', (Join-Path $root 'PromptMeUp/PromptMeUp.csproj'),
+$publishArgs = @('publish', (Join-Path $root 'HelpMe/HelpMe.csproj'),
     '--configuration', 'Release', '--runtime', $Runtime, '--self-contained', 'true',
     '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
     '-p:DebugType=None', '-p:DebugSymbols=false', '-p:ContinuousIntegrationBuild=true', '--output', $payload)
@@ -72,17 +72,17 @@ foreach ($item in Get-ChildItem -LiteralPath $skillRoot.FullName -Recurse -Force
 }
 $revision = & git -C $root rev-parse HEAD
 if ($LASTEXITCODE -ne 0) { throw 'Cannot record source revision.' }
-@("PromptMeUp $version", "Runtime: $Runtime", "Source commit: $revision") |
+@("HelpMe $version", "Runtime: $Runtime", "Source commit: $revision") |
     Set-Content (Join-Path $payload 'BUILD_INFO.txt') -Encoding utf8NoBOM
 $hostOs = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
 $hostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
 if ($Runtime -eq "$hostOs-$hostArch") {
     $executable = Join-Path $payload $(if ($IsWindows) { 'hm.exe' } else { 'hm' })
-    $oldData = $env:PROMPTMEUP_DATA_DIR
+    $oldData = $env:HELPME_DATA_DIR
     $oldKey = $env:OPENAI_API_KEY
     $oldAdminKey = $env:OPENAI_ADMIN_KEY
     try {
-        $env:PROMPTMEUP_DATA_DIR = Join-Path $outputRoot "smoke/$([guid]::NewGuid())"
+        $env:HELPME_DATA_DIR = Join-Path $outputRoot "smoke/$([guid]::NewGuid())"
         $env:OPENAI_API_KEY = $null
         $env:OPENAI_ADMIN_KEY = $null
         foreach ($command in @('--version', '--help', '--third-party')) {
@@ -91,13 +91,13 @@ if ($Runtime -eq "$hostOs-$hostArch") {
         }
     }
     finally {
-        $env:PROMPTMEUP_DATA_DIR = $oldData
+        $env:HELPME_DATA_DIR = $oldData
         $env:OPENAI_API_KEY = $oldKey
         $env:OPENAI_ADMIN_KEY = $oldAdminKey
     }
 }
 else { Write-Host "Cross-published $($Runtime): executable smoke test requires a matching host." }
-$name = "PromptMeUp-$version-$Runtime"
+$name = "HelpMe-$version-$Runtime"
 if ($Runtime.StartsWith('win-')) {
     $archive = Join-Path $archiveRoot "$name.zip"
     if (Test-Path -LiteralPath $archive) { throw 'Archive already exists.' }

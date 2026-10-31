@@ -1,0 +1,207 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+using HelpMe.Models;
+using HelpMe.Services;
+using HelpMe.Views;
+
+namespace HelpMe.Application;
+
+/// <summary>Coordinates settings forms, explicit credential updates, and setup activity records.</summary>
+public sealed class SetupWorkflow(
+    ISettingsService settings,
+    IEnvironmentSecretService secrets,
+    IAiConversationWorkflow conversationWorkflow,
+    ApplicationActivityRecorder activity,
+    ISetupView setupView,
+    IConsoleShellView shell,
+    ILocalizationService text,
+    IThemeCatalogService? themes = null,
+    IPricingService? pricing = null,
+    MemoryManagerWorkflow? memories = null,
+    SettingsFeatureOverviewService? featureOverview = null)
+{
+
+    #region Methods
+
+    /// <summary>Opens the shared settings screen with appearance selected.</summary>
+    public Task<int> RunThemeAsync(AppSettings current, CancellationToken cancellationToken) =>
+        RunAsync(current, cancellationToken, SettingsSection.Theme);
+
+    /// <summary>Opens the shared settings screen with AI preferences selected.</summary>
+    public Task<int> RunAiSettingsAsync(AppSettings current, CancellationToken cancellationToken) =>
+        RunAsync(current, cancellationToken, SettingsSection.Ai);
+
+    /// <summary>Collects all settings from the requested section, saves the submitted draft, and optionally tests OpenAI.</summary>
+    public async Task<int> RunAsync(
+        AppSettings current,
+        CancellationToken cancellationToken,
+        SettingsSection initialSection = SettingsSection.General)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+
+        if (!Enum.IsDefined(initialSection))
+        {
+            throw new ArgumentOutOfRangeException(nameof(initialSection));
+        }
+
+        var saved = false;
+        while (true)
+        {
+            var submission = setupView.Collect(new SetupViewState(
+                current,
+                secrets.IsConfigured(current.ApiKeyVariable),
+                secrets.IsConfigured(current.AdminKeyVariable))
+            {
+                InitialSection = initialSection,
+                Costs = pricing is null ? null : await pricing.GetOverviewAsync(cancellationToken).ConfigureAwait(false),
+                OpenMemories = () => OpenMemories(cancellationToken),
+                SavedMemories = memories is null ? [] : await memories.ListAsync(cancellationToken).ConfigureAwait(false),
+                RefreshSavedMemories = memories is null ? null
+                    : () => memories.ListAsync(cancellationToken).GetAwaiter().GetResult(),
+                FeatureOverview = featureOverview is null ? null : await featureOverview.ReadAsync(cancellationToken).ConfigureAwait(false),
+                ContextBudgetOverridden = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HELPME_CONTEXT_TOKENS")),
+                SaveSucceeded = saved
+            });
+
+            if (submission is null)
+            {
+                if (!saved)
+                {
+                    shell.RenderNotice(text.Text("Setup.Cancelled"));
+                    await activity.TryRecordAsync("setup", "cancelled", null, new { }).ConfigureAwait(false);
+                }
+
+                return 0;
+            }
+
+            var selectedTheme = themes?.Resolve(submission.Settings.Theme);
+            var secretGuidance = new List<string>();
+            await SaveSubmissionAsync(submission, secretGuidance, cancellationToken).ConfigureAwait(false);
+
+            if (selectedTheme is not null)
+            {
+                TerminalTheme.Apply(selectedTheme);
+            }
+
+            if (submission.Settings.Language != current.Language)
+            {
+                text.SetLanguage(submission.Settings.Language);
+            }
+
+            shell.RenderSuccess(text.Text("Setup.Saved"));
+            foreach (var guidance in secretGuidance)
+            {
+                shell.RenderMuted(guidance);
+            }
+
+            await activity.TryRecordAsync(
+                "setup",
+                "completed",
+                null,
+                new
+                {
+                    submission.Settings.Language,
+                    submission.Settings.Theme,
+                    submission.Settings.Model,
+                    submission.Settings.ReasoningEffort,
+                    submission.Settings.OutputDetail,
+                    submission.Settings.PromptCachingEnabled,
+                    submission.Settings.MaxConversationTurns,
+                    submission.Settings.MaxContextPercent,
+                    FeaturePreferencesChanged = submission.Features is not null
+                }).ConfigureAwait(false);
+
+            if (submission.TestConnection)
+            {
+                await conversationWorkflow.RunConnectionTestAsync(submission.Settings, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!submission.KeepOpen)
+            {
+                return 0;
+            }
+
+            current = submission.Settings;
+            initialSection = submission.SelectedSection;
+            saved = true;
+        }
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Persists feature consent before other settings and reports any later partial-save failure.</summary>
+    private async Task SaveSubmissionAsync(SetupSubmission submission, List<string> secretGuidance, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var featuresSaved = false;
+        try
+        {
+            if (submission.Features is not null)
+            {
+                var features = featureOverview ?? throw new InvalidOperationException("Feature settings must be configured.");
+                var originalLanguage = text.Language;
+                try
+                {
+                    // Admission must budget the translated instructions that the saved language will actually use.
+                    text.SetLanguage(submission.Settings.Language);
+                    await features.SaveAsync(submission.Features, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    text.SetLanguage(originalLanguage);
+                }
+
+                featuresSaved = true;
+            }
+
+            if (submission.ApiKey is not null)
+            {
+                secretGuidance.Add(secrets.StoreForCurrentUser(submission.Settings.ApiKeyVariable, submission.ApiKey).Guidance);
+            }
+
+            if (submission.AdminKey is not null)
+            {
+                secretGuidance.Add(secrets.StoreForCurrentUser(submission.Settings.AdminKeyVariable, submission.AdminKey).Guidance);
+            }
+
+            await settings.SaveAsync(submission.Settings, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (featuresSaved)
+            {
+                shell.RenderWarning(text.Text("Settings.FeaturesPartiallySaved"));
+            }
+
+            throw;
+        }
+    }
+
+    /// <summary>Handles the memory navigation event while the passive settings draft remains open.</summary>
+    private void OpenMemories(CancellationToken cancellationToken)
+    {
+        var workflow = memories ?? throw new InvalidOperationException("The memory manager is unavailable.");
+        workflow.RunAsync(cancellationToken).GetAwaiter().GetResult();
+    }
+
+    #endregion
+
+}

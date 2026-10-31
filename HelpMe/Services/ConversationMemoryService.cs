@@ -1,0 +1,176 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+using HelpMe.Models;
+
+namespace HelpMe.Services;
+
+/// <summary>Creates isolated conversation windows using configured context limits.</summary>
+public interface IConversationMemoryService
+{
+    #region Methods
+
+    /// <summary>Creates the requested instance or local integration using the supplied configuration.</summary>
+    ConversationMemory Create(AppSettings settings);
+
+    #endregion
+}
+
+/// <summary>Creates conversation memory with the limits derived from the active settings.</summary>
+public sealed class ConversationMemoryService : IConversationMemoryService
+{
+    #region Methods
+
+    /// <summary>Creates one isolated in-memory sliding window for a short AI work session.</summary>
+    public ConversationMemory Create(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return new ConversationMemory(settings);
+    }
+
+    #endregion
+}
+
+/// <summary>Collects bounded conversation messages and exposes their current context state.</summary>
+public sealed class ConversationMemory
+{
+    #region Fields
+
+    private readonly AppSettings _settings;
+    private long _tokenBudget;
+    private readonly List<ChatMessage> _messages = [];
+    private int _totalPrunedMessages;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates a bounded memory using the configured turn, message, and context limits.</summary>
+    internal ConversationMemory(AppSettings settings)
+    {
+        _settings = settings;
+        var contextWindow = AiModelCatalog.Resolve(settings.Model).ContextWindowTokens;
+        var configuredBudget = checked(contextWindow * settings.MaxContextPercent / 100);
+        _tokenBudget = Math.Max(1, configuredBudget);
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Adds one user, assistant, or tool-output message and prunes the oldest complete turns when needed.</summary>
+    public ConversationMemoryUpdate Add(string role, string content, bool isToolOutput = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(role);
+        ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        var normalizedRole = NormalizeRole(role);
+        if (isToolOutput && normalizedRole != "user")
+        {
+            throw new ArgumentException("Tool output must use the provider's user role.", nameof(role));
+        }
+        if (normalizedRole == "user" && content.Length > _settings.MaxMessageCharacters)
+        {
+            throw new ConversationLimitException(
+                $"Message length {content.Length:N0} exceeds the configured {_settings.MaxMessageCharacters:N0}-character limit.");
+        }
+
+        if (normalizedRole == "user" && EstimateMessages([new ChatMessage(normalizedRole, content)]) > _tokenBudget)
+        {
+            throw new ConversationLimitException("The message exceeds the configured context token budget.");
+        }
+
+        // Assistant output has its own provider/body limits; user-input limits must never discard a completed answer.
+        _messages.Add(new ChatMessage(normalizedRole, content) { IsToolOutput = isToolOutput });
+        var pruned = PruneToLimits();
+        _totalPrunedMessages += pruned;
+        return new ConversationMemoryUpdate(pruned, Snapshot());
+    }
+
+    /// <summary>Clears the active context while leaving the persistent session ledger untouched.</summary>
+    public void Clear()
+    {
+        _totalPrunedMessages += _messages.Count;
+        _messages.Clear();
+    }
+
+    /// <summary>Applies the actual remaining request budget and removes complete old turns before the next send.</summary>
+    public ConversationMemoryUpdate SetTokenBudget(long tokenBudget)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(tokenBudget);
+        _tokenBudget = tokenBudget;
+        var pruned = PruneToLimits();
+        _totalPrunedMessages += pruned;
+        return new ConversationMemoryUpdate(pruned, Snapshot());
+    }
+
+    /// <summary>Returns an immutable view of the exact messages that would be sent on the next request.</summary>
+    public ConversationMemorySnapshot Snapshot() => new(
+        _messages.ToArray(),
+        _messages.Count(message => message.Role == "user"),
+        _totalPrunedMessages,
+        EstimateMessages(_messages),
+        _tokenBudget);
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Removes oldest turn groups until both the turn count and estimated token budget are satisfied.</summary>
+    private int PruneToLimits()
+    {
+        var removed = 0;
+        while ((_messages.Count(message => message.Role == "user") > _settings.MaxConversationTurns
+                || EstimateMessages(_messages) > _tokenBudget)
+               && _messages.Count > 0)
+        {
+            // Remove a complete user/assistant turn so the retained window never starts halfway through it.
+            var nextTurnStart = _messages.FindIndex(1, message => message.Role == "user");
+            var messagesToRemove = nextTurnStart > 0 ? nextTurnStart : _messages.Count;
+
+            _messages.RemoveRange(0, messagesToRemove);
+            removed += messagesToRemove;
+        }
+
+        return removed;
+    }
+
+    /// <summary>Estimates serialized message tokens using the same lightweight UTF-8 heuristic as preflight display.</summary>
+    private static long EstimateMessages(IEnumerable<ChatMessage> messages) =>
+        ContextTokenEstimator.Messages(messages);
+
+    /// <summary>Restricts local memory roles to user and assistant.</summary>
+    private static string NormalizeRole(string role) => role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
+        ? "assistant"
+        : "user";
+
+    #endregion
+}
+
+/// <summary>Signals that adding a message would exceed the configured conversation limit.</summary>
+public sealed class ConversationLimitException : Exception
+{
+    #region Initialization
+
+    /// <summary>Creates a user-visible bounded-memory validation error.</summary>
+    public ConversationLimitException(string message)
+        : base(message)
+    {
+    }
+
+    #endregion
+}

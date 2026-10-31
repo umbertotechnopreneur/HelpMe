@@ -1,6 +1,10 @@
 ﻿# What's new
 
-Selected user-facing changes to PromptMeUp. These are task completion dates, not release dates. See [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases) for published versions.
+Selected user-facing changes to HelpMe. These are task completion dates, not release dates. See [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases) for published versions.
+
+## 2026-11-01
+
+- PromptMeUp is now HelpMe. The `hm` command remains the same; the renamed app uses new local data and credential locations.
 
 ## 2026-10-19
 

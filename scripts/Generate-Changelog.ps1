@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -52,7 +52,7 @@ if ($updates.Count -eq 0) {
 $lines = [System.Collections.Generic.List[string]]::new()
 $lines.Add("# What's new")
 $lines.Add('')
-$lines.Add('Selected user-facing changes to PromptMeUp. These are task completion dates, not release dates. See [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases) for published versions.')
+$lines.Add('Selected user-facing changes to HelpMe. These are task completion dates, not release dates. See [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases) for published versions.')
 $lines.Add('')
 
 foreach ($group in ($updates | Group-Object Date | Sort-Object Name -Descending)) {

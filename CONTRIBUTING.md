@@ -1,6 +1,6 @@
-# Contributing to PromptMeUp
+# Contributing to HelpMe
 
-Help improve PromptMeUp with a bug fix, clearer instructions, or a useful command example.
+Help improve HelpMe with a bug fix, clearer instructions, or a useful command example.
 
 Keep changes small and explain who they help. Tell me what you checked so I can review the change.
 
@@ -17,21 +17,21 @@ Keep changes small and explain who they help. Tell me what you checked so I can 
 
 Requirements: .NET 10 SDK, Git, and PowerShell 7 for repository helpers.
 
-Run `pwsh -NoProfile -File .\scripts\PromptMeUp.ps1` with no parameters for the interactive menu. Use `-Command` for repeatable local checks and CI.
+Run `pwsh -NoProfile -File .\scripts\HelpMe.ps1` with no parameters for the interactive menu. Use `-Command` for repeatable local checks and CI.
 
 ```powershell
-pwsh -NoProfile -File .\scripts\PromptMeUp.ps1 -Command preflight
-dotnet restore .\PromptMeUp.slnx
-pwsh -NoProfile -File .\scripts\PromptMeUp.ps1 -Command format
-pwsh -NoProfile -File .\scripts\PromptMeUp.ps1 -Command check-format
-pwsh -NoProfile -File .\scripts\PromptMeUp.ps1 -Command check-xml
-dotnet build .\PromptMeUp.slnx --configuration Release --no-restore --warnaserror
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command preflight
+dotnet restore .\HelpMe.slnx
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command format
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command check-format
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command check-xml
+dotnet build .\HelpMe.slnx --configuration Release --no-restore --warnaserror
 ```
 
 If you're using a coding assistant, it must wait for an explicit request before running automated tests or CLI smoke tests (quick checks that launch the app). A request to implement, review, commit, or push isn't permission to run tests. When tests are requested, use the ones that fit the change, for example:
 
 ```powershell
-dotnet test .\PromptMeUp.slnx --configuration Release --no-build
+dotnet test .\HelpMe.slnx --configuration Release --no-build
 ```
 
 The formatting helper uses `dotnet format` to fix formatting. Run it with `-Verify` to check the result without changing files. CI uses that check too.

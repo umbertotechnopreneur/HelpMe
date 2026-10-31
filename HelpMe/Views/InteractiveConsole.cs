@@ -1,0 +1,153 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace HelpMe.Views;
+
+/// <summary>Signals that an interactive terminal flow was cancelled with the Escape key.</summary>
+internal sealed class InteractiveFlowCanceledException : OperationCanceledException
+{
+
+    #region Initialization
+
+    /// <summary>Creates the signal raised when Escape cancels only the active interactive flow.</summary>
+    public InteractiveFlowCanceledException()
+        : base("The current interactive flow was cancelled.")
+    {
+    }
+
+    #endregion
+}
+
+/// <summary>Wraps console output and converts Escape input into a flow-level cancellation.</summary>
+internal sealed class EscapeAwareAnsiConsole : IAnsiConsole
+{
+
+    #region Fields
+
+    private readonly IAnsiConsole _inner;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates a console facade whose input supports Escape and application shutdown cancellation.</summary>
+    public EscapeAwareAnsiConsole(IAnsiConsole inner, CancellationToken shutdownToken)
+    {
+        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        Input = new EscapeAwareConsoleInput(inner.Input, shutdownToken);
+    }
+
+    #endregion
+
+    #region Properties
+
+    public Profile Profile => _inner.Profile;
+
+    public IAnsiConsoleCursor Cursor => _inner.Cursor;
+
+    public IAnsiConsoleInput Input { get; }
+
+    public IExclusivityMode ExclusivityMode => _inner.ExclusivityMode;
+
+    public RenderPipeline Pipeline => _inner.Pipeline;
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Intentionally ignores clear requests so every application flow preserves terminal scrollback.</summary>
+    public void Clear(bool home)
+    {
+        _ = home;
+    }
+
+    /// <summary>Writes one renderable through the wrapped console.</summary>
+    public void Write(IRenderable renderable) => _inner.Write(renderable);
+
+    /// <summary>Writes ANSI instructions through the wrapped console.</summary>
+    public void WriteAnsi(Action<AnsiWriter> action) => _inner.WriteAnsi(action);
+
+    #endregion
+}
+
+/// <summary>Wraps terminal input and exposes Escape as a cancellation signal to the active view.</summary>
+internal sealed class EscapeAwareConsoleInput : IAnsiConsoleInput
+{
+
+    #region Fields
+
+    private readonly IAnsiConsoleInput _inner;
+    private readonly CancellationToken _shutdownToken;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates an input facade that separates flow cancellation from application shutdown.</summary>
+    public EscapeAwareConsoleInput(IAnsiConsoleInput inner, CancellationToken shutdownToken)
+    {
+        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        _shutdownToken = shutdownToken;
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Reports whether a key is ready without consuming it.</summary>
+    public bool IsKeyAvailable() => _inner.IsKeyAvailable();
+
+    /// <summary>Reads one key while allowing Ctrl+C to cancel a synchronously rendered prompt.</summary>
+    public ConsoleKeyInfo? ReadKey(bool intercept) =>
+        ReadKeyAsync(intercept, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>Reads one key and maps Escape to cancellation of the current interactive flow.</summary>
+    public async Task<ConsoleKeyInfo?> ReadKeyAsync(bool intercept, CancellationToken cancellationToken)
+    {
+        var key = await ReadRawKeyAsync(intercept, cancellationToken).ConfigureAwait(false);
+
+        return EnsureNotEscape(key);
+    }
+
+    /// <summary>Reads one key with shutdown cancellation before a paste-aware reader interprets Escape sequences.</summary>
+    internal async Task<ConsoleKeyInfo?> ReadRawKeyAsync(bool intercept, CancellationToken cancellationToken)
+    {
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            _shutdownToken);
+
+        return await _inner.ReadKeyAsync(intercept, linkedCancellation.Token).ConfigureAwait(false);
+    }
+
+    /// <summary>Returns ordinary keys and raises the dedicated flow-cancellation signal for Escape.</summary>
+    internal static ConsoleKeyInfo? EnsureNotEscape(ConsoleKeyInfo? key)
+    {
+        if (key?.Key == ConsoleKey.Escape)
+        {
+            throw new InteractiveFlowCanceledException();
+        }
+
+        return key;
+    }
+
+    #endregion
+}

@@ -1,7 +1,7 @@
 @echo off
 @REM VBWR B
 @REM
-@REM Project: PromptMeUp
+@REM Project: HelpMe
 @REM Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 @REM Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 @REM

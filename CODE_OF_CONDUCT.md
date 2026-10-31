@@ -6,4 +6,4 @@ Treat people with respect. Give others the benefit of the doubt, and discuss the
 
 Maintainers may edit or remove posts and contributions that break these rules. They may also limit someone's participation, temporarily or permanently. To report a problem, contact the repository owner privately through the contact options on their GitHub profile.
 
-This policy applies in the repository and in public spaces where someone represents PromptMeUp.
+This policy applies in the repository and in public spaces where someone represents HelpMe.

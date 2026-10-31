@@ -1,6 +1,6 @@
 ﻿# VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -26,8 +26,8 @@ param()
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 $sourceRoots = @(
-    (Join-Path $repositoryRoot 'PromptMeUp'),
-    (Join-Path $repositoryRoot 'PromptMeUp.Tests')
+    (Join-Path $repositoryRoot 'HelpMe'),
+    (Join-Path $repositoryRoot 'HelpMe.Tests')
 )
 $methodPattern = '^\s*(public|private|protected|internal)\s+(?:(?:static|async|sealed|partial|virtual|override|new)\s+)*(?!readonly\b)(?!(?:class|record|interface|enum)\b)(?:[\w<>,?\[\].]+\s+)?\w+\s*\('
 $violations = [System.Collections.Generic.List[string]]::new()

@@ -1,0 +1,169 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using Microsoft.Extensions.Logging.Abstractions;
+using HelpMe.Application;
+using HelpMe.Models;
+using HelpMe.Services;
+using HelpMe.Views;
+
+namespace HelpMe.Tests;
+
+/// <summary>Verifies application error behavior.</summary>
+public sealed class ApplicationErrorTests
+{
+
+    #region Methods
+
+    /// <summary>Verifies that explicit cost refresh failures show authentication guidance when appropriate and still render cached costs.</summary>
+    /// <param name="statusCode">The simulated provider HTTP status code.</param>
+    [Theory]
+    [InlineData(401)]
+    [InlineData(503)]
+    public async Task RunAsync_CostRefreshFailure_RendersExpectedWarningAndCachedCosts(int statusCode)
+    {
+        var text = new LocalizationService();
+        var settings = AppSettings.Default with { SetupCompleted = true, Language = "it" };
+        var exception = new OpenAiRequestException("Organization costs request failed.", "organization_costs_failed", statusCode);
+        var overview = new CostOverview(null, null, 0, 0, null, 0, 0, 0, 0, []);
+        var warnings = new List<string>();
+        var cachedCostsRendered = false;
+        var pricing = TestProxy.Create<IPricingService>((method, args) =>
+        {
+            if (method.Name == "RefreshDailyIfNeededAsync")
+            {
+                Assert.True((bool)args[1]!);
+                return Task.FromException<PricingRefreshResult>(exception);
+            }
+            return method.Name == "GetOverviewAsync"
+                ? Task.FromResult(overview)
+                : throw new NotSupportedException(method.Name);
+        });
+        var shell = TestProxy.Create<IConsoleShellView>((method, args) =>
+        {
+            if (method.Name == "RenderWarning")
+            {
+                warnings.Add((string)args[0]!);
+                return null;
+            }
+            return method.Name switch
+            {
+                "Configure" or "RenderHeader" or "WriteLine" or "RenderMuted" => null,
+                "RunWithStatusAsync" => ((Func<Task<PricingRefreshResult>>)args[1]!)(),
+                _ => throw new NotSupportedException(method.Name)
+            };
+        });
+        var costsView = TestProxy.Create<ICostsView>((method, args) =>
+        {
+            Assert.Equal("Render", method.Name);
+            Assert.Same(overview, args[0]);
+            cachedCostsRendered = true;
+            return null;
+        });
+        var commands = new ApplicationCommandRouter(null!, null!,
+            new InformationCommandHandler(
+                lenna: null!,
+                about: null!,
+                help: null!,
+                statusView: null!,
+                costsView: costsView,
+                thirdPartyView: null!,
+                pricing: pricing,
+                secrets: null!,
+                activity: null!,
+                shell: shell,
+                paths: null!,
+                artifactLimits: ArtifactLimits.Default),
+            null!, AppLicenseTests.CreateGuard(new(AppLicenseState.Source), text), null!);
+        var app = new HelpMeApplication(
+            parser: new CommandLineParser(text),
+            database: TestProxy.Create<IDatabaseService>((method, _) => method.Name == "InitializeAsync"
+                ? Task.CompletedTask : throw new NotSupportedException(method.Name)),
+            settings: TestProxy.Create<ISettingsService>((method, _) => method.Name == "LoadAsync"
+                ? Task.FromResult(settings) : throw new NotSupportedException(method.Name)),
+            secrets: TestProxy.Create<IEnvironmentSecretService>((method, _) => method.Name == "IsConfigured"
+                ? true : throw new NotSupportedException(method.Name)),
+            prompts: TestProxy.Create<IPromptCatalogService>((method, _) => method.Name == "ListAsync"
+                ? Task.FromResult<IReadOnlyList<PromptDefinition>>([]) : throw new NotSupportedException(method.Name)),
+            pricing: pricing,
+            commands: commands,
+            activity: null!,
+            text: text,
+            shell: shell,
+            helpView: null!,
+            logger: NullLogger<HelpMeApplication>.Instance,
+            themes: null!,
+            firstRunView: null!,
+            firstRun: null!,
+            home: null!,
+            diagnosticBundles: null!,
+            license: AppLicenseTests.CreateGuard(new(AppLicenseState.Source), text),
+            about: null!);
+
+        var exitCode = await app.RunAsync(["--costs"], default);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(cachedCostsRendered);
+        var expectedWarning = statusCode == 401 && OperatingSystem.IsWindows()
+            ? $"{exception.Message}{Environment.NewLine}{text.Text("Error.KeyRestartRequired")}"
+            : exception.Message;
+        Assert.Equal(expectedWarning, Assert.Single(warnings));
+    }
+
+    /// <summary>Verifies that a Windows authentication failure explains how to activate a recently changed key.</summary>
+    [Fact]
+    public void FormatErrorMessage_UnauthorizedOnWindows_AppendsLocalizedRestartGuidance()
+    {
+        var text = new LocalizationService();
+        text.SetLanguage("it");
+        var exception = new OpenAiRequestException("Incorrect API key provided.", "responses_api_failed", 401);
+
+        var message = HelpMeApplication.FormatErrorMessage(exception, text, isWindows: true);
+
+        Assert.Contains("Incorrect API key provided.", message, StringComparison.Ordinal);
+        Assert.Contains("chiudi completamente e riapri l'applicazione del terminale", message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("l'IDE se usi un terminale integrato", message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies that unrelated provider failures do not receive misleading credential guidance.</summary>
+    [Fact]
+    public void FormatErrorMessage_NonAuthenticationFailure_RemainsUnchanged()
+    {
+        var text = new LocalizationService();
+        var exception = new OpenAiRequestException("Service unavailable.", "responses_api_failed", 503);
+
+        var message = HelpMeApplication.FormatErrorMessage(exception, text, isWindows: true);
+
+        Assert.Equal(exception.Message, message);
+    }
+
+    /// <summary>Verifies that non-Windows authentication failures retain their original message.</summary>
+    [Fact]
+    public void FormatErrorMessage_UnauthorizedOutsideWindows_RemainsUnchanged()
+    {
+        var text = new LocalizationService();
+        var exception = new OpenAiRequestException("Incorrect API key provided.", "responses_api_failed", 401);
+
+        var message = HelpMeApplication.FormatErrorMessage(exception, text, isWindows: false);
+
+        Assert.Equal(exception.Message, message);
+    }
+
+    #endregion
+}

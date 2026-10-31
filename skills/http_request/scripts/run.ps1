@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -16,7 +16,7 @@
 #
 # VBWR E
 
-# Adapted for PromptMeUp from the author's CLI-Intelligence HTTP tool.
+# Adapted for HelpMe from the author's CLI-Intelligence HTTP tool.
 [CmdletBinding()]
 param(
     [string]$Url = '',
@@ -40,7 +40,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-public static class PromptMeUpHttpSkill
+public static class HelpMeHttpSkill
 {
     public sealed class Response
     {
@@ -187,8 +187,8 @@ public static class PromptMeUpHttpSkill
 
 }
 '@
-    if (-not ('PromptMeUpHttpSkill' -as [type])) { Add-Type -TypeDefinition $networkSource -ErrorAction Stop }
-    $result = [PromptMeUpHttpSkill]::FetchAsync($Url, $Method, $Body, $ContentType, 4096, $false).GetAwaiter().GetResult()
+    if (-not ('HelpMeHttpSkill' -as [type])) { Add-Type -TypeDefinition $networkSource -ErrorAction Stop }
+    $result = [HelpMeHttpSkill]::FetchAsync($Url, $Method, $Body, $ContentType, 4096, $false).GetAwaiter().GetResult()
     $result | ConvertTo-Json -Depth 4
     if ($result.StatusCode -ge 400) { throw $_ValidationError }
 }

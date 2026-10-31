@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -16,7 +16,7 @@
 #
 # VBWR E
 
-# Adapted for PromptMeUp from the author's CLI-Intelligence Windows screen capture tool.
+# Adapted for HelpMe from the author's CLI-Intelligence Windows screen capture tool.
 [CmdletBinding()]
 param(
     [string]$Mode = 'full_screen',
@@ -49,7 +49,7 @@ using System;
 using System.Runtime.InteropServices;
 
 /// <summary>Reads Windows screen geometry without introducing a desktop framework dependency.</summary>
-public static class PromptMeUpCaptureBounds
+public static class HelpMeCaptureBounds
 {
     [StructLayout(LayoutKind.Sequential)]
     private struct Rectangle { public int Left, Top, Right, Bottom; }
@@ -121,13 +121,13 @@ public static class PromptMeUpCaptureBounds
     }
 }
 '@
-$previousDpi = [PromptMeUpCaptureBounds]::SetThreadDpiAwarenessContext([IntPtr]::new(-4))
+$previousDpi = [HelpMeCaptureBounds]::SetThreadDpiAwarenessContext([IntPtr]::new(-4))
 if ($previousDpi -eq [IntPtr]::Zero) { throw $_ValidationError }
 $bitmap = $null
 $graphics = $null
 $encoded = $null
 try {
-    $bounds = [PromptMeUpCaptureBounds]::GetBounds($Mode)
+    $bounds = [HelpMeCaptureBounds]::GetBounds($Mode)
     $bitmap = [Drawing.Bitmap]::new($bounds[2], $bounds[3], [Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($bounds[0], $bounds[1], 0, 0, [Drawing.Size]::new($bounds[2], $bounds[3]), [Drawing.CopyPixelOperation]::SourceCopy)
@@ -149,5 +149,5 @@ finally {
     if ($encoded) { $encoded.Dispose() }
     if ($graphics) { $graphics.Dispose() }
     if ($bitmap) { $bitmap.Dispose() }
-    [void][PromptMeUpCaptureBounds]::SetThreadDpiAwarenessContext($previousDpi)
+    [void][HelpMeCaptureBounds]::SetThreadDpiAwarenessContext($previousDpi)
 }

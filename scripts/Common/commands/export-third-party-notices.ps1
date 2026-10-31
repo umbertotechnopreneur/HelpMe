@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -30,7 +30,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
-$assets = Get-Content (Join-Path $root 'PromptMeUp/obj/project.assets.json') -Raw | ConvertFrom-Json -AsHashtable
+$assets = Get-Content (Join-Path $root 'HelpMe/obj/project.assets.json') -Raw | ConvertFrom-Json -AsHashtable
 $licenseRoot = Join-Path $OutputDirectory 'LICENSES'
 if (Test-Path -LiteralPath $licenseRoot) { throw 'Use a fresh payload directory for notice export.' }
 New-Item -ItemType Directory -Path $licenseRoot -Force | Out-Null

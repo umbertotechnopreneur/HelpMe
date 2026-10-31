@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -64,7 +64,7 @@ jobs:
         run: |
           git merge-base --is-ancestor HEAD origin/main
           if ($LASTEXITCODE -ne 0) { throw 'Releases must come from a commit on main.' }
-          [xml]$project = Get-Content PromptMeUp/PromptMeUp.csproj -Raw
+          [xml]$project = Get-Content HelpMe/HelpMe.csproj -Raw
           $version = [string]$project.Project.PropertyGroup.Version
           if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid project version.' }
           if ($env:EVENT_NAME -eq 'push' -and ($env:REF_TYPE -ne 'tag' -or $env:REF_NAME -cne "v$version")) {
@@ -121,7 +121,7 @@ jobs:
         shell: pwsh
         env:
           TARGET_RUNTIME: ${{ matrix.runtime }}
-        run: pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command portable -Runtime $env:TARGET_RUNTIME
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command portable -Runtime $env:TARGET_RUNTIME
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: portable-${{ matrix.runtime }}
@@ -136,9 +136,9 @@ jobs:
           RELEASE_VERSION: ${{ needs.verify.outputs.version }}
         run: |
           $payload = [System.IO.Path]::GetFullPath("artifacts/portable/$env:RELEASE_VERSION/$env:TARGET_RUNTIME/payload")
-          dotnet clean ./PromptMeUp/PromptMeUp.csproj --configuration Release --runtime $env:TARGET_RUNTIME "-p:PublishDir=$payload"
+          dotnet clean ./HelpMe/HelpMe.csproj --configuration Release --runtime $env:TARGET_RUNTIME "-p:PublishDir=$payload"
           $runtimeCleanExitCode = $LASTEXITCODE
-          dotnet clean ./PromptMeUp.slnx --configuration Release
+          dotnet clean ./HelpMe.slnx --configuration Release
           $solutionCleanExitCode = $LASTEXITCODE
           git status --short
           if ($LASTEXITCODE -ne 0) { throw 'Cannot verify the working tree after cleanup.' }
@@ -168,7 +168,7 @@ jobs:
           $files = @(Get-ChildItem release -File)
           if ($files.Count -ne $expected.Count) { throw 'Expected exactly two Windows ZIP archives.' }
           foreach ($suffix in $expected) {
-            if (-not (Test-Path -LiteralPath "release/PromptMeUp-$env:RELEASE_VERSION-$suffix" -PathType Leaf)) { throw "Missing release file: $suffix" }
+            if (-not (Test-Path -LiteralPath "release/HelpMe-$env:RELEASE_VERSION-$suffix" -PathType Leaf)) { throw "Missing release file: $suffix" }
           }
           $files | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -199,7 +199,7 @@ jobs:
           $releaseTags = @(gh api "repos/$env:GH_REPO/releases" --paginate --jq '.[].tag_name')
           if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing releases. No release will be created.' }
           if ($releaseTags -ccontains $env:RELEASE_TAG) { throw 'A release or draft already exists for this version. Existing releases are never overwritten.' }
-          $createArguments = @('--draft', '--title', "PromptMeUp $env:RELEASE_TAG", '--generate-notes', '--notes-file', 'release-notes.md')
+          $createArguments = @('--draft', '--title', "HelpMe $env:RELEASE_TAG", '--generate-notes', '--notes-file', 'release-notes.md')
           if ($env:EVENT_NAME -eq 'workflow_dispatch') {
             $tagRefs = @(gh api "repos/$env:GH_REPO/git/matching-refs/tags/$env:RELEASE_TAG" --paginate --jq '.[].ref')
             if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing tags. No release will be created.' }
@@ -212,7 +212,7 @@ jobs:
             $createArguments += '--verify-tag'
           }
           @'
-          Choose the Windows ZIP archive that matches your computer: x64 or ARM64. Extract it to a folder you control. PromptMeUp requires PowerShell 7, which you install separately.
+          Choose the Windows ZIP archive that matches your computer: x64 or ARM64. Extract it to a folder you control. HelpMe requires PowerShell 7, which you install separately.
           '@ | Set-Content release-notes.md -Encoding utf8NoBOM
           $files = @(Get-ChildItem release -File | ForEach-Object FullName)
           gh release create $env:RELEASE_TAG @files @createArguments

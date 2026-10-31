@@ -1,6 +1,6 @@
-# PromptMeUp security policy
+# HelpMe security policy
 
-You decide what runs. PromptMeUp shows the exact command, checks its risks on your machine, and asks for approval. It also limits run time and captured output, and removes recognizable secrets before saving or sharing text. These checks are always part of the app.
+You decide what runs. HelpMe shows the exact command, checks its risks on your machine, and asks for approval. It also limits run time and captured output, and removes recognizable secrets before saving or sharing text. These checks are always part of the app.
 
 ## Report a vulnerability privately
 
@@ -14,7 +14,7 @@ Approved commands run on your real machine. Keep these limits in mind:
 
 - You see the exact shell command and approve it before it runs.
 - The optional AI review gives advice. It can't grant permission to run anything.
-- Commands start as your user through `pwsh -NoProfile -NonInteractive`. PromptMeUp doesn't ask for administrator access itself. A command you approve can still ask for higher permissions, and the risk check takes that into account.
+- Commands start as your user through `pwsh -NoProfile -NonInteractive`. HelpMe doesn't ask for administrator access itself. A command you approve can still ask for higher permissions, and the risk check takes that into account.
 - The app limits captured command output and removes recognizable secrets before saving it or sending it to the AI.
 - Your optional personal instructions can contain up to 500 words. Local checks in all six languages look for attempts to override the app's rules, and the AI is told to treat the text only as preferences. These checks can't catch every attempt.
 - API keys are never accepted as command-line arguments or stored in SQLite.

@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -22,7 +22,7 @@ description: Suggest evidence-backed memory maintenance without changing any sav
 tags:
   - memory
 metadata:
-  owner: PromptMeUp
+  owner: HelpMe
   data-classification: user-content
   max-output-tokens: 3000
 texts:

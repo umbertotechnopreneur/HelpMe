@@ -1,0 +1,25 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+namespace HelpMe.Models;
+
+/// <summary>Represents one explicit, credential-free global note; IsGlobal remains for source compatibility.</summary>
+public sealed record PersistentMemory(string Id, string Text, bool IsGlobal, DateTimeOffset UpdatedAt);
+
+/// <summary>Contains locally selected notes and their estimated content token cost.</summary>
+public sealed record MemorySelection(IReadOnlyList<PersistentMemory> Memories, long EstimatedTokens);

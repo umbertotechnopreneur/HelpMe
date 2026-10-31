@@ -1,6 +1,6 @@
-# PromptMeUp architecture
+# HelpMe architecture
 
-If you're looking through the code, start here. PromptMeUp is a .NET 10 console app that answers terminal questions, keeps notes you choose to save, and asks before running commands. It runs when you start `hm` and closes when you leave.
+If you're looking through the code, start here. HelpMe is a .NET 10 console app that answers terminal questions, keeps notes you choose to save, and asks before running commands. It runs when you start `hm` and closes when you leave.
 
 ```mermaid
 flowchart LR
@@ -85,7 +85,7 @@ The system prompts constrain the assistant to Windows, macOS, and Linux console 
 3. A redacted command is sent for AI review when enabled, and always in direct mode. The higher local/AI score and severity win independently.
 4. The view renders the exact unredacted local command, score, Markdown explanation, and output-sharing notice.
 5. `AuthorizedCommandWorkflow` creates an `ApprovedCommand` only after the shared preview and the selected interaction gate: manual confirmation or the five-second direct countdown. Direct mode refuses high, critical, unknown, or incomplete reviews before opening the countdown.
-6. The execution service rejects missing or expired authorization, starts `pwsh -NoProfile -NonInteractive` as the current user, and applies timeout/output limits. PromptMeUp never requests elevation itself; an authorized command can still request it explicitly and is scored accordingly.
+6. The execution service rejects missing or expired authorization, starts `pwsh -NoProfile -NonInteractive` as the current user, and applies timeout/output limits. HelpMe never requests elevation itself; an authorized command can still request it explicitly and is scored accordingly.
 7. The user sees local stdout/stderr. The workflow then prepares one bounded, redacted result for audit and downstream consumers. The versioned six-language `command-result` prompt formats the same evidence for AI follow-up; local previews retain their exact text.
 
 No AI response can create authorization and `--yes` never applies to `/run`. `CommandExecutionMode` is selected from local settings or the explicit CLI switch, never from model output. Direct mode is enabled by default and can be disabled in setup. A single suggestion goes to review automatically; multiple alternatives retain the selection menu. `CommandAuthorizationView` shares the full preview and output rendering, while `CommandCountdownView` owns only countdown rendering and keyboard decisions. Execution, audit, redaction, and the result-analysis loop remain shared. Each automatic chain stops after eight commands.
@@ -140,7 +140,7 @@ The event ledger is not replayed into context. A new invocation starts with fres
 
 For ordinary questions and chat, the input budget is the smallest of:
 
-- the saved `ContextTokenBudget` (16,000 by default), or the `PROMPTMEUP_CONTEXT_TOKENS` override when present;
+- the saved `ContextTokenBudget` (16,000 by default), or the `HELPME_CONTEXT_TOKENS` override when present;
 - the configured percentage of the model's context window;
 - the model's context window minus the reserved response budget.
 

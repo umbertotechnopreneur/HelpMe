@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -70,7 +70,7 @@ function Get-PayloadFiles {
             $relative = [IO.Path]::GetRelativePath($Directory, $item.FullName).Replace('\', '/')
             $allowed = $relative -match '^(?:hm\.exe|LICENSE|THIRD_PARTY_NOTICES\.md|THIRD_PARTY_INVENTORY\.json|BUILD_INFO\.txt|hm-path\.(?:ps1|sh))$' `
                 -or $relative -match '^(?:prompt/[^/]+\.yaml|themes/[^/]+\.json|LICENSES/[A-Za-z0-9_./-]+)$' `
-                -or $relative -ceq 'docs/promptmeup-quick-reference.pdf' `
+                -or $relative -ceq 'docs/helpme-quick-reference.pdf' `
                 -or $bundledSkillFiles -ccontains $relative
             if (-not $allowed -or $item.Name -match '(?i)(?:^\.env(?:\.|$)|\.(?:db|sqlite|log|pfx|p12|pem|key)$)') {
                 throw "Unexpected payload file '$relative'. Use a fresh single-file portable publish with exported notices."
@@ -116,12 +116,12 @@ foreach ($path in @($publishRoot, $outputRoot, $repositoryRoot)) {
 $files = @(Get-PayloadFiles $publishRoot)
 if ($files.Count -eq 0) { throw 'The prepared payload is empty.' }
 foreach ($name in @('hm.exe', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_INVENTORY.json', 'BUILD_INFO.txt',
-        'prompt/chat-system.yaml', 'themes/cyan.json', 'LICENSES/README.md', 'docs/promptmeup-quick-reference.pdf') + $bundledSkillFiles) {
+        'prompt/chat-system.yaml', 'themes/cyan.json', 'LICENSES/README.md', 'docs/helpme-quick-reference.pdf') + $bundledSkillFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $publishRoot $name) -PathType Leaf)) { throw "The payload is missing '$name'." }
 }
 $executable = Join-Path $publishRoot 'hm.exe'
 Assert-PeArchitecture $executable
-[xml]$project = Get-Content -LiteralPath (Join-Path $repositoryRoot 'PromptMeUp/PromptMeUp.csproj') -Raw
+[xml]$project = Get-Content -LiteralPath (Join-Path $repositoryRoot 'HelpMe/HelpMe.csproj') -Raw
 $version = [string]$project.Project.PropertyGroup.Version
 if ($version -notmatch '^\d+\.\d+\.\d+$' -or @($version.Split('.') | Where-Object { [long]$_ -gt 65535 }).Count -gt 0) {
     throw 'The project version must contain three numeric parts between 0 and 65535.'
@@ -132,7 +132,7 @@ if ($fileVersion -cne "$version.0") { throw "The executable version '$fileVersio
 $inventory = Get-Content -LiteralPath (Join-Path $publishRoot 'THIRD_PARTY_INVENTORY.json') -Raw | ConvertFrom-Json
 if ($inventory.runtime -cne "win-$Architecture") { throw 'The exported license inventory does not match the requested runtime.' }
 $buildInfo = Get-Content -LiteralPath (Join-Path $publishRoot 'BUILD_INFO.txt')
-if ($buildInfo -cnotcontains "PromptMeUp $version" -or $buildInfo -cnotcontains "Runtime: win-$Architecture") {
+if ($buildInfo -cnotcontains "HelpMe $version" -or $buildInfo -cnotcontains "Runtime: win-$Architecture") {
     throw 'BUILD_INFO.txt does not match the requested version and architecture.'
 }
 
@@ -148,8 +148,8 @@ if ([string]::IsNullOrWhiteSpace($IsccPath)) {
 if ([string]::IsNullOrWhiteSpace($IsccPath) -or -not (Test-Path -LiteralPath $IsccPath -PathType Leaf)) {
     throw 'Inno Setup 6 was not found. Install Inno Setup 6.7.1 or pass -IsccPath to its ISCC.exe.'
 }
-$template = Join-Path $repositoryRoot 'packaging/windows/PromptMeUp.iss'
-$outputName = "PromptMeUp-$version-win-$Architecture-setup"
+$template = Join-Path $repositoryRoot 'packaging/windows/HelpMe.iss'
+$outputName = "HelpMe-$version-win-$Architecture-setup"
 New-Item -ItemType Directory -Path $outputRoot | Out-Null
 $compilerArguments = @(
     '/Qp',

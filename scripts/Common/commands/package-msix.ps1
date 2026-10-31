@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -57,7 +57,7 @@ if ($Unsigned -and $null -ne $TimestampServer) {
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 $artifactsRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts'))
 $publishRoot = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($PublishDirectory, $repositoryRoot))
-$packageName = 'UmbertoGiacobbiDotBiz.PromptMeUp'
+$packageName = 'UmbertoGiacobbiDotBiz.HelpMe'
 $packagePublisher = 'CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510'
 $packagePublisherDisplayName = 'UmbertoGiacobbiDotBiz'
 
@@ -89,9 +89,9 @@ function Get-PayloadFiles {
             $relative = [IO.Path]::GetRelativePath($Directory, $item.FullName).Replace('\', '/')
             # Keep Debug symbols beside the publish output, but never place them in the MSIX.
             if ($relative -match '^[^/]+\.pdb$') { continue }
-            $allowed = $relative -match '^(?:[^/]+\.dll|(?:hm|createdump)\.exe|hm\.(?:deps|runtimeconfig)\.json|PromptMeUp\.ico|LICENSE|THIRD_PARTY_NOTICES\.md|THIRD_PARTY_INVENTORY\.json|BUILD_INFO\.txt|hm-path\.(?:ps1|sh))$' `
+            $allowed = $relative -match '^(?:[^/]+\.dll|(?:hm|createdump)\.exe|hm\.(?:deps|runtimeconfig)\.json|HelpMe\.ico|LICENSE|THIRD_PARTY_NOTICES\.md|THIRD_PARTY_INVENTORY\.json|BUILD_INFO\.txt|hm-path\.(?:ps1|sh))$' `
                 -or $relative -match '^(?:prompt/[^/]+\.yaml|themes/[^/]+\.json|LICENSES/.+|[A-Za-z]{2,3}(?:-[A-Za-z0-9]+)*/[^/]+\.resources\.dll)$' `
-                -or $relative -ceq 'docs/promptmeup-quick-reference.pdf' `
+                -or $relative -ceq 'docs/helpme-quick-reference.pdf' `
                 -or $bundledSkillFiles -ccontains $relative
             if (-not $allowed) { throw "Unexpected publish content '$relative'. Use a clean publish folder with exported notices." }
             if ($item.Name -match '(?i)(?:^\.env(?:\.|$)|\.(?:db|sqlite|log|pfx|p12|pem|key)$)') {
@@ -128,8 +128,8 @@ function Invoke-SdkCommand {
 
 function New-PackageLogos {
     param([Parameter(Mandatory)][string]$Directory)
-    $iconPath = Join-Path $repositoryRoot 'assets/PromptMeUp.ico'
-    if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) { throw 'The project icon is missing: assets/PromptMeUp.ico.' }
+    $iconPath = Join-Path $repositoryRoot 'assets/HelpMe.ico'
+    if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) { throw 'The project icon is missing: assets/HelpMe.ico.' }
     Add-Type -AssemblyName System.Drawing
     $iconBytes = [IO.File]::ReadAllBytes($iconPath)
     if ($iconBytes.Length -lt 6 -or [BitConverter]::ToUInt16($iconBytes, 0) -ne 0 -or [BitConverter]::ToUInt16($iconBytes, 2) -ne 1) {
@@ -187,7 +187,7 @@ Assert-NoReparseAncestor $publishRoot
 $files = @(Get-PayloadFiles $publishRoot)
 foreach ($name in @('hm.exe', 'hm.dll', 'hm.deps.json', 'hm.runtimeconfig.json', 'coreclr.dll', 'hostfxr.dll', 'hostpolicy.dll',
         'LICENSE', 'THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_INVENTORY.json', 'prompt/chat-system.yaml', 'themes/cyan.json', 'LICENSES/README.md',
-        'docs/promptmeup-quick-reference.pdf') + $bundledSkillFiles) {
+        'docs/helpme-quick-reference.pdf') + $bundledSkillFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $publishRoot $name) -PathType Leaf)) { throw "Prepared publish folder is missing '$name'." }
 }
 Assert-PeArchitecture (Join-Path $publishRoot 'hm.exe')
@@ -279,7 +279,7 @@ $manifest = @"
   IgnorableNamespaces="uap uap5 uap10 rescap">
   <Identity Name="$packageName" Publisher="$escapedPublisher" Version="$Version" ProcessorArchitecture="$Architecture" />
   <Properties>
-    <DisplayName>PromptMeUp</DisplayName>
+    <DisplayName>HelpMe</DisplayName>
     <PublisherDisplayName>$packagePublisherDisplayName</PublisherDisplayName>
     <Logo>Assets\Logo50.png</Logo>
     <Description>Help with your next terminal command.</Description>
@@ -292,10 +292,10 @@ $manifest = @"
     <Resource Language="de-DE" /><Resource Language="es-ES" /><Resource Language="vi-VN" />
   </Resources>
   <Applications>
-    <Application Id="PromptMeUp" Executable="hm.exe"
+    <Application Id="HelpMe" Executable="hm.exe"
       uap10:RuntimeBehavior="win32App" uap10:TrustLevel="mediumIL" uap10:Subsystem="console"
       uap10:SupportsMultipleInstances="true">
-      <uap:VisualElements DisplayName="PromptMeUp" Description="Help with your next terminal command."
+      <uap:VisualElements DisplayName="HelpMe" Description="Help with your next terminal command."
         BackgroundColor="transparent" Square44x44Logo="Assets\Logo44.png"
         Square150x150Logo="Assets\Logo150.png" AppListEntry="default" />
       <Extensions>
@@ -312,7 +312,7 @@ $manifest = @"
 "@
 $manifestPath = Join-Path $stage 'AppxManifest.xml'
 [IO.File]::WriteAllText($manifestPath, $manifest, [Text.UTF8Encoding]::new($false))
-$packageFileName = if ($Unsigned) { "PromptMeUp-$Version-win-$Architecture.unsigned.msix" } else { "PromptMeUp-$Version-win-$Architecture.msix" }
+$packageFileName = if ($Unsigned) { "HelpMe-$Version-win-$Architecture.unsigned.msix" } else { "HelpMe-$Version-win-$Architecture.msix" }
 $packagePath = Join-Path $outputRoot $packageFileName
 Write-Host 'Validating and packing the prepared application.' -ForegroundColor Cyan
 Invoke-SdkCommand $makeAppx @('pack', '/d', $stage, '/p', $packagePath)

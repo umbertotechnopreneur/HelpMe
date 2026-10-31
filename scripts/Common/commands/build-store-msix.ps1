@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -55,7 +55,7 @@ foreach ($architecture in $architectures) {
 }
 
 Write-Host "Building Store MSIX $packageVersion on $([Environment]::MachineName)" -ForegroundColor Cyan
-$project = Join-Path $repositoryRoot 'PromptMeUp/PromptMeUp.csproj'
+$project = Join-Path $repositoryRoot 'HelpMe/HelpMe.csproj'
 $exportNotices = Join-Path $PSScriptRoot 'export-third-party-notices.ps1'
 $packageMsix = Join-Path $PSScriptRoot 'package-msix.ps1'
 foreach ($architecture in $architectures) {
@@ -84,7 +84,7 @@ foreach ($architecture in $architectures) {
     & $packageMsix @packageArguments
 
     $metadata = Get-Content -LiteralPath (Join-Path $packageDirectory 'package.json') -Raw | ConvertFrom-Json
-    if ($metadata.packageName -cne 'UmbertoGiacobbiDotBiz.PromptMeUp' -or
+    if ($metadata.packageName -cne 'UmbertoGiacobbiDotBiz.HelpMe' -or
         $metadata.publisher -cne 'CN=82BCDD1C-1D59-48A0-9BDF-6352BE319510' -or
         $metadata.version -cne $packageVersion -or
         $metadata.architecture -cne $architecture -or

@@ -1,6 +1,6 @@
 ﻿## Task
 
-- [ ] Rebrand PromptMeUp as HelpMe, including user-facing names and technical installation identifiers. Review the impact on local data, package identity, and existing public links before changing them.
+- [ ] Verify the HelpMe package identity against its Partner Center registration before any Store submission. Capture updated screenshots when a real HelpMe session is authorized; current screenshots show PromptMeUp.
 
 - [ ] Remove about 300 MiB of task-owned transient output under `artifacts/msix/debug/command-output-20261019/`: `publish`, `package/payload`, `build`, `imports`, `scratch`, `logs`, and `empty-feed`. Preserve the signed 1.0.7.0 x64 MSIX, checksum, package metadata, and `evidence/`. Matching Debug solution cleanup succeeded; automatic approval review rejected recursive removal with "blocked by policy". See the ignored `evidence/cleanup.json` for exact paths and sizes.
 

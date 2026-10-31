@@ -1,0 +1,216 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
+using HelpMe.Infrastructure;
+using HelpMe.Services;
+using HelpMe.Services.Sqlite;
+
+namespace HelpMe.Tests;
+
+/// <summary>Verifies SQLite database service behavior.</summary>
+public sealed class SqliteDatabaseServiceTests : IDisposable
+{
+
+    #region Fields
+
+    private readonly string _dataDirectory;
+    private readonly AppPaths _paths;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates an isolated filesystem-backed database location for each test.</summary>
+    public SqliteDatabaseServiceTests()
+    {
+        _dataDirectory = Path.Combine(Path.GetTempPath(), "HelpMe.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_dataDirectory);
+        _paths = new AppPaths(
+            _dataDirectory,
+            Path.Combine(_dataDirectory, "helpme.db"),
+            Path.Combine(_dataDirectory, "logs"),
+            Path.Combine(_dataDirectory, "logs", "helpme-.log"),
+            Path.Combine(_dataDirectory, "prompt"));
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Removes the disposable database and releases pooled SQLite file handles.</summary>
+    public void Dispose()
+    {
+        SqliteTestPool.Clear(_paths.DatabasePath);
+        if (Directory.Exists(_dataDirectory))
+        {
+            Directory.Delete(_dataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>Verifies that an unversioned database receives the schema and version only after initialization.</summary>
+    [Fact]
+    public async Task InitializeAsync_UnversionedDatabase_CreatesCurrentSchema()
+    {
+        var service = CreateService();
+
+        await service.InitializeAsync(CancellationToken.None);
+
+        await using var connection = await OpenDatabaseAsync();
+        Assert.Equal(8, await ReadSchemaVersionAsync(connection));
+        Assert.Equal(1L, await ExecuteScalarInt64Async(connection, "SELECT COUNT(*) FROM app_settings WHERE id = 1;"));
+    }
+
+    /// <summary>Verifies that failed initialization leaves an unversioned database eligible for a later retry.</summary>
+    [Fact]
+    public async Task InitializeAsync_UnversionedIncompatibleDatabase_DoesNotSetVersion()
+    {
+        await using (var connection = await OpenDatabaseAsync())
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TABLE ai_requests (id TEXT PRIMARY KEY);";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await Assert.ThrowsAsync<SqliteException>(
+            () => CreateService().InitializeAsync(CancellationToken.None));
+
+        await using var verificationConnection = await OpenDatabaseAsync();
+        Assert.Equal(0, await ReadSchemaVersionAsync(verificationConnection));
+        Assert.Equal(
+            0L,
+            await ExecuteScalarInt64Async(
+                verificationConnection,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'app_settings';"));
+    }
+
+    /// <summary>Verifies that current-schema initialization preserves settings and restores a missing index.</summary>
+    [Fact]
+    public async Task InitializeAsync_CurrentDatabase_PreservesExistingSettings()
+    {
+        var service = CreateService();
+        await service.InitializeAsync(CancellationToken.None);
+        await using (var connection = await OpenDatabaseAsync())
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                UPDATE app_settings SET language = 'fr' WHERE id = 1;
+                DROP INDEX ix_ai_requests_occurred;
+                """;
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await service.InitializeAsync(CancellationToken.None);
+
+        var settings = await service.LoadSettingsAsync(CancellationToken.None);
+        Assert.Equal("fr", settings.Language);
+        await using var verificationConnection = await OpenDatabaseAsync();
+        Assert.Equal(8, await ReadSchemaVersionAsync(verificationConnection));
+        Assert.Equal(
+            1L,
+            await ExecuteScalarInt64Async(
+                verificationConnection,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'ix_ai_requests_occurred';"));
+    }
+
+    /// <summary>Verifies that persisted preamble text is Unicode-normalized and stripped of invisible formatting controls.</summary>
+    [Fact]
+    public async Task SaveSettingsAsync_Preamble_PersistsSanitizedText()
+    {
+        var service = CreateService();
+        await service.InitializeAsync(CancellationToken.None);
+        var settings = await service.LoadSettingsAsync(CancellationToken.None);
+
+        await service.SaveSettingsAsync(
+            settings with { CustomInstruction = "  Prefer\u200B concise   tables.  " },
+            CancellationToken.None);
+
+        var saved = await service.LoadSettingsAsync(CancellationToken.None);
+        Assert.Equal("Prefer concise tables.", saved.CustomInstruction);
+    }
+
+    /// <summary>Verifies that a newer database is rejected before initialization creates any schema objects.</summary>
+    [Fact]
+    public async Task InitializeAsync_FutureDatabase_RejectsWithoutApplyingDdl()
+    {
+        var futureVersion = SqliteSchema.Version + 1;
+        await using (var connection = await OpenDatabaseAsync())
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {futureVersion};";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateService().InitializeAsync(CancellationToken.None));
+
+        Assert.Contains($"'{futureVersion}'", exception.Message, StringComparison.Ordinal);
+        await using var verificationConnection = await OpenDatabaseAsync();
+        Assert.Equal(futureVersion, await ReadSchemaVersionAsync(verificationConnection));
+        Assert.Equal(
+            0L,
+            await ExecuteScalarInt64Async(
+                verificationConnection,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'app_settings';"));
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Creates the service under test with a no-op logger.</summary>
+    private SqliteDatabaseService CreateService() =>
+        new(
+            _paths,
+            NullLogger<SqliteDatabaseService>.Instance,
+            new PromptInjectionProtectionService(),
+            new SensitiveDataRedactor());
+
+    /// <summary>Opens the isolated test database without connection pooling.</summary>
+    private async Task<SqliteConnection> OpenDatabaseAsync()
+    {
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = _paths.DatabasePath,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Pooling = false
+        }.ToString());
+        await connection.OpenAsync();
+        return connection;
+    }
+
+    /// <summary>Reads the SQLite schema version from the supplied connection.</summary>
+    private static async Task<int> ReadSchemaVersionAsync(SqliteConnection connection)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA user_version;";
+        return Convert.ToInt32(await command.ExecuteScalarAsync());
+    }
+
+    /// <summary>Executes a scalar query and converts its result to a 64-bit integer.</summary>
+    private static async Task<long> ExecuteScalarInt64Async(SqliteConnection connection, string sql)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToInt64(await command.ExecuteScalarAsync());
+    }
+
+    #endregion
+}

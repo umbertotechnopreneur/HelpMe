@@ -1,6 +1,6 @@
-# PromptMeUp prompt library
+# HelpMe prompt library
 
-Reusable prompts for agents working on PromptMeUp.
+Reusable prompts for agents working on HelpMe.
 
 | Prompt | Use |
 | --- | --- |

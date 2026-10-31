@@ -1,0 +1,164 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using Spectre.Console;
+
+namespace HelpMe.Views;
+
+/// <summary>Temporarily enables bracketed paste mode and restores the terminal state when the scope ends.</summary>
+internal sealed class TerminalPasteScope : IDisposable
+{
+
+    #region Fields
+
+    private const uint EnableVirtualTerminalInput = 0x0200;
+    private readonly IAnsiConsole _console;
+    private readonly IntPtr _inputHandle;
+    private readonly uint _originalInputMode;
+    private bool _restoreInputMode;
+    private bool _disposed;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Enables bracketed paste and Windows modifier reporting while retaining the original console input mode.</summary>
+    public TerminalPasteScope(IAnsiConsole console)
+    {
+        _console = console ?? throw new ArgumentNullException(nameof(console));
+
+        if (!console.Profile.Capabilities.Ansi || !console.Profile.Capabilities.Interactive
+            || !console.Profile.Out.IsTerminal || Console.IsInputRedirected || Console.IsOutputRedirected)
+        {
+            return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            _inputHandle = GetStdHandle(-10);
+
+            if (!GetConsoleMode(_inputHandle, out _originalInputMode))
+            {
+                throw new Win32Exception(Marshal.GetLastPInvokeError(), "Cannot read the terminal input mode for paste handling.");
+            }
+
+            // Windows otherwise removes paste boundaries before Console.ReadKey can receive them.
+            if (!SetConsoleMode(_inputHandle, _originalInputMode | EnableVirtualTerminalInput))
+            {
+                throw new Win32Exception(Marshal.GetLastPInvokeError(), "Cannot enable terminal input for paste handling.");
+            }
+
+            _restoreInputMode = true;
+        }
+
+        try
+        {
+            _console.WriteAnsi(writer => writer.Write("\u001b[?2004h"));
+
+            if (OperatingSystem.IsWindows())
+            {
+                // VT input alone flattens Shift+Enter; Windows key records preserve its modifier.
+                _console.WriteAnsi(writer => writer.Write("\u001b[?9001h"));
+            }
+
+            Enabled = true;
+        }
+        catch
+        {
+            RestoreInputMode();
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Properties
+
+    public bool Enabled { get; }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Disables temporary keyboard and paste modes and restores native input even if terminal output fails.</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        try
+        {
+            if (Enabled)
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    _console.WriteAnsi(writer => writer.Write("\u001b[?9001l"));
+                }
+
+                _console.WriteAnsi(writer => writer.Write("\u001b[?2004l"));
+            }
+        }
+        finally
+        {
+            RestoreInputMode();
+        }
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Restores the native input mode captured before enabling virtual terminal input.</summary>
+    private void RestoreInputMode()
+    {
+        if (!_restoreInputMode)
+        {
+            return;
+        }
+
+        if (!SetConsoleMode(_inputHandle, _originalInputMode))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Cannot restore the terminal input mode after paste handling.");
+        }
+
+        _restoreInputMode = false;
+    }
+
+    /// <summary>Returns the native handle for the selected Windows standard stream.</summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GetStdHandle(int standardHandle);
+
+    /// <summary>Reads the current mode of the Windows console input buffer.</summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetConsoleMode(IntPtr consoleHandle, out uint mode);
+
+    /// <summary>Changes the mode of the Windows console input buffer.</summary>
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetConsoleMode(IntPtr consoleHandle, uint mode);
+
+    #endregion
+}

@@ -1,0 +1,654 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using HelpMe.Models;
+using HelpMe.Services.OpenAi;
+
+namespace HelpMe.Services;
+
+/// <summary>Sends provider requests and returns typed responses, context estimates, and risk reviews.</summary>
+public interface IOpenAiService
+{
+    #region Methods
+
+    /// <summary>Sends the configured AI request and returns its parsed response.</summary>
+    Task<AiResponse> SendAsync(
+        string promptId,
+        string conversationId,
+        IReadOnlyList<ChatMessage> messages,
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken,
+        AppGuideContext? guide = null);
+
+    /// <summary>Checks the configured provider connection when explicitly requested.</summary>
+    Task<ConnectionTestResult> TestConnectionAsync(
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken);
+
+    /// <summary>Estimates the context required by the next provider request.</summary>
+    Task<AiContextUsage> EstimateContextAsync(
+        string promptId,
+        IReadOnlyList<ChatMessage> messages,
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken,
+        AppGuideContext? guide = null);
+
+    /// <summary>Requests an advisory provider risk assessment for sanitized command text.</summary>
+    Task<CommandRiskAssessment> AssessCommandAsync(
+        string sessionId,
+        string command,
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken);
+
+    #endregion
+}
+
+/// <summary>Builds and sends bounded OpenAI requests while normalizing provider responses and failures.</summary>
+public sealed class OpenAiService : IOpenAiService
+{
+    #region Fields
+
+    private const string Provider = "openai";
+    private readonly ArtifactLimits _limits;
+    private readonly ConversationContextLimits _contextLimits;
+    private readonly HttpClient _http;
+    private readonly IEnvironmentSecretService _secrets;
+    private readonly IPromptCatalogService _prompts;
+    private readonly IRuntimeContextService _runtimeContext;
+    private readonly IDatabaseService _database;
+    private readonly IAiCostCalculator _costCalculator;
+    private readonly IActivityAuditService _audit;
+    private readonly ISensitiveDataRedactor _redactor;
+    private readonly IPromptInjectionProtectionService _promptProtection;
+    private readonly ILogger<OpenAiService> _logger;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates the Responses API client and its local persistence collaborators.</summary>
+    public OpenAiService(
+        HttpClient http,
+        IEnvironmentSecretService secrets,
+        IPromptCatalogService prompts,
+        IRuntimeContextService runtimeContext,
+        IDatabaseService database,
+        IAiCostCalculator costCalculator,
+        IActivityAuditService audit,
+        ISensitiveDataRedactor redactor,
+        IPromptInjectionProtectionService promptProtection,
+        ILogger<OpenAiService> logger,
+        ArtifactLimits? limits = null,
+        ConversationContextLimits? contextLimits = null)
+    {
+        _http = http ?? throw new ArgumentNullException(nameof(http));
+        _secrets = secrets ?? throw new ArgumentNullException(nameof(secrets));
+        _prompts = prompts ?? throw new ArgumentNullException(nameof(prompts));
+        _runtimeContext = runtimeContext ?? throw new ArgumentNullException(nameof(runtimeContext));
+        _database = database ?? throw new ArgumentNullException(nameof(database));
+        _costCalculator = costCalculator ?? throw new ArgumentNullException(nameof(costCalculator));
+        _audit = audit ?? throw new ArgumentNullException(nameof(audit));
+        _redactor = redactor ?? throw new ArgumentNullException(nameof(redactor));
+        _promptProtection = promptProtection ?? throw new ArgumentNullException(nameof(promptProtection));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _limits = limits ?? ArtifactLimits.Default;
+        _contextLimits = contextLimits ?? ConversationContextLimits.Default;
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Sends one bounded multi-turn conversation through the configured OpenAI Responses endpoint.</summary>
+    public async Task<AiResponse> SendAsync(
+        string promptId,
+        string conversationId,
+        IReadOnlyList<ChatMessage> messages,
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken,
+        AppGuideContext? guide = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(promptId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
+        ArgumentNullException.ThrowIfNull(messages);
+        ArgumentNullException.ThrowIfNull(settings);
+        if (messages.Count == 0 || messages.Any(message => string.IsNullOrWhiteSpace(message.Content)))
+        {
+            throw new ArgumentException("At least one non-empty conversation message is required.", nameof(messages));
+        }
+
+        var prompt = await _prompts.GetAsync(promptId, cancellationToken).ConfigureAwait(false);
+        settings = ProtectPreferences(settings);
+        var preferredNamePrompt = await LoadPreferredNamePromptAsync(prompt, settings, cancellationToken).ConfigureAwait(false);
+        var instructions = BuildInstructions(prompt, settings, language, guide, preferredNamePrompt);
+        return await SendCoreAsync(
+            prompt,
+            conversationId,
+            messages,
+            instructions,
+            settings,
+            OpenAiRequestBuilder.ResolveMaxOutputTokens(prompt, settings.OutputDetail, _limits),
+            cancellationToken,
+            guide).ConfigureAwait(false);
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Reads the bounded provider error classification without using error prose to make retry decisions.</summary>
+    private static string? ReadProviderErrorCode(string responseJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(responseJson);
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object
+                && error.TryGetProperty("code", out var code) && code.ValueKind == JsonValueKind.String)
+            {
+                var value = code.GetString();
+                return value is { Length: <= 100 } ? value : null;
+            }
+            return null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Runs the localized YAML connection probe and returns its expected short phrase.</summary>
+    public async Task<ConnectionTestResult> TestConnectionAsync(
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = ProtectPreferences(settings);
+        var prompt = await _prompts.GetAsync("connection-test", cancellationToken).ConfigureAwait(false);
+        var expectedKey = $"expected.{SupportedLanguages.Normalize(language)}";
+        var expected = prompt.Metadata.TryGetValue(expectedKey, out var localizedExpected)
+            ? localizedExpected
+            : prompt.Metadata["expected.en"];
+        var sessionId = Guid.NewGuid().ToString("N");
+        var status = "failed";
+        try
+        {
+            var response = await SendCoreAsync(
+                prompt,
+                sessionId,
+                [new ChatMessage("user", prompt.ResolveText(language))],
+                BuildInstructions(prompt, settings, language),
+                settings,
+                OpenAiRequestBuilder.ResolveMaxOutputTokens(prompt, settings.OutputDetail),
+                cancellationToken).ConfigureAwait(false);
+            if (!string.Equals(response.Text.Trim(), expected.Trim(), StringComparison.Ordinal))
+            {
+                throw new OpenAiRequestException(
+                    "The connection test returned an unexpected response.",
+                    "connection_test_mismatch",
+                    response.HttpStatusCode);
+            }
+            status = "completed";
+            return new ConnectionTestResult(response);
+        }
+        finally
+        {
+            await TryCloseSessionAsync(sessionId, status).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Estimates the populated YAML instruction and conversation context before any network call.</summary>
+    public async Task<AiContextUsage> EstimateContextAsync(
+        string promptId,
+        IReadOnlyList<ChatMessage> messages,
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken,
+        AppGuideContext? guide = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(promptId);
+        ArgumentNullException.ThrowIfNull(messages);
+        ArgumentNullException.ThrowIfNull(settings);
+        var prompt = await _prompts.GetAsync(promptId, cancellationToken).ConfigureAwait(false);
+        settings = ProtectPreferences(settings);
+        var preferredNamePrompt = await LoadPreferredNamePromptAsync(prompt, settings, cancellationToken).ConfigureAwait(false);
+        var maxOutputTokens = OpenAiRequestBuilder.ResolveMaxOutputTokens(prompt, settings.OutputDetail, _limits);
+        return OpenAiRequestBuilder.EstimateContext(
+            BuildInstructions(prompt, settings, language, guide, preferredNamePrompt),
+            messages.Select(message => message with { Content = _redactor.Redact(message.Content) }).ToArray(),
+            settings.Model,
+            guide) with
+        {
+            InputBudgetTokens = OpenAiRequestBuilder.ResolveInputBudget(prompt, settings, maxOutputTokens, _contextLimits),
+            ReservedOutputTokens = maxOutputTokens
+        };
+    }
+
+    /// <summary>Records command review in its owning flow without closing that flow or granting execution authority.</summary>
+    public async Task<CommandRiskAssessment> AssessCommandAsync(
+        string sessionId,
+        string command,
+        AppSettings settings,
+        string language,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(command);
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = ProtectPreferences(settings);
+        var prompt = await _prompts.GetAsync("command-risk", cancellationToken).ConfigureAwait(false);
+        var response = await SendCoreAsync(
+            prompt,
+            sessionId,
+            [new ChatMessage("user", command)],
+            BuildInstructions(prompt, settings, language),
+            settings,
+            500,
+            cancellationToken).ConfigureAwait(false);
+        return OpenAiResponseParser.ParseRiskAssessment(response.Text);
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Performs one HTTP request, parses usage, estimates price, and records both success and failure.</summary>
+    private async Task<AiResponse> SendCoreAsync(
+        PromptDefinition prompt,
+        string conversationId,
+        IReadOnlyList<ChatMessage> messages,
+        string instructions,
+        AppSettings settings,
+        int maxOutputTokens,
+        CancellationToken cancellationToken,
+        AppGuideContext? guide = null)
+    {
+        messages = messages.Select(message => message with { Content = _redactor.Redact(message.Content) }).ToArray();
+        var key = _secrets.Load(settings.ApiKeyVariable);
+        if (!_secrets.LooksLikeOpenAiKey(key))
+        {
+            throw new OpenAiRequestException(
+                $"Environment variable {settings.ApiKeyVariable} is missing or invalid.",
+                "api_key_missing",
+                null);
+        }
+
+        var requestLogId = Guid.NewGuid().ToString("N");
+        var occurredAt = DateTimeOffset.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
+        var endpoint = new Uri(settings.Endpoint, UriKind.Absolute);
+        var latestUserText = messages.Last(message => string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase)).Content;
+        var estimatedContext = OpenAiRequestBuilder.EstimateContext(instructions, messages, settings.Model, guide) with
+        {
+            InputBudgetTokens = OpenAiRequestBuilder.ResolveInputBudget(prompt, settings, maxOutputTokens, _contextLimits),
+            ReservedOutputTokens = maxOutputTokens
+        };
+        var inputLimit = OpenAiRequestBuilder.ResolveInputBudget(prompt, settings, maxOutputTokens, _contextLimits);
+        if (estimatedContext.InputTokens > inputLimit)
+        {
+            if (!UiTextCatalog.TryGet("Input.ContextBudget", settings.Language, out var template))
+            {
+                throw new InvalidOperationException("Missing context-budget translation.");
+            }
+            throw new ConversationLimitException(string.Format(SupportedLanguages.Culture(settings.Language),
+                template, estimatedContext.InputTokens, inputLimit, maxOutputTokens));
+        }
+        var clientRequestId = Guid.NewGuid().ToString();
+        HttpResponseMessage? response = null;
+        string? providerRequestId = null;
+        AiResponseAccounting? accounting = null;
+        AiModelPrice? price = null;
+
+        try
+        {
+            await _audit.StartSessionAsync(
+                conversationId,
+                prompt.Id,
+                settings,
+                new { promptId = prompt.Id, promptVersion = prompt.Version, caching = settings.PromptCachingEnabled },
+                cancellationToken).ConfigureAwait(false);
+            await _audit.AppendSessionEventAsync(
+                conversationId,
+                "prompt",
+                new
+                {
+                    role = "user",
+                    content = latestUserText,
+                    instructions,
+                    messages,
+                    promptId = prompt.Id,
+                    requestedModel = settings.Model,
+                    context = estimatedContext
+                },
+                cancellationToken).ConfigureAwait(false);
+            var requestBody = OpenAiRequestBuilder.BuildBody(prompt, settings, messages, instructions, maxOutputTokens);
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+            request.Headers.TryAddWithoutValidation("X-Client-Request-Id", clientRequestId);
+
+            _logger.LogInformation(
+                "OpenAI request started. PromptId={PromptId}, Model={Model}, ConversationId={ConversationId}, ClientRequestId={ClientRequestId}",
+                prompt.Id,
+                settings.Model,
+                conversationId,
+                clientRequestId);
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(_http.Timeout);
+            string responseJson;
+            try
+            {
+                response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token).ConfigureAwait(false);
+                providerRequestId = ReadHeader(response, "x-request-id");
+                await response.Content.LoadIntoBufferAsync(_limits.ResponseBytes(prompt.Id), deadline.Token).ConfigureAwait(false);
+                responseJson = await response.Content.ReadAsStringAsync(deadline.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new OpenAiRequestException("The OpenAI request timed out.", "responses_api_timeout", null);
+            }
+            stopwatch.Stop();
+            if (!response.IsSuccessStatusCode)
+            {
+                var providerError = OpenAiResponseParser.ReadApiError(responseJson)
+                    ?? $"OpenAI returned HTTP {(int)response.StatusCode}.";
+                throw new OpenAiRequestException(providerError, "responses_api_failed", (int)response.StatusCode)
+                {
+                    ProviderCode = ReadProviderErrorCode(responseJson)
+                };
+            }
+
+            accounting = OpenAiResponseParser.ParseAccounting(responseJson);
+            price = await TryFindPriceAsync(accounting.Model, accounting.Usage.InputTokens, cancellationToken).ConfigureAwait(false);
+            var parsed = OpenAiResponseParser.ParseResponse(
+                responseJson,
+                (int)response.StatusCode,
+                stopwatch.ElapsedMilliseconds,
+                providerRequestId,
+                IsStructuredAssistantPrompt(prompt),
+                OpenAiRequestBuilder.SupportsAppGuide(prompt));
+            var final = parsed with
+            {
+                ContextUsage = estimatedContext with
+                {
+                    InputTokens = parsed.Usage.InputTokens,
+                    OutputTokens = parsed.Usage.OutputTokens,
+                    IsInputEstimate = false
+                },
+                CostBreakdown = price is null ? null : _costCalculator.CalculateBreakdown(parsed.Usage, price),
+                EstimatedCostUsd = price is null ? null : _costCalculator.Calculate(parsed.Usage, price)
+            };
+            await PersistAsync(
+                new AiRequestLog(
+                    requestLogId,
+                    conversationId,
+                    prompt.Id,
+                    occurredAt,
+                    DateTimeOffset.UtcNow,
+                    endpoint.Host,
+                    settings.Model,
+                    final.Model,
+                    _redactor.Redact(latestUserText),
+                    _redactor.Redact(final.Text),
+                    final.Usage,
+                    final.EstimatedCostUsd,
+                    final.HttpStatusCode,
+                    final.ElapsedMilliseconds,
+                    final.Id,
+                    final.ProviderRequestId,
+                    true,
+                    null)).ConfigureAwait(false);
+            await TryAppendSessionEventAsync(
+                conversationId,
+                final.GuideTopics.Count > 0 ? "guide-request" : "response",
+                new
+                {
+                    role = "assistant",
+                    content = final.Text,
+                    responseId = final.Id,
+                    model = final.Model,
+                    usage = final.Usage,
+                    context = final.ContextUsage,
+                    cost = final.CostBreakdown,
+                    guideTopics = final.GuideTopics,
+                    suggestedCommands = final.SuggestedCommands.Select(command => new
+                    {
+                        label = _redactor.Redact(command.Label),
+                        command = _redactor.Redact(command.Command)
+                    }).ToArray(),
+                    providerRequestId = final.ProviderRequestId
+                }).ConfigureAwait(false);
+            _logger.LogInformation(
+                "OpenAI request completed. PromptId={PromptId}, Model={Model}, HttpStatus={HttpStatus}, TotalTokens={TotalTokens}, ElapsedMs={ElapsedMs}, ProviderRequestId={ProviderRequestId}",
+                prompt.Id,
+                final.Model,
+                final.HttpStatusCode,
+                final.Usage.TotalTokens,
+                final.ElapsedMilliseconds,
+                final.ProviderRequestId);
+            return final;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested || accounting is not null)
+        {
+            stopwatch.Stop();
+            var statusCode = exception is OpenAiRequestException openAiException
+                ? openAiException.StatusCode
+                : response is null
+                    ? null
+                    : (int)response.StatusCode;
+            var failureCode = exception is OpenAiRequestException requestException
+                ? requestException.ErrorCode
+                : exception.GetType().Name;
+            await PersistAsync(
+                new AiRequestLog(
+                    requestLogId,
+                    conversationId,
+                    prompt.Id,
+                    occurredAt,
+                    DateTimeOffset.UtcNow,
+                    endpoint.Host,
+                    settings.Model,
+                    accounting?.Model,
+                    _redactor.Redact(latestUserText),
+                    null,
+                    accounting?.Usage ?? OpenAiResponseParser.EmptyUsage,
+                    accounting is null || price is null ? null : _costCalculator.Calculate(accounting.Usage, price),
+                    statusCode,
+                    stopwatch.ElapsedMilliseconds,
+                    accounting?.Id,
+                    providerRequestId,
+                    false,
+                    failureCode)).ConfigureAwait(false);
+            await TryAppendSessionEventAsync(
+                conversationId,
+                "error",
+                new
+                {
+                    promptId = prompt.Id,
+                    failureCode,
+                    httpStatus = statusCode,
+                    elapsedMilliseconds = stopwatch.ElapsedMilliseconds
+                }).ConfigureAwait(false);
+            _logger.LogWarning(
+                "OpenAI request failed. PromptId={PromptId}, Model={Model}, FailureCode={FailureCode}, HttpStatus={HttpStatus}, ElapsedMs={ElapsedMs}",
+                prompt.Id,
+                settings.Model,
+                failureCode,
+                statusCode,
+                stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        finally
+        {
+            response?.Dispose();
+        }
+    }
+
+    /// <summary>Leaves optional cost estimation unavailable when local pricing fails, preserving provider content and usage.</summary>
+    private async Task<AiModelPrice?> TryFindPriceAsync(string? model, long inputTokens, CancellationToken cancellationToken)
+    {
+        if (model is null)
+        {
+            return null;
+        }
+        try
+        {
+            return await _database.FindModelPriceAsync(Provider, model, inputTokens, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning("Local price lookup failed; provider result retained without a cost estimate. ErrorType={ErrorType}", exception.GetType().Name);
+            return null;
+        }
+    }
+
+    /// <summary>Builds every provider instruction through one privacy-bounded runtime-context composition path.</summary>
+    private string BuildInstructions(
+        PromptDefinition prompt,
+        AppSettings settings,
+        string language,
+        AppGuideContext? guide = null,
+        PromptDefinition? preferredNamePrompt = null) =>
+        OpenAiRequestBuilder.BuildInstructions(
+            prompt,
+            settings,
+            language,
+            _runtimeContext.GetCurrent(settings.ScriptLanguage),
+            _limits,
+            guide,
+            preferredNamePrompt);
+
+    /// <summary>Loads name guidance only for user-facing conversations with an explicitly configured name.</summary>
+    private async Task<PromptDefinition?> LoadPreferredNamePromptAsync(PromptDefinition prompt, AppSettings settings, CancellationToken ct) =>
+        OpenAiRequestBuilder.SupportsPreferredName(prompt) && settings.PreferredName.Length > 0
+            ? await _prompts.GetAsync("preferred-name-context", ct).ConfigureAwait(false)
+            : null;
+
+    /// <summary>Revalidates configured personal preferences immediately before provider-bound prompt assembly.</summary>
+    private AppSettings ProtectPreferences(AppSettings settings)
+    {
+        var result = _promptProtection.Protect(settings.CustomInstruction);
+        if (!result.IsSafe || !result.IsWithinWordLimit
+            || !string.Equals(result.SanitizedText, _redactor.Redact(result.SanitizedText), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The configured AI preamble did not pass local prompt-injection protection.");
+        }
+
+        return settings with
+        {
+            CustomInstruction = result.SanitizedText,
+            PreferredName = PreferredNamePolicy.Normalize(settings.PreferredName, _redactor)
+        };
+    }
+
+    /// <summary>Persists telemetry without allowing a database error to conceal the provider result.</summary>
+    private async Task PersistAsync(AiRequestLog request)
+    {
+        try
+        {
+            // The provider has already reported this usage; stopping execution must not discard the ledger entry.
+            await _database.AppendAiRequestAsync(request, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError("AI request persistence failed. RequestLogId={RequestLogId}, ErrorType={ErrorType}", request.Id, exception.GetType().Name);
+        }
+    }
+
+    /// <summary>Appends a session event without allowing audit storage failure to replace the provider outcome.</summary>
+    private async Task TryAppendSessionEventAsync(string sessionId, string eventType, object payload)
+    {
+        try
+        {
+            await _audit.AppendSessionEventAsync(sessionId, eventType, payload, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError("AI session event persistence failed. SessionId={SessionId}, EventType={EventType}, ErrorType={ErrorType}", sessionId, eventType, exception.GetType().Name);
+        }
+    }
+
+    /// <summary>Closes a short internal test or risk-review session without masking its primary result.</summary>
+    private async Task TryCloseSessionAsync(string sessionId, string status)
+    {
+        try
+        {
+            await _audit.CloseSessionAsync(sessionId, status, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError("AI session close failed. SessionId={SessionId}, Status={Status}, ErrorType={ErrorType}", sessionId, status, exception.GetType().Name);
+        }
+    }
+
+    /// <summary>Reads a provider response header without assuming it is present.</summary>
+    private static string? ReadHeader(HttpResponseMessage response, string name) =>
+        response.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
+
+    /// <summary>Identifies assistant prompts that request the typed user-facing response envelope.</summary>
+    private static bool IsStructuredAssistantPrompt(PromptDefinition prompt) =>
+        string.Equals(prompt.Id, "chat-system", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(prompt.Id, "query-system", StringComparison.OrdinalIgnoreCase)
+        || prompt.Metadata.GetValueOrDefault("response-format") == "helpme-console-response-v1"
+        || OpenAiRequestBuilder.SupportsAppGuide(prompt);
+
+    #endregion
+}
+
+/// <summary>Represents a provider request failure with a safe status and diagnostic message.</summary>
+public sealed class OpenAiRequestException : Exception
+{
+    #region Initialization
+
+    /// <summary>Creates a provider exception that carries a stable local code and optional HTTP status.</summary>
+    public OpenAiRequestException(string message, string errorCode, int? statusCode, Exception? innerException = null)
+        : base(message, innerException)
+    {
+        ErrorCode = errorCode;
+        StatusCode = statusCode;
+    }
+
+    #endregion
+
+    #region Properties
+
+    public string ErrorCode { get; }
+
+    public string? ProviderCode { get; init; }
+
+    public int? StatusCode { get; }
+
+    #endregion
+}

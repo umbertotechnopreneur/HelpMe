@@ -1,0 +1,167 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+using Microsoft.Extensions.Logging;
+using HelpMe.Models;
+
+namespace HelpMe.Services;
+
+/// <summary>Loads and stores credentials through supported local secret sources.</summary>
+public interface IEnvironmentSecretService
+{
+    #region Methods
+
+    /// <summary>Loads the requested value from its configured local source.</summary>
+    string? Load(string variableName);
+
+    /// <summary>Reports whether the named credential source contains a usable value.</summary>
+    bool IsConfigured(string variableName);
+
+    /// <summary>Checks whether a value resembles a supported OpenAI secret key.</summary>
+    bool LooksLikeOpenAiKey(string? secret);
+
+    /// <summary>Stores the credential in the supported current-user secret store.</summary>
+    SecretStoreResult StoreForCurrentUser(string variableName, string secret);
+
+    /// <summary>Temporarily supplies a candidate key to the current async flow without persisting it.</summary>
+    IDisposable UseTemporary(string variableName, string secret);
+
+    #endregion
+}
+
+/// <summary>Provides short-lived in-process secret values without writing them to persisted settings.</summary>
+public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> logger) : IEnvironmentSecretService
+{
+    #region Fields
+
+    private readonly AsyncLocal<(string Name, string Secret)?> _temporary = new();
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Reads the validation candidate, Windows vault, or an explicitly supplied environment secret.</summary>
+    public string? Load(string variableName)
+    {
+        var name = ValidateVariableName(variableName);
+        if (_temporary.Value is { } temporary && temporary.Name == name)
+        {
+            return temporary.Secret;
+        }
+        if (OperatingSystem.IsWindows() && WindowsCredentialStore.Read(name) is { } stored)
+        {
+            return stored;
+        }
+        var processValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process);
+        if (!string.IsNullOrWhiteSpace(processValue) || !OperatingSystem.IsWindows())
+        {
+            return processValue;
+        }
+
+        return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User)
+               ?? Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
+    }
+
+    /// <summary>Reports whether a variable contains a plausible OpenAI secret.</summary>
+    public bool IsConfigured(string variableName) => LooksLikeOpenAiKey(Load(variableName));
+
+    /// <summary>Performs a local shape check; this does not authenticate with OpenAI.</summary>
+    public bool LooksLikeOpenAiKey(string? secret) => OpenAiKeyPolicy.IsPlausible(secret);
+
+    /// <summary>Stores a secret in the Windows user vault or explicitly limits non-Windows storage to this process.</summary>
+    public SecretStoreResult StoreForCurrentUser(string variableName, string secret)
+    {
+        var name = ValidateVariableName(variableName);
+        if (!LooksLikeOpenAiKey(secret))
+        {
+            throw new ArgumentException("The OpenAI key has an invalid shape.", nameof(secret));
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            Environment.SetEnvironmentVariable(name, secret, EnvironmentVariableTarget.Process);
+            logger.LogInformation("Environment secret loaded for this process. Variable={Variable}, Scope=Process", name);
+            return new SecretStoreResult(
+                $"Export {name} in your shell or secret manager before future hm sessions.");
+        }
+
+        WindowsCredentialStore.Write(name, secret);
+        logger.LogInformation("Credential stored in Windows Credential Manager. Variable={Variable}", name);
+        return new SecretStoreResult($"{name} is stored in Windows Credential Manager for your Windows account.");
+    }
+
+    /// <summary>Scopes a candidate secret to validation and restores the prior value when validation finishes.</summary>
+    public IDisposable UseTemporary(string variableName, string secret)
+    {
+        var name = ValidateVariableName(variableName);
+        if (!LooksLikeOpenAiKey(secret))
+        {
+            throw new ArgumentException("The OpenAI key has an invalid shape.", nameof(secret));
+        }
+        var previous = _temporary.Value;
+        _temporary.Value = (name, secret);
+        return new TemporarySecret(_temporary, previous);
+    }
+
+    #endregion
+
+    #region Types
+
+    /// <summary>Restores the preceding async-local credential without writing environment variables.</summary>
+    private sealed class TemporarySecret(AsyncLocal<(string Name, string Secret)?> slot,
+        (string Name, string Secret)? previous) : IDisposable
+    {
+        #region Fields
+
+        private bool _disposed;
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>Releases the candidate secret once, including failed or cancelled validation.</summary>
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                slot.Value = previous;
+                _disposed = true;
+            }
+        }
+
+        #endregion
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Validates the allowlisted OpenAI environment variable name.</summary>
+    private static string ValidateVariableName(string variableName)
+    {
+        var name = variableName?.Trim() ?? string.Empty;
+        if (name is not ("OPENAI_API_KEY" or "OPENAI_ADMIN_KEY"))
+        {
+            throw new ArgumentException("Only OPENAI_API_KEY and OPENAI_ADMIN_KEY are supported.", nameof(variableName));
+        }
+
+        return name;
+    }
+
+    #endregion
+}

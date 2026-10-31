@@ -1,0 +1,48 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+namespace HelpMe.Models;
+
+/// <summary>Reports global preferences, effectively enabled usable skills, and all inspected catalog packages.</summary>
+public sealed record SettingsFeatureOverview(SkillsAndMemorySettings Settings, int EnabledSkillCount, int SkillCount)
+{
+
+    #region Properties
+
+    /// <summary>Contains each inspected package and its stored approval independently of the global master switch.</summary>
+    public IReadOnlyList<SettingsSkillState> Skills { get; init; } = [];
+
+    /// <summary>Marks unreadable catalog counts; zero values are placeholders and must not be displayed as measured totals.</summary>
+    public bool CatalogUnavailable { get; init; }
+
+    #endregion
+
+}
+
+/// <summary>Reports whether one inspected package matches the global retained approval.</summary>
+public sealed record SettingsSkillState(SkillDefinition Skill, bool Enabled)
+{
+
+    #region Properties
+
+    /// <summary>Preserves the exact stored approval, including missing, disabled, and outdated fingerprints.</summary>
+    public string? ApprovalFingerprint { get; init; }
+
+    #endregion
+
+}

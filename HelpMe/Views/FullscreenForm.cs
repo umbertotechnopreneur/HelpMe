@@ -1,0 +1,966 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.Globalization;
+using HelpMe.Services;
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace HelpMe.Views;
+
+/// <summary>Pairs a form choice value with its displayed label.</summary>
+internal sealed record FormChoice(string Value, string Label);
+
+/// <summary>Describes an editable field and its validation and display options.</summary>
+internal sealed record FormField(string Key, string LabelKey, Func<string> Read, Action<string> Write)
+{
+
+    #region Properties
+
+    public Func<IReadOnlyList<FormChoice>>? Choices { get; init; }
+
+    public Func<string, string?>? Validate { get; init; }
+
+    public Func<bool>? IsVisible { get; init; }
+
+    public Func<string>? Display { get; init; }
+
+    public Func<string>? Help { get; init; }
+
+    public Func<string>? Label { get; init; }
+
+    public Func<string>? ValueColor { get; init; }
+
+    public Func<IRenderable>? Overview { get; init; }
+
+    public bool Secret { get; init; }
+
+    public bool DefaultToCurrentValue { get; init; } = true;
+    public int MaxLength { get; init; } = 100_000;
+    public string? HelpKey { get; init; }
+
+    public string? GroupKey { get; init; }
+
+    #endregion
+}
+
+/// <summary>Groups related form fields and actions on one setup page.</summary>
+internal sealed record FormPage(string TitleKey, IReadOnlyList<FormField> Fields)
+{
+
+    #region Properties
+
+    public Action? Open { get; init; }
+
+    public string? HelpKey { get; init; }
+
+    public Func<IRenderable>? Preview { get; init; }
+
+    public int PreviewRows { get; init; }
+
+    public Func<IRenderable>? Overview { get; init; }
+
+    #endregion
+}
+
+/// <summary>Owns keyboard navigation and rendering for temporary, passive terminal forms.</summary>
+internal sealed class FullscreenForm(IAnsiConsole console, ILocalizationService text, ConsoleRenderOptions? options = null)
+{
+
+    #region Fields
+
+    private const int RowsPerField = 2;
+    // Shared chrome, section heading, and the reserved terminal row, excluding the variable notice height.
+    private const int FixedBodyRows = FullscreenHeader.Height + FullscreenFooter.ActionsRows + FullscreenFooter.HintRows + 3;
+    private readonly ConsoleRenderOptions _options = options ?? new(false, false);
+    private readonly FullscreenSectionNavigator _sectionNavigator = new();
+    private readonly FullscreenInput _inputReader = new(console, text);
+    private int _page;
+    private int _focus;
+    private bool _allowSectionNavigation;
+    private string? _error;
+    private FormField? _editing;
+    private readonly TerminalEditorBuffer _editor = new();
+    private int _messageHeight = FullscreenFooter.NoticeRows;
+    private int _overviewOffset;
+    private int _overviewMaximumOffset;
+    private Func<IRenderable>? _overviewSource;
+    private Action? _pendingOpen;
+    private FullscreenFrame? _lastFrame;
+
+    #endregion
+
+    #region Properties
+
+    internal int SelectedPageIndex => _page;
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Checks terminal capabilities before opting into a fullscreen form.</summary>
+    internal static bool CanUse(IAnsiConsole console) => FullscreenViewport.CanUse(console);
+
+    /// <summary>Returns an explicitly saved draft while always restoring the original terminal buffer.</summary>
+    internal bool Run(
+        string titleKey,
+        IReadOnlyList<FormPage> pages,
+        Func<string?>? validate = null,
+        int initialPage = 0)
+    {
+        ArgumentNullException.ThrowIfNull(pages);
+
+        if (pages.Count == 0)
+        {
+            throw new ArgumentException("A fullscreen form needs at least one page.", nameof(pages));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(initialPage);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(initialPage, pages.Count);
+
+        if (!CanUse(console))
+        {
+            throw new InvalidOperationException(text.Text("Form.Unavailable"));
+        }
+
+        _page = initialPage;
+        _sectionNavigator.Reset(_page, pages.Count, focused: pages.Count > 1);
+        _allowSectionNavigation = pages.Count > 1;
+        var saved = false;
+
+        try
+        {
+            do
+            {
+                _pendingOpen = null;
+                _lastFrame = null;
+                FullscreenViewport.Run(console, () => saved = RunLoop(titleKey, pages, validate));
+                // The terminal has one alternate buffer; put this page away before opening its child.
+                _pendingOpen?.Invoke();
+            }
+            while (_pendingOpen is not null);
+        }
+        finally
+        {
+            _editor.Clear();
+            _editing = null;
+            _inputReader.Reset();
+        }
+
+        return saved;
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Processes one focused control at a time without nesting Spectre prompts or Live displays.</summary>
+    private bool RunLoop(string titleKey, IReadOnlyList<FormPage> pages, Func<string?>? validate)
+    {
+        while (true)
+        {
+            var visiblePages = pages.Where(page => page.Open is not null || page.Overview is not null
+                || page.Preview is not null || page.Fields.Any(IsVisible)).ToArray();
+
+            if (visiblePages.Length == 0)
+            {
+                throw new InvalidOperationException("The form has no visible pages.");
+            }
+
+            // Visibility can change after editing another field, so clamp navigation before repainting.
+            _page = Math.Clamp(_page, 0, visiblePages.Length - 1);
+            _sectionNavigator.Select(_page, visiblePages.Length);
+            var fields = visiblePages[_page].Fields.Where(IsVisible).ToArray();
+
+            _focus = Math.Clamp(_focus, 0, fields.Length + 1);
+            void Paint() => Render(titleKey, visiblePages, fields);
+            Paint();
+            var readKey = _inputReader.ReadKey(Paint, _sectionNavigator.PendingSelectionDeadline);
+
+            if (readKey is null)
+            {
+                CompletePendingSectionNumber(visiblePages.Length);
+                continue;
+            }
+
+            var key = readKey.Value;
+
+            if (key.Key == ConsoleKey.Escape)
+            {
+                if (_editing is not null)
+                {
+                    _editing = null;
+                    _editor.Clear();
+                    _error = null;
+                    continue;
+                }
+
+                throw new InteractiveFlowCanceledException();
+            }
+
+            if (console.Profile.Width < 60 || console.Profile.Height < 20)
+            {
+                continue;
+            }
+
+            if (_editing is not null)
+            {
+                // An active editor owns the key; navigation must not consume typed content.
+                Edit(key);
+                continue;
+            }
+
+            _error = null;
+
+            if (_allowSectionNavigation && visiblePages.Length > 1 && TrySelectSectionNumber(key, visiblePages.Length))
+            {
+                continue;
+            }
+
+            if (_sectionNavigator.IsFocused && visiblePages[_page].Open is { } open
+                && key.Key is ConsoleKey.Enter or ConsoleKey.RightArrow)
+            {
+                _pendingOpen = open;
+
+                return false;
+            }
+
+            var pageHasOverview = visiblePages[_page].Overview is not null;
+            var focusedFieldHasOverview = !_sectionNavigator.IsFocused
+                && _focus < fields.Length
+                && fields[_focus].Overview is not null;
+
+            if ((pageHasOverview || focusedFieldHasOverview)
+                && (key.Modifiers & ConsoleModifiers.Control) != 0
+                && key.Key is ConsoleKey.UpArrow or ConsoleKey.DownArrow)
+            {
+                _overviewOffset = Math.Clamp(_overviewOffset + (key.Key == ConsoleKey.UpArrow ? -1 : 1), 0, _overviewMaximumOffset);
+                continue;
+            }
+
+            if (_allowSectionNavigation && visiblePages.Length > 1
+                && HandleSectionNavigation(key, fields.Length, visiblePages.Length))
+            {
+                continue;
+            }
+
+            switch (key.Key)
+            {
+                case ConsoleKey.Tab:
+                    MoveFocus((key.Modifiers & ConsoleModifiers.Shift) != 0 ? -1 : 1, fields.Length + 2);
+                    break;
+                case ConsoleKey.UpArrow:
+                    MoveFocus(-1, fields.Length + 2);
+                    break;
+                case ConsoleKey.DownArrow:
+                    MoveFocus(1, fields.Length + 2);
+                    break;
+                case ConsoleKey.PageUp:
+                    ChangePage(-1, visiblePages.Length);
+                    break;
+                case ConsoleKey.PageDown:
+                    ChangePage(1, visiblePages.Length);
+                    break;
+                case ConsoleKey.LeftArrow:
+                case ConsoleKey.RightArrow:
+                    if (_focus < fields.Length)
+                    {
+                        CycleChoice(fields[_focus], key.Key == ConsoleKey.LeftArrow ? -1 : 1);
+                    }
+                    else
+                    {
+                        _focus = fields.Length + (1 - (_focus - fields.Length));
+                    }
+                    break;
+                case ConsoleKey.Enter:
+                    if (_focus < fields.Length)
+                    {
+                        BeginEdit(fields[_focus]);
+                    }
+                    else if (_focus == fields.Length)
+                    {
+                        _error = validate?.Invoke();
+
+                        if (_error is null)
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Moves focus between the section list and fields without accepting unfinished edits or saving the draft.</summary>
+    private bool HandleSectionNavigation(ConsoleKeyInfo key, int fieldCount, int pageCount)
+    {
+        var backwards = (key.Modifiers & ConsoleModifiers.Shift) != 0;
+
+        if (_sectionNavigator.IsFocused)
+        {
+            switch (key.Key)
+            {
+                case ConsoleKey.UpArrow:
+                case ConsoleKey.PageUp:
+                    ChangePage(-1, pageCount);
+                    break;
+                case ConsoleKey.DownArrow:
+                case ConsoleKey.PageDown:
+                    ChangePage(1, pageCount);
+                    break;
+                case ConsoleKey.Home:
+                    ChangePage(-pageCount, pageCount);
+                    break;
+                case ConsoleKey.End:
+                    ChangePage(pageCount, pageCount);
+                    break;
+                case ConsoleKey.Enter:
+                case ConsoleKey.RightArrow:
+                case ConsoleKey.F6:
+                    _sectionNavigator.IsFocused = false;
+                    _focus = 0;
+                    break;
+                case ConsoleKey.Tab:
+                    _sectionNavigator.IsFocused = false;
+                    _focus = backwards ? fieldCount + 1 : 0;
+                    break;
+            }
+
+            return true;
+        }
+
+        if (key.Key == ConsoleKey.F6
+            || key.Key == ConsoleKey.LeftArrow && (key.Modifiers & ConsoleModifiers.Control) != 0
+            || key.Key == ConsoleKey.Tab && (backwards ? _focus == 0 : _focus == fieldCount + 1))
+        {
+            _sectionNavigator.IsFocused = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Moves keyboard focus cyclically through fields and navigation actions.</summary>
+    private void MoveFocus(int delta, int count)
+    {
+        _focus = (_focus + delta + count) % count;
+        _overviewOffset = 0;
+    }
+
+    /// <summary>Changes section while keeping the form draft intact.</summary>
+    private void ChangePage(int delta, int count)
+    {
+        _page = Math.Clamp(_page + delta, 0, count - 1);
+        _sectionNavigator.Select(_page, count);
+        _focus = 0;
+        _overviewOffset = 0;
+    }
+
+    /// <summary>Delegates one- and two-digit section shortcuts to the shared sidebar navigator.</summary>
+    private bool TrySelectSectionNumber(ConsoleKeyInfo key, int pageCount)
+    {
+        var previous = _page;
+
+        if (!_sectionNavigator.TrySelectNumber(key, pageCount))
+        {
+            return false;
+        }
+
+        if (_sectionNavigator.SelectedIndex != previous)
+        {
+            ApplySelectedSection();
+        }
+
+        return true;
+    }
+
+    /// <summary>Applies an expired first digit when it represented an unambiguous section shortcut.</summary>
+    private void CompletePendingSectionNumber(int pageCount)
+    {
+        var previous = _page;
+
+        if (!_sectionNavigator.CompletePendingNumber(pageCount) || _sectionNavigator.SelectedIndex == previous)
+        {
+            return;
+        }
+
+        ApplySelectedSection();
+    }
+
+    /// <summary>Synchronizes form content with the shared sidebar selection and restores its starting position.</summary>
+    private void ApplySelectedSection()
+    {
+        _page = _sectionNavigator.SelectedIndex;
+        _focus = 0;
+        _overviewOffset = 0;
+    }
+
+    /// <summary>Applies one current choice without opening a separate sequential prompt.</summary>
+    private void CycleChoice(FormField field, int delta)
+    {
+        if (field.Choices is null)
+        {
+            return;
+        }
+
+        var choices = field.Choices();
+
+        if (choices.Count == 0)
+        {
+            throw new InvalidOperationException("A choice field needs at least one available value.");
+        }
+
+        var index = choices.ToList().FindIndex(choice => choice.Value == field.Read());
+        var selected = choices[(Math.Max(0, index) + delta + choices.Count) % choices.Count];
+
+        _error = field.Validate?.Invoke(selected.Value);
+
+        if (_error is null)
+        {
+            field.Write(selected.Value);
+        }
+    }
+
+    /// <summary>Starts bounded text editing or advances the focused choice.</summary>
+    private void BeginEdit(FormField field)
+    {
+        if (field.Choices is not null)
+        {
+            CycleChoice(field, 1);
+
+            return;
+        }
+
+        _editing = field;
+        _editor.SetText(field.Read());
+    }
+
+    /// <summary>Edits text locally, never echoing secret values or their lengths.</summary>
+    private void Edit(ConsoleKeyInfo key)
+    {
+        var field = _editing!;
+
+        _error = null;
+
+        if (key.Key == ConsoleKey.Enter)
+        {
+            _error = field.Validate?.Invoke(_editor.Text);
+
+            if (_error is null)
+            {
+                field.Write(_editor.Text);
+                _editing = null;
+                _editor.Clear();
+            }
+        }
+        else if (!_editor.Apply(key, multiline: false, field.MaxLength))
+        {
+            _error = text.Text("Form.InputTooLong", field.MaxLength);
+        }
+    }
+
+    /// <summary>Draws a fixed viewport with sections, focus, contextual guidance and persistent actions.</summary>
+    private void Render(string titleKey, IReadOnlyList<FormPage> pages, IReadOnlyList<FormField> fields)
+    {
+        var frame = FullscreenViewport.BeginFrame(console, _lastFrame);
+
+        if (_lastFrame.HasValue && _lastFrame.Value.Theme != frame.Theme)
+        {
+            _overviewOffset = 0;
+        }
+
+        _lastFrame = frame;
+
+        if (frame.Width < 60 || frame.Height < 20)
+        {
+            console.Write(new Text(text.Text("Form.TooSmall"), Style.Parse(TerminalTheme.Warning)));
+
+            return;
+        }
+
+        var sectionNavigation = _allowSectionNavigation && pages.Count > 1;
+        var focused = !_sectionNavigator.IsFocused && _focus < fields.Count ? fields[_focus] : null;
+        var overview = focused?.Overview ?? pages[_page].Overview;
+
+        if (!ReferenceEquals(overview, _overviewSource))
+        {
+            _overviewOffset = 0;
+            _overviewSource = overview;
+        }
+
+        var helpKey = pages[_page].Open is not null && !_sectionNavigator.IsFocused
+            ? "Form.NavigationHelp"
+            : pages[_page].HelpKey ?? (sectionNavigation ? "Form.NavigationHelp" : "Form.Help");
+        var guidance = focused?.Help?.Invoke() ?? text.Text(focused?.HelpKey ?? helpKey);
+
+        if (overview is not null)
+        {
+            guidance += " " + text.Text("Settings.OverviewScroll");
+        }
+
+        var hint = _error ?? (focused is null ? guidance : FieldLabel(focused, text) + ": " + guidance);
+        var hintWidth = Math.Max(1, frame.Width - 5);
+        var minimumBodyRows = RowsPerField + (overview is not null ? 3 : 0);
+
+        _messageHeight = Math.Clamp((int)Math.Ceiling(Segment.CellCount([new Segment(hint)]) / (double)hintWidth) + 1,
+            FullscreenFooter.NoticeRows, Math.Min(6, frame.Height - FixedBodyRows - minimumBodyRows));
+        var section = SectionTitle(pages[_page]);
+        var availableRows = BodyRows();
+        var reservedOverviewRows = focused?.Overview is null ? 3 : Math.Max(3, (availableRows + 1) / 2);
+        var totalFieldRows = FieldRows(fields, 0, fields.Count, includeGroups: true);
+        var fieldRows = overview is null ? availableRows
+            : Math.Min(totalFieldRows, Math.Max(RowsPerField, availableRows - reservedOverviewRows));
+        var fieldBody = FieldsBody(fields, fieldRows, out var renderedFieldRows);
+
+        if (overview is not null)
+        {
+            var overviewWidth = frame.Width - 5 - (sectionNavigation ? FullscreenWorkspace.SidebarWidth(frame.Width) : 0);
+            var overviewHeight = availableRows - renderedFieldRows;
+            var renderOptions = new RenderOptions(console.Profile.Capabilities, new Size(frame.Width, frame.Height));
+            var lines = Segment.SplitLines(overview().Render(renderOptions, overviewWidth)).ToArray();
+
+            _overviewMaximumOffset = Math.Max(0, lines.Length - overviewHeight);
+            _overviewOffset = Math.Clamp(_overviewOffset, 0, _overviewMaximumOffset);
+            fieldBody = new Rows(fieldBody, new OverviewLines(lines.Skip(_overviewOffset).Take(overviewHeight).ToArray()));
+        }
+
+        if (pages[_page].Preview is { } preview && BodyRows() >= totalFieldRows + pages[_page].PreviewRows)
+        {
+            fieldBody = new Rows(fieldBody, preview());
+        }
+
+        var content = Inset(new Rows(
+            FullscreenWorkspace.SectionHeading(section, !_sectionNavigator.IsFocused && _focus < fields.Count),
+            fieldBody));
+        var footerKey = _editing is not null ? "Form.EditFooter"
+            : pages[_page].Open is not null ? "Form.OpenFooter"
+            : _sectionNavigator.IsFocused ? "Form.SectionsFooter" : sectionNavigation ? "Form.NavigationFooter" : "Form.Footer";
+        var footer = FullscreenFooter.Create(
+            new Text(SafeText(hint), Style.Parse(_error is null ? TerminalTheme.Muted : TerminalTheme.Error)),
+            Actions(fields.Count),
+            FullscreenFooter.Shortcuts(_sectionNavigator.IsFocused ? text.Text(footerKey, pages.Count) : text.Text(footerKey),
+                text.Text(footerKey + "Compact"), frame.Width - 5),
+            _messageHeight);
+
+        console.Write(FullscreenWorkspace.Create(text.Text(titleKey), _options, frame.Width, content,
+            sectionNavigation ? SectionNavigation(pages) : null, footer, _messageHeight));
+    }
+
+    /// <summary>Renders the current section through the shared dot-numbered sidebar component.</summary>
+    private IRenderable SectionNavigation(IReadOnlyList<FormPage> pages)
+    {
+        return _sectionNavigator.Render(pages, SectionTitle, BodyRows(), text.Text("Form.Sections"),
+            console.Profile.Capabilities.Unicode);
+    }
+
+    /// <summary>Adds meaningful setup section icons through the shared emoji and ASCII fallback helper.</summary>
+    private string SectionTitle(FormPage page) => SectionTitle(page, text, _options);
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Shares localized section icons between fullscreen and scrolling settings.</summary>
+    internal static string SectionTitle(FormPage page, ILocalizationService text, ConsoleRenderOptions options)
+    {
+        var icon = page.TitleKey switch
+        {
+            "Form.General" => "⚙️",
+            "Setup.Keys" => "🔑",
+            "Setup.Model" => "🧠",
+            "Setup.Preferences" => "📝",
+            "Form.Advanced" => "🛠️",
+            "Theme.Title" => "🎨",
+            "Settings.General" => "⚙️",
+            "Settings.Ai" => "🧠",
+            "Settings.Credentials" => "🔑",
+            "Settings.Context" => "💬",
+            "Settings.Commands" => "⚡",
+            "Settings.Personalization" => "📝",
+            "Settings.Theme" => "🎨",
+            "About.MenuLabel" => "ℹ️",
+            "Settings.Skills" => "🧩",
+            "Settings.Learning" => "💭",
+            "Settings.Memories" => "📚",
+            "Settings.Privacy" => "🔒",
+            _ => null
+        };
+
+        return (icon is null ? string.Empty : TerminalTheme.IconPrefix(options, icon, "-")) + text.Text(page.TitleKey);
+    }
+
+    /// <summary>Uses literal supplied labels for inspected packages and localized labels for ordinary fields.</summary>
+    internal static string FieldLabel(FormField field, ILocalizationService text) => SafeText(field.Label?.Invoke() ?? text.Text(field.LabelKey));
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Renders spaced editable fields while keeping the complete selected field inside the viewport.</summary>
+    private IRenderable FieldsBody(IReadOnlyList<FormField> fields, int availableRows, out int renderedRows)
+    {
+        var includeGroups = availableRows > RowsPerField;
+        var focused = Math.Clamp(_focus, 0, Math.Max(0, fields.Count - 1));
+        var offset = focused;
+
+        while (offset > 0 && FieldRows(fields, offset - 1, focused + 1, includeGroups) <= availableRows)
+        {
+            offset--;
+        }
+
+        var rows = new List<IRenderable>();
+
+        renderedRows = 0;
+
+        for (var index = offset; index < fields.Count; index++)
+        {
+            var field = fields[index];
+            var showGroup = includeGroups && StartsGroup(fields, index, offset);
+            var rowCount = RowsPerField + (showGroup ? 1 : 0);
+
+            if (renderedRows + rowCount > availableRows)
+            {
+                break;
+            }
+
+            if (showGroup)
+            {
+                rows.Add(new ThemeSeparator(text.Text(field.GroupKey!)));
+            }
+
+            var selected = !_sectionNavigator.IsFocused && index == _focus;
+
+            rows.Add(FieldBlock(
+                Styled($"{(selected ? ">" : " ")} {FieldLabel(field, text)}", selected ? TerminalTheme.Accent : TerminalTheme.Primary),
+                width => Styled($"[ {FieldValue(field, width - 4)} ]",
+                    (selected ? "bold underline " : string.Empty) + (field.ValueColor?.Invoke() ?? TerminalTheme.FieldValue))));
+            renderedRows += rowCount;
+        }
+
+        return new Rows(rows);
+    }
+
+    /// <summary>Budgets group headings along with their fields, including the group at a scrolled viewport's start.</summary>
+    private static int FieldRows(IReadOnlyList<FormField> fields, int start, int end, bool includeGroups)
+    {
+        var rows = 0;
+
+        for (var index = start; index < end; index++)
+        {
+            rows += RowsPerField + (includeGroups && StartsGroup(fields, index, start) ? 1 : 0);
+        }
+
+        return rows;
+    }
+
+    /// <summary>Repeats a group title when scrolling into its middle so visible fields retain their context.</summary>
+    private static bool StartsGroup(IReadOnlyList<FormField> fields, int index, int start) =>
+        fields[index].GroupKey is not null && (index == start || fields[index].GroupKey != fields[index - 1].GroupKey);
+
+    /// <summary>Reads a display value or fits the active editor inside the allocated value column.</summary>
+    private string FieldValue(FormField field, int width)
+    {
+        if (ReferenceEquals(field, _editing))
+        {
+            return field.Secret ? text.Text("Form.SecretInput") : InputWindow(width);
+        }
+
+        if (field.Secret)
+        {
+            return field.Display?.Invoke() ?? text.Text(string.IsNullOrEmpty(field.Read()) ? "Form.SecretUnchanged" : "Form.SecretEntered");
+        }
+
+        return field.Display?.Invoke() ?? field.Choices?.Invoke().FirstOrDefault(choice => choice.Value == field.Read())?.Label ?? field.Read();
+    }
+
+    /// <summary>Pairs a right-aligned label with a left-aligned value and one blank row below the field.</summary>
+    private static Rows FieldBlock(IRenderable label, Func<int, IRenderable> value) =>
+        new(new TerminalFormRow(label, value), new Text(" "));
+
+    /// <summary>Fits text around the caret into the value column after reserving its bracket padding.</summary>
+    private string InputWindow(int width)
+    {
+        if (width < 3)
+        {
+            return "|";
+        }
+
+        var elements = StringInfo.ParseCombiningCharacters(_editor.Text);
+        var caretElement = Array.BinarySearch(elements, Math.Clamp(_editor.Caret, 0, _editor.Text.Length));
+
+        if (caretElement < 0)
+        {
+            caretElement = ~caretElement;
+        }
+
+        // Reserve the caret and both overflow markers before fitting whole graphemes by terminal cells.
+        var budget = width - 3;
+        var startElement = caretElement;
+        var leftCells = 0;
+
+        while (startElement > 0)
+        {
+            var cells = InputElementWidth(elements, startElement - 1);
+
+            if (leftCells + cells > budget / 2)
+            {
+                break;
+            }
+
+            leftCells += cells;
+            startElement--;
+        }
+
+        var endElement = caretElement;
+        var rightCells = 0;
+
+        while (endElement < elements.Length)
+        {
+            var cells = InputElementWidth(elements, endElement);
+
+            if (leftCells + rightCells + cells > budget)
+            {
+                break;
+            }
+
+            rightCells += cells;
+            endElement++;
+        }
+
+        if (endElement == elements.Length)
+        {
+            while (startElement > 0)
+            {
+                var cells = InputElementWidth(elements, startElement - 1);
+
+                if (leftCells + rightCells + cells > budget)
+                {
+                    break;
+                }
+
+                leftCells += cells;
+                startElement--;
+            }
+        }
+
+        var start = InputElementOffset(elements, startElement);
+        var caret = InputElementOffset(elements, caretElement);
+        var end = InputElementOffset(elements, endElement);
+
+        return (start > 0 ? "…" : string.Empty) + _editor.Text[start..caret] + "|" + _editor.Text[caret..end]
+            + (end < _editor.Text.Length ? "…" : string.Empty);
+    }
+
+    /// <summary>Measures one complete text element after applying the form's control-character sanitization.</summary>
+    private int InputElementWidth(int[] elements, int element)
+    {
+        var start = InputElementOffset(elements, element);
+        var end = InputElementOffset(elements, element + 1);
+        var visible = SafeText(_editor.Text[start..end]);
+
+        return new Segment(visible).CellCount();
+    }
+
+    /// <summary>Maps a grapheme boundary or the final boundary to a valid UTF-16 offset.</summary>
+    private int InputElementOffset(int[] elements, int element) =>
+        element < elements.Length ? elements[element] : _editor.Text.Length;
+
+    /// <summary>Builds semantic navigation buttons with contrasting focus colors and an explicit focus marker.</summary>
+    private IRenderable Actions(int fieldCount)
+    {
+        var labels = new[] { "Form.Save", "Form.Cancel" };
+
+        return TerminalActionBar.Create(labels.Select((label, index) =>
+        {
+            var selected = !_sectionNavigator.IsFocused && _focus == fieldCount + index;
+            var icon = label == "Form.Save"
+                ? TerminalTheme.IconPrefix(_options, "💾", "+")
+                : TerminalTheme.IconPrefix(_options, "↩️", "x");
+
+            return new TerminalAction(icon + text.Text(label), ActionColor(label), selected);
+        }).ToArray());
+    }
+
+    /// <summary>Assigns navigation, progression, saving, and cancellation their semantic theme colors.</summary>
+    private static string ActionColor(string label) => label switch
+    {
+        "Form.Save" => TerminalTheme.Success,
+        "Form.Cancel" => TerminalTheme.Warning,
+        _ => throw new InvalidOperationException("Unsupported fullscreen form action.")
+    };
+
+    /// <summary>Gives all form regions consistent horizontal spacing without drawing a frame.</summary>
+    private static Padder Inset(IRenderable content) => new(content, new Padding(2, 0, 2, 0));
+
+    /// <summary>Calculates field rows after the open headings and footer, preserving one complete spaced field.</summary>
+    private int BodyRows() => Math.Max(RowsPerField, console.Profile.Height - FixedBodyRows - _messageHeight);
+
+    /// <summary>Checks field visibility against the current draft.</summary>
+    private static bool IsVisible(FormField field) => field.IsVisible?.Invoke() != false;
+
+    /// <summary>Creates one high-contrast row without interpreting user input as markup or control sequences.</summary>
+    private static IRenderable Styled(string value, string color, string? background = null) =>
+        new FormLine(SafeText(value),
+            Style.Parse(background is null ? color : $"{color} on {background}"));
+
+    /// <summary>Flattens line separators and removes terminal control characters before text rendering.</summary>
+    private static string SafeText(string value) =>
+        new(value.ReplaceLineEndings(" ").Select(character => char.IsControl(character) ? ' ' : character).ToArray());
+
+    #endregion
+
+    #region Types
+
+    /// <summary>Displays a scrollable slice of the general overview without changing its measured columns.</summary>
+    private sealed class OverviewLines(IReadOnlyList<SegmentLine> lines) : IRenderable
+    {
+
+        #region Methods
+
+        /// <summary>Accepts the width of the settings content region.</summary>
+        public Measurement Measure(RenderOptions options, int maxWidth) => new(0, maxWidth);
+
+        /// <summary>Preserves semantic colors and the line boundaries of the selected overview rows.</summary>
+        public IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
+        {
+            foreach (var line in lines)
+            {
+                foreach (var segment in Segment.Truncate(line, maxWidth))
+                {
+                    yield return segment;
+                }
+
+                yield return Segment.LineBreak;
+            }
+        }
+
+        #endregion
+    }
+
+    /// <summary>Keeps a styled form label or value on one row, clipping only at complete Unicode text elements.</summary>
+    private sealed class FormLine(string value, Style style) : IRenderable
+    {
+
+        #region Fields
+
+        private readonly int _width = new Segment(value).CellCount();
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>Allows a row to shrink to its allocated cells without requesting wrapped lines.</summary>
+        public Measurement Measure(RenderOptions options, int maxWidth)
+        {
+            var width = Math.Min(_width, Math.Max(0, maxWidth));
+
+            return new Measurement(Math.Min(1, width), width);
+        }
+
+        /// <summary>Emits exactly one styled segment with a visible overflow marker when needed.</summary>
+        public IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
+        {
+            yield return new Segment(Fit(maxWidth, options.Capabilities.Unicode), style);
+        }
+
+        #endregion
+
+        #region Implementation
+
+        /// <summary>Fits a complete prefix by terminal-cell width without splitting wide or composed characters.</summary>
+        private string Fit(int maxWidth, bool unicode)
+        {
+            if (maxWidth <= 0)
+            {
+                return string.Empty;
+            }
+
+            if (_width <= maxWidth)
+            {
+                return value;
+            }
+
+            var marker = unicode ? "…" : ".";
+            var budget = maxWidth - new Segment(marker).CellCount();
+            var elements = StringInfo.GetTextElementEnumerator(value);
+            var cells = 0;
+            var end = 0;
+
+            while (elements.MoveNext())
+            {
+                var element = elements.GetTextElement();
+                var width = new Segment(element).CellCount();
+
+                if (cells + width > budget)
+                {
+                    break;
+                }
+
+                cells += width;
+                end = elements.ElementIndex + element.Length;
+            }
+
+            return value[..end] + marker;
+        }
+
+        #endregion
+    }
+
+    #endregion
+}
+
+/// <summary>Applies the theme background to every layout cell and avoids the terminal's wrapping corner.</summary>
+internal sealed class FormSurface(IRenderable content) : IRenderable
+{
+
+    #region Methods
+
+    /// <summary>Measures the surface within the terminal's available width.</summary>
+    public Measurement Measure(RenderOptions options, int maxWidth) => content.Measure(options, Math.Max(1, maxWidth - 1));
+
+    /// <summary>Renders a bounded viewport while preserving explicit selection colors.</summary>
+    public IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
+    {
+        var foreground = Style.Parse(TerminalTheme.Primary).Foreground;
+        var background = Style.Parse(TerminalTheme.Background).Foreground;
+
+        foreach (var segment in content.Render(options with { Height = Math.Max(1, options.ConsoleSize.Height - 1) }, Math.Max(1, maxWidth - 1)))
+        {
+            if (segment.IsLineBreak || segment.IsControlCode)
+            {
+                yield return segment;
+                continue;
+            }
+
+            var current = segment.Style;
+
+            yield return new Segment(segment.Text, new Style(
+                current.Foreground != Color.Default ? current.Foreground : foreground,
+                current.Background != Color.Default ? current.Background : background,
+                current.Decoration), segment.Link);
+        }
+    }
+
+    #endregion
+}
