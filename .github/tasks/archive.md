@@ -2,6 +2,15 @@
 
 Add a `Public update:` line to a completed task only when it changes something readers can use. `scripts/Generate-Changelog.ps1` copies those lines into the public `CHANGELOG.md`; keep internal validation and plans out of them.
 
+## 2026-11-01 — Rebrand PromptMeUp as HelpMe
+
+- Rename the app, source projects, namespaces, runtime prompts, local storage and credential identifiers, and MSIX identity. Keep the existing GitHub address and clearly identify screenshots from before the rename.
+- Update the included command guide and document that previous local data is not imported automatically. The new MSIX identity must be verified with Partner Center before a Store submission.
+
+Validation: preflight, XML method summaries, PowerShell syntax, project XML and references, formatting verification, and a Release build with cached Windows x64 dependencies passed. The full offline restore lacked Linux and macOS runtime packs. No automated tests, CLI smoke tests, package installation, Store publication, or live UI verification were performed. Build and PDF review intermediates were cleaned.
+
+Public update: PromptMeUp is now HelpMe. The `hm` command remains the same; the renamed app uses new local data and credential locations.
+
 ## 2026-10-23 — Make C# source easier to navigate and read
 
 - Review all 325 tracked C# files across the application and tests. Add missing English XML summaries to types and methods, and group members into Fields, Initialization, Properties, Methods, Implementation, and Types regions where applicable. Leave files without type declarations unchanged.

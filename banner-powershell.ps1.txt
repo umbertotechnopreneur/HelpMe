@@ -1,5 +1,5 @@
 <#
-    PromptMeUp · {{PROJECT_NAME}}
+    HelpMe · {{PROJECT_NAME}}
     {{FILE_PURPOSE}}
     Owner: {{OWNER}} | Updated: {{YYYY-MM-DD}}
 #>

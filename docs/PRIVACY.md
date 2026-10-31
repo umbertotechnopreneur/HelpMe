@@ -1,12 +1,14 @@
-# Your data in PromptMeUp
+# Your data in HelpMe
 
-Your settings, saved notes, and chat history are stored on your machine. To answer a question, PromptMeUp sends OpenAI the app's instructions, selected notes, and recent messages that fit the request limit. Output from a command you approve can also be included in a follow-up.
+Your settings, saved notes, and chat history are stored on your machine. To answer a question, HelpMe sends OpenAI the app's instructions, selected notes, and recent messages that fit the request limit. Output from a command you approve can also be included in a follow-up.
 
 This page explains what is stored, what is sent, and what clearing a conversation actually removes.
 
 ## What stays on your machine
 
-PromptMeUp saves data in your operating system's local app-data folder. Run `hm --status` to see the exact paths. You can choose a different folder with `PROMPTMEUP_DATA_DIR`.
+HelpMe saves data in your operating system's local app-data folder. Run `hm --status` to see the exact paths. You can choose a different folder with `HELPME_DATA_DIR`.
+
+The rebranded app uses a new HelpMe data directory and database name. It does not automatically import PromptMeUp settings, notes, history, or Windows Credential Manager entries. The previous data and credentials remain in their original locations.
 
 Local data includes:
 
@@ -17,21 +19,21 @@ Local data includes:
 - Diagnostic logs, started fresh each day, with up to 14 files kept.
 - The app's YAML instruction files, kept beside the executable.
 
-Questions and activity history stay until you remove the PromptMeUp database or data folder. Closing `hm` or using `/clear` stops recent messages from being included in the next question. It doesn't delete saved notes or local history.
+Questions and activity history stay until you remove the HelpMe database or data folder. Closing `hm` or using `/clear` stops recent messages from being included in the next question. It doesn't delete saved notes or local history.
 
 ## Saved notes
 
-Use `/remember <text>` in chat or `hm --remember <text>` in the terminal to save a note. All saved memories share one list across conversations using the same local data directory. `/memories` lists them; `/forget <id>` deletes a note from that list. PromptMeUp does not automatically turn conversation history into saved notes.
+Use `/remember <text>` in chat or `hm --remember <text>` in the terminal to save a note. All saved memories share one list across conversations using the same local data directory. `/memories` lists them; `/forget <id>` deletes a note from that list. HelpMe does not automatically turn conversation history into saved notes.
 
 Notes are not tied to a folder. Upgrading preserves existing notes, IDs, dates, and their recorded sources. Each note is stored as text, including any paths or private details you put in it. A note may be used in a later conversation even when you open the app from a different folder.
 
-Saving, listing, selecting notes for a question, and deleting by ID happen locally. A deletion request by description can send batches of saved notes to OpenAI to find matches; you still choose a note and confirm deletion. For each question, PromptMeUp picks up to five notes within 800 estimated tokens, including their formatting. Selected notes go to OpenAI and may also appear in local request history.
+Saving, listing, selecting notes for a question, and deleting by ID happen locally. A deletion request by description can send batches of saved notes to OpenAI to find matches; you still choose a note and confirm deletion. For each question, HelpMe picks up to five notes within 800 estimated tokens, including their formatting. Selected notes go to OpenAI and may also appear in local request history.
 
 The app rejects notes that contain secrets it recognizes. It checks saved notes again when reading them and removes recognized secrets from the stored text. `/forget` stops a note from being picked again. It doesn't erase copies already in the current chat, earlier request history, backups, or OpenAI's records.
 
 ## Secrets
 
-- PromptMeUp reads keys from Windows Credential Manager first, then from `OPENAI_API_KEY` and `OPENAI_ADMIN_KEY` if no stored key is available.
+- HelpMe reads keys from Windows Credential Manager first, then from `OPENAI_API_KEY` and `OPENAI_ADMIN_KEY` if no stored key is available.
 - It won't accept keys as command arguments or save them in settings, SQLite, or logs.
 - On Windows, entered keys are stored in Windows Credential Manager for your account on this computer. They are available immediately and in future sessions, without restarting the terminal. Existing environment variables are not deleted or rewritten.
 - During the welcome, your key appears only as dots. A candidate key is held temporarily in memory for verification and saved only after OpenAI accepts the test request. Keys are never sent to the app's author.
@@ -59,7 +61,7 @@ limited machine summary, a contents note, and the available daily logs after a
 second secret and personal-path redaction pass. Each log contributes at most its
 most recent 4 MiB. The ZIP excludes the database, conversations, memories,
 environment values, API keys, user and computer names, network addresses, and a
-personal-file inventory. PromptMeUp does not upload or email the ZIP. Inspect it
+personal-file inventory. HelpMe does not upload or email the ZIP. Inspect it
 before attaching it to a support email.
 
 The filter can't catch everything. Don't paste secrets into questions or commands.
@@ -109,7 +111,7 @@ Personal instructions have a 500-word limit. Local rules reject text that tries 
 
 The optional AI command review sends a filtered copy of the proposed command. You still see the exact original command, and it runs locally only after you approve it.
 
-PromptMeUp sets `store=false` on Responses API calls. OpenAI's account, abuse-monitoring, retention, regional, privacy, and billing policies still apply independently; review the current provider terms for your account.
+HelpMe sets `store=false` on Responses API calls. OpenAI's account, abuse-monitoring, retention, regional, privacy, and billing policies still apply independently; review the current provider terms for your account.
 
 ## Pricing and organization costs
 
@@ -121,13 +123,13 @@ Without an admin key, you'll see local estimates based on recorded token usage a
 
 ## Command output
 
-You see command output in the terminal before an AI follow-up. The approval screen explains that captured output and errors can be saved locally and sent to OpenAI. PromptMeUp removes secrets it recognizes first, but private details or company information can still get through.
+You see command output in the terminal before an AI follow-up. The approval screen explains that captured output and errors can be saved locally and sent to OpenAI. HelpMe removes secrets it recognizes first, but private details or company information can still get through.
 
 Cancel the command or leave chat instead of sending output that should remain local.
 
 ## Where the app connects
 
-By default PromptMeUp contacts only:
+By default HelpMe contacts only:
 
 - `https://api.openai.com/v1/responses` for AI requests;
 - the official OpenAI developer pricing document for daily price refresh;

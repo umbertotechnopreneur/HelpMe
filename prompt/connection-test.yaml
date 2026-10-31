@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -23,17 +23,17 @@ tags:
   - diagnostics
   - connection
 metadata:
-  expected.en: PromptMeUp connection confirmed.
-  expected.it: Connessione PromptMeUp confermata.
-  expected.fr: Connexion PromptMeUp confirmée.
-  expected.de: PromptMeUp-Verbindung bestätigt.
-  expected.es: Conexión de PromptMeUp confirmada.
-  expected.vi: Kết nối PromptMeUp đã được xác nhận.
+  expected.en: HelpMe connection confirmed.
+  expected.it: Connessione HelpMe confermata.
+  expected.fr: Connexion HelpMe confirmée.
+  expected.de: HelpMe-Verbindung bestätigt.
+  expected.es: Conexión de HelpMe confirmada.
+  expected.vi: Kết nối HelpMe đã được xác nhận.
   max-output-tokens: "96"
 texts:
-  en: "Reply with exactly: PromptMeUp connection confirmed."
-  it: "Rispondi esattamente: Connessione PromptMeUp confermata."
-  fr: "Répondez exactement : Connexion PromptMeUp confirmée."
-  de: "Antworte exakt: PromptMeUp-Verbindung bestätigt."
-  es: "Responde exactamente: Conexión de PromptMeUp confirmada."
-  vi: "Chỉ trả lời chính xác: Kết nối PromptMeUp đã được xác nhận."
+  en: "Reply with exactly: HelpMe connection confirmed."
+  it: "Rispondi esattamente: Connessione HelpMe confermata."
+  fr: "Répondez exactement : Connexion HelpMe confirmée."
+  de: "Antworte exakt: HelpMe-Verbindung bestätigt."
+  es: "Responde exactamente: Conexión de HelpMe confirmada."
+  vi: "Chỉ trả lời chính xác: Kết nối HelpMe đã được xác nhận."

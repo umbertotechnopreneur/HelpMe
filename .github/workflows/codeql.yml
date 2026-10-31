@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -61,7 +61,7 @@ jobs:
           build-mode: manual
 
       - name: Build for analysis
-        run: dotnet build PromptMeUp.slnx --configuration Release --warnaserror
+        run: dotnet build HelpMe.slnx --configuration Release --warnaserror
 
       - name: Publish analysis
         uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4

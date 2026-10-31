@@ -1,0 +1,103 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
+using HelpMe.Infrastructure;
+using HelpMe.Services;
+
+namespace HelpMe.Tests;
+
+/// <summary>Verifies prompt catalog service behavior.</summary>
+public sealed class PromptCatalogServiceTests
+{
+
+    #region Methods
+
+    /// <summary>Verifies that every memory wrapper uses the user role and leaves room for bounded saved-note data.</summary>
+    [Fact]
+    public async Task GetAsync_MemoryContext_ProvidesBoundedLocalizedUserDataWrapper()
+    {
+        var paths = new AppPaths(
+            "unused-data",
+            "unused-data/helpme.db",
+            "unused-data/logs",
+            "unused-data/logs/helpme-.log",
+            Path.Combine(AppContext.BaseDirectory, "prompt"));
+        var catalog = new YamlPromptCatalogService(
+            paths,
+            NullLogger<YamlPromptCatalogService>.Instance);
+
+        var prompt = await catalog.GetAsync("memory-context", CancellationToken.None);
+
+        Assert.Equal("user", prompt.Metadata["role"]);
+        Assert.Equal("800", prompt.Metadata["max-estimated-tokens"]);
+        Assert.Equal(SupportedLanguages.Codes.OrderBy(language => language), prompt.Texts.Keys.OrderBy(language => language));
+        foreach (var language in SupportedLanguages.Codes)
+        {
+            var sections = prompt.ResolveText(language).Split("{memories}", StringSplitOptions.None);
+            Assert.Equal(2, sections.Length);
+            var estimatedWrapperTokens = (long)Math.Ceiling(Encoding.UTF8.GetByteCount(string.Concat(sections)) / 4d) + 4;
+            Assert.InRange(estimatedWrapperTokens, 1, 150);
+        }
+    }
+
+    /// <summary>Verifies that both scoped assistant prompt contracts are packaged with every supported language.</summary>
+    [Fact]
+    public async Task GetAsync_AssistantPrompts_LoadsChatAndSingleQueryContracts()
+    {
+        var paths = new AppPaths(
+            "unused-data",
+            "unused-data/helpme.db",
+            "unused-data/logs",
+            "unused-data/logs/helpme-.log",
+            Path.Combine(AppContext.BaseDirectory, "prompt"));
+        var catalog = new YamlPromptCatalogService(
+            paths,
+            NullLogger<YamlPromptCatalogService>.Instance);
+
+        var chat = await catalog.GetAsync("chat-system", CancellationToken.None);
+        var query = await catalog.GetAsync("query-system", CancellationToken.None);
+
+        Assert.Equal(15, chat.Version);
+        Assert.Equal(13, query.Version);
+        Assert.Equal("helpme-console-response-v2", chat.Metadata["response-format"]);
+        Assert.Equal("helpme-console-response-v2", query.Metadata["response-format"]);
+        Assert.Equal(SupportedLanguages.Codes.OrderBy(language => language), chat.Texts.Keys.OrderBy(language => language));
+        Assert.Equal(SupportedLanguages.Codes.OrderBy(language => language), query.Texts.Keys.OrderBy(language => language));
+        Assert.Contains("JSON object", query.ResolveText("en"), StringComparison.Ordinal);
+        Assert.Contains("console", chat.ResolveText("en"), StringComparison.OrdinalIgnoreCase);
+        foreach (var language in SupportedLanguages.Codes)
+        {
+            Assert.Contains("<user-configured-preamble>", chat.ResolveText(language), StringComparison.Ordinal);
+            Assert.Contains("<user-configured-preamble>", query.ResolveText(language), StringComparison.Ordinal);
+            Assert.Contains("<app-guide>", chat.ResolveText(language), StringComparison.Ordinal);
+            Assert.Contains("<app-guide>", query.ResolveText(language), StringComparison.Ordinal);
+            Assert.Contains("\"guide_topics\":[]", chat.ResolveText(language), StringComparison.Ordinal);
+            Assert.Contains("\"guide_topics\":[]", query.ResolveText(language), StringComparison.Ordinal);
+            foreach (var topic in AppGuideService.Topics)
+            {
+                Assert.Contains(topic + " (", chat.ResolveText(language), StringComparison.Ordinal);
+                Assert.Contains(topic + " (", query.ResolveText(language), StringComparison.Ordinal);
+            }
+        }
+    }
+
+    #endregion
+}

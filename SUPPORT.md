@@ -1,4 +1,4 @@
-# PromptMeUp support
+# HelpMe support
 
 Need a hand with `hm`? Ask in [GitHub Discussions](https://github.com/umbertotechnopreneur/PromptMeUp/discussions). Have a quick look through earlier questions first — the answer might already be there.
 

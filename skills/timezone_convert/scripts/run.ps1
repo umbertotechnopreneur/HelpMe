@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -16,7 +16,7 @@
 #
 # VBWR E
 
-# Adapted for PromptMeUp from the author's CLI-Intelligence time zone tool.
+# Adapted for HelpMe from the author's CLI-Intelligence time zone tool.
 [CmdletBinding()]
 param(
     [string]$Action = 'convert',

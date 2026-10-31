@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -18,7 +18,7 @@
 
 <#
 .SYNOPSIS
-  Rebuild the PromptMeUp Windows icon from simple vector geometry.
+  Rebuild the HelpMe Windows icon from simple vector geometry.
 .DESCRIPTION
   Uses Windows System.Drawing without external packages, images, or fonts.
   Writes PNG-backed ICO frames at 16, 24, 32, 48, 64, 128, and 256 pixels.
@@ -145,10 +145,10 @@ $frames = [Collections.Generic.List[byte[]]]::new()
 foreach ($size in $sizes) {
     $frame = New-IconFrame $size
     $frames.Add($frame)
-    if ($null -ne $previewRoot) { [IO.File]::WriteAllBytes((Join-Path $previewRoot "PromptMeUp-$size.png"), $frame) }
+    if ($null -ne $previewRoot) { [IO.File]::WriteAllBytes((Join-Path $previewRoot "HelpMe-$size.png"), $frame) }
 }
 
-$iconPath = Join-Path $PSScriptRoot 'PromptMeUp.ico'
+$iconPath = Join-Path $PSScriptRoot 'HelpMe.ico'
 $iconStream = [IO.MemoryStream]::new()
 $writer = [IO.BinaryWriter]::new($iconStream)
 try {
@@ -174,4 +174,4 @@ try {
     [IO.File]::WriteAllBytes($iconPath, $iconStream.ToArray())
 }
 finally { $writer.Dispose() }
-Write-Host "Created assets/PromptMeUp.ico with $($sizes.Count) resolutions."
+Write-Host "Created assets/HelpMe.ico with $($sizes.Count) resolutions."

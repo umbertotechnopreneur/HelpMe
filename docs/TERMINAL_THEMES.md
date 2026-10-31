@@ -61,7 +61,7 @@ Fullscreen forms need a terminal with ANSI colors, support for a separate tempor
 
 Theme definitions are ordinary JSON files in the `themes` directory beside the application executable. Portable archives include that directory. Keep it with the executable when moving the application.
 
-To change a built-in palette, edit its color values and restart PromptMeUp. To add a palette, copy a theme to a new file and give it a matching unique identifier. For example, a theme with `"id": "my-theme"` belongs in `themes/my-theme.json`. Select the new theme with `hm --theme`.
+To change a built-in palette, edit its color values and restart HelpMe. To add a palette, copy a theme to a new file and give it a matching unique identifier. For example, a theme with `"id": "my-theme"` belongs in `themes/my-theme.json`. Select the new theme with `hm --theme`.
 
 This is the complete Cyan definition:
 
@@ -70,7 +70,7 @@ This is the complete Cyan definition:
   "version": 3,
   "id": "cyan",
   "name": "Cyan",
-  "author": "PromptMeUp contributors",
+  "author": "HelpMe contributors",
   "website": "https://github.com/umbertotechnopreneur/PromptMeUp",
   "description": "Bright cyan and blue accents on a deep blue background.",
   "colors": {
@@ -102,7 +102,7 @@ Each color has a job:
 | `success`, `warning`, `error` | Messages showing what worked, needs attention, or failed |
 | `selectionBackground`, `selectionForeground` | Focused choices and actions |
 
-Every color must use six-digit `#RRGGBB` notation. Named colors, transparency, and terminal markup are not accepted. PromptMeUp validates a minimum contrast ratio of 4.5:1 for text (including the fixed whitesmoke field values) against `background`, 4.5:1 for selection text against its selection background, and 3:1 for dividers against `background`.
+Every color must use six-digit `#RRGGBB` notation. Named colors, transparency, and terminal markup are not accepted. HelpMe validates a minimum contrast ratio of 4.5:1 for text (including the fixed whitesmoke field values) against `background`, 4.5:1 for selection text against its selection background, and 3:1 for dividers against `background`.
 
 ## File requirements
 
@@ -113,7 +113,7 @@ Older custom themes still work. Version 1 uses `version`, `id`, `name`, and `col
 - Identifiers contain 1–32 characters, start with a lowercase ASCII letter, and use only lowercase ASCII letters, digits, and hyphens. The filename must match the identifier exactly, followed by `.json`.
 - Names contain 1–48 visible characters, without control characters or surrounding whitespace.
 - Authors contain 1–80 visible characters and descriptions 1–240. Both must be nonempty, single-line text without surrounding whitespace. Bundled metadata uses English; translated theme names and semantic preview labels belong to the UI catalog.
-- Websites are absolute HTTP or HTTPS URLs of at most 2,048 characters, without credentials, control characters, or surrounding whitespace. Bundled themes link to the PromptMeUp GitHub project.
+- Websites are absolute HTTP or HTTPS URLs of at most 2,048 characters, without credentials, control characters, or surrounding whitespace. Bundled themes link to the HelpMe GitHub project.
 - Each file is at most 16 KiB. The directory contains 1–32 theme files, including the required `cyan` theme, and identifiers must be unique.
 - A saved theme must exist in the directory. Invalid or missing themes produce an explicit error; they are not silently ignored.
 

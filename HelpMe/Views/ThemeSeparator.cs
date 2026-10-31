@@ -1,0 +1,124 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.Globalization;
+using System.Text;
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace HelpMe.Views;
+
+/// <summary>Draws a responsive theme separator using the same three color stops on every surface.</summary>
+internal sealed class ThemeSeparator(string? title = null, string? titleColor = null, int? width = null) : IRenderable
+{
+
+    #region Methods
+
+    /// <summary>Reserves only the available width for the single separator row.</summary>
+    public Measurement Measure(RenderOptions options, int maxWidth) =>
+        new(0, Math.Max(0, Math.Min(width ?? maxWidth, maxWidth)));
+
+    /// <summary>Clips a title if needed, then fills the remaining cells with a theme-colored line.</summary>
+    public IEnumerable<Segment> Render(RenderOptions options, int maxWidth)
+    {
+        var available = Math.Max(0, Math.Min(width ?? maxWidth, maxWidth));
+
+        if (available == 0)
+        {
+            yield break;
+        }
+
+        if (!string.IsNullOrEmpty(title))
+        {
+            var heading = new Segment(title + " ", Style.Parse("bold " + (titleColor ?? TerminalTheme.Info)));
+
+            if (heading.CellCount() >= available)
+            {
+                foreach (var segment in Segment.Truncate([heading], available))
+                {
+                    yield return segment;
+                }
+
+                yield break;
+            }
+
+            yield return heading;
+            available -= heading.CellCount();
+        }
+
+        var character = options.Capabilities.Unicode ? "─" : "-";
+        var stops = GradientStops();
+
+        for (var index = 0; index < available; index++)
+        {
+            yield return new Segment(character, new Style(GradientColor(index, available, stops)));
+        }
+    }
+
+    /// <summary>Provides the same gradient as escaped markup for line-based prompt bars.</summary>
+    internal static string Markup(int width)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(width);
+        var result = new StringBuilder(width * 15);
+        var stops = GradientStops();
+
+        for (var index = 0; index < width; index++)
+        {
+            var color = GradientColor(index, width, stops);
+
+            result.Append($"[#{color.R:X2}{color.G:X2}{color.B:X2}]─[/]");
+        }
+
+        return result.ToString();
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Reads the three active theme stops once per rendered separator.</summary>
+    private static Color[] GradientStops() =>
+    [
+        ParseColor(TerminalTheme.Accent), ParseColor(TerminalTheme.Info),
+        ParseColor(TerminalTheme.AccentSecondary)
+    ];
+
+    /// <summary>Interpolates the theme's main accent, information color, and secondary accent.</summary>
+    private static Color GradientColor(int index, int length, Color[] stops)
+    {
+        var position = length <= 1 ? 0d : index / (double)(length - 1) * 2d;
+        var stop = Math.Min((int)position, 1);
+        var fraction = position - stop;
+        var first = stops[stop];
+        var second = stops[stop + 1];
+
+        return new Color(
+            (byte)Math.Round(first.R * (1d - fraction) + second.R * fraction),
+            (byte)Math.Round(first.G * (1d - fraction) + second.G * fraction),
+            (byte)Math.Round(first.B * (1d - fraction) + second.B * fraction));
+    }
+
+    /// <summary>Converts a validated theme hex value to a Spectre color.</summary>
+    private static Color ParseColor(string value) => new(
+        byte.Parse(value.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+        byte.Parse(value.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+        byte.Parse(value.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+
+    #endregion
+}

@@ -1,0 +1,111 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+namespace HelpMe.Services;
+
+/// <summary>Provides the localized text catalogs used by HelpMe's terminal views and workflows.</summary>
+internal static partial class UiTextCatalog
+{
+    #region Properties
+
+    internal static IReadOnlyDictionary<string, LocalizedText> Entries { get; } = CreateEntries();
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Resolves a UI string for one supported language without changing the active interface culture.</summary>
+    internal static bool TryGet(string key, string language, out string value)
+    {
+        if (!Entries.TryGetValue(key, out var translations))
+        {
+            value = string.Empty;
+            return false;
+        }
+        value = translations.ForLanguage(language);
+        return true;
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Combines each functional catalog while rejecting duplicate UI keys.</summary>
+    private static IReadOnlyDictionary<string, LocalizedText> CreateEntries()
+    {
+        var entries = new Dictionary<string, LocalizedText>(StringComparer.Ordinal);
+        AddAboutEntries(entries);
+        AddTrialEntries(entries);
+        AddApplicationEntries(entries);
+        AddArtifactsEntries(entries);
+        AddCommandsEntries(entries);
+        AddDirectEntries(entries);
+        AddConversationEntries(entries);
+        AddContextBreakdownEntries(entries);
+        AddCostsEntries(entries);
+        AddErrorsEntries(entries);
+        AddSkillsAndMemoryEntries(entries);
+        AddReflectionEntries(entries);
+        AddReminderEntries(entries);
+        AddFormEntries(entries);
+        AddFirstRunEntries(entries);
+        AddHomeEntries(entries);
+        AddHelpBrowserEntries(entries);
+        AddCommandGuideEntries(entries);
+        AddLennaEntries(entries);
+        AddMemoryManagerEntries(entries);
+        AddMemoryCliEntries(entries);
+        AddMemoryManagerValidationEntries(entries);
+        AddSettingsEntries(entries);
+        AddSetupEntries(entries);
+        AddStatusEntries(entries);
+        AddSystemIntegrationEntries(entries);
+        AddThemeEntries(entries);
+        AddTerminalEntries(entries);
+        return entries;
+    }
+
+    #endregion
+}
+
+/// <summary>Stores one required UI translation for each supported language.</summary>
+/// <summary>Stores all six named translations for one authoritative UI key.</summary>
+internal sealed record LocalizedText(
+    string English,
+    string Italian,
+    string French,
+    string German,
+    string Spanish,
+    string Vietnamese)
+{
+    #region Methods
+
+    /// <summary>Resolves one explicitly named translation for a supported language.</summary>
+    internal string ForLanguage(string language) => language switch
+    {
+        "en" => English,
+        "it" => Italian,
+        "fr" => French,
+        "de" => German,
+        "es" => Spanish,
+        "vi" => Vietnamese,
+        _ => throw new ArgumentOutOfRangeException(nameof(language), language, "Unsupported language.")
+    };
+
+    #endregion
+}

@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -16,7 +16,7 @@
 #
 # VBWR E
 
-# Adapted for PromptMeUp from the author's CLI-Intelligence DuckDuckGo tool.
+# Adapted for HelpMe from the author's CLI-Intelligence DuckDuckGo tool.
 [CmdletBinding()]
 param(
     [string]$Query = '',
@@ -38,7 +38,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-public static class PromptMeUpWebSearchSkill
+public static class HelpMeWebSearchSkill
 {
     public sealed class Response
     {
@@ -247,7 +247,7 @@ public static class PromptMeUpWebSearchSkill
 
 }
 '@
-    if (-not ('PromptMeUpWebSearchSkill' -as [type])) { Add-Type -TypeDefinition $networkSource -ErrorAction Stop }
-    [PromptMeUpWebSearchSkill]::SearchAsync($Query, $MaxResults).GetAwaiter().GetResult() | ConvertTo-Json -Depth 5
+    if (-not ('HelpMeWebSearchSkill' -as [type])) { Add-Type -TypeDefinition $networkSource -ErrorAction Stop }
+    [HelpMeWebSearchSkill]::SearchAsync($Query, $MaxResults).GetAwaiter().GetResult() | ConvertTo-Json -Depth 5
 }
 catch { throw $_ValidationError }

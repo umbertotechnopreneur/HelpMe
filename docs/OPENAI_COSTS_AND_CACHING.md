@@ -20,7 +20,7 @@ guide explains saved notes, chat limits, and costs. Start with these commands:
 
 The model reads text in small pieces called **tokens**. **Context** is the text
 it can see for the current question. **Usage** counts the tokens you've sent and
-received over time. PromptMeUp shows them separately:
+received over time. HelpMe shows them separately:
 
 | Measure | Meaning |
 | --- | --- |
@@ -93,7 +93,7 @@ applies the draft directly; Cancel discards it.
 | Characters per user message | 16,000 | 500–100,000 |
 | Share of the model's context window | 70% | 10–95% |
 
-To override the saved input budget, set `PROMPTMEUP_CONTEXT_TOKENS` before launch
+To override the saved input budget, set `HELPME_CONTEXT_TOKENS` before launch
 to an integer from `4000` to `200000`. The override applies while the environment
 variable is set and does not change the saved value. The settings form shows a
 notice when it is present.
@@ -104,7 +104,7 @@ tokens. Instructions, selected notes, and retained messages all count toward it.
 This input budget applies to ordinary query and chat. Scripts, plans, and
 diagnostics have their own limits.
 
-As a conversation grows, PromptMeUp removes the oldest complete turns until the
+As a conversation grows, HelpMe removes the oldest complete turns until the
 turn count and input fit. User messages and their answers are removed together.
 If a new request cannot fit even without older turns, the app explains the limit
 and keeps chat open. That check happens before old history is removed, so you
@@ -123,7 +123,7 @@ Settings at General.
 
 ## Ask the app guide
 
-Ordinary questions about PromptMeUp can load one or two relevant chapters from
+Ordinary questions about HelpMe can load one or two relevant chapters from
 the packaged guide in the interface language. The model requests chapter IDs
 through a bounded structured response; the app reads only known local resources
 and sends a second request with those chapters in its system instructions.
@@ -164,7 +164,7 @@ Each successful Responses call can report:
 - reasoning tokens;
 - total tokens.
 
-The database keeps these counts separately. PromptMeUp uses the matching public
+The database keeps these counts separately. HelpMe uses the matching public
 prices to estimate the cost, then saves it in SQLite in millionths of a dollar.
 It uses the normal input price for cached input or cache writes only when no
 separate price is listed. The result is always labeled as an estimate.
@@ -195,7 +195,7 @@ every request will reuse cached text.
 
 - Localized YAML instructions, the optional setup preamble, and runtime context are placed before conversation messages.
 - A stable `prompt_cache_key` is derived from product name, model, prompt ID/version, and a short hash of the populated instruction; user text is not embedded in the key.
-- For GPT-5.6, PromptMeUp adds an explicit cache breakpoint after the developer instruction when it estimates that prefix at 1,024 tokens or more. With a shorter prefix, requests use automatic caching.
+- For GPT-5.6, HelpMe adds an explicit cache breakpoint after the developer instruction when it estimates that prefix at 1,024 tokens or more. With a shorter prefix, requests use automatic caching.
 - When that breakpoint is present, chat requests also enable implicit caching for growing conversation history. One-shot queries request explicit-only caching for the instruction prefix. Both request a `30m` cache lifetime.
 - GPT-5.5 requests select `24h` retention. Earlier supported models leave retention to the provider/account default.
 

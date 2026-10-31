@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -23,7 +23,7 @@ tags:
   - memory
   - classification
 metadata:
-  owner: PromptMeUp
+  owner: HelpMe
   data-classification: user-content
   max-output-tokens: 1000
 texts:

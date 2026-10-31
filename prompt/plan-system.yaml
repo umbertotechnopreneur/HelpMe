@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -21,9 +21,9 @@ version: 3
 description: Ordered console plans with separate observable verification and no execution authority.
 tags: [plan, console, safety]
 metadata:
-  owner: PromptMeUp
+  owner: HelpMe
   data-classification: user-content
-  response-format: promptmeup-plan-v1
+  response-format: helpme-plan-v1
   runtime-context: sanitized
 texts:
   en: |-

@@ -1,0 +1,283 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.Net;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using HelpMe.Infrastructure;
+using HelpMe.Models;
+using HelpMe.Services;
+
+namespace HelpMe.Tests;
+
+/// <summary>Owns isolated persistence and synthetic collaborators for regression scenarios.</summary>
+internal sealed class RegressionFixture : IDisposable
+{
+
+    #region Fields
+
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "HelpMe.Tests", Guid.NewGuid().ToString("N"));
+
+    #endregion
+
+    #region Properties
+
+    public AppPaths Paths { get; }
+
+    public SqliteDatabaseService Database { get; }
+
+    public ActivityAuditService Audit { get; }
+
+    public IEnvironmentSecretService Secrets { get; }
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates isolated persistence and synthetic collaborators that never access real credentials or the network.</summary>
+    internal RegressionFixture()
+    {
+        Directory.CreateDirectory(_directory);
+        Paths = new AppPaths(_directory, Path.Combine(_directory, "test.db"), _directory,
+            Path.Combine(_directory, "test.log"), Path.Combine(AppContext.BaseDirectory, "prompt"));
+
+        Database = new SqliteDatabaseService(Paths, NullLogger<SqliteDatabaseService>.Instance,
+            new PromptInjectionProtectionService(), new SensitiveDataRedactor());
+        Audit = new ActivityAuditService(Database, new SensitiveDataRedactor());
+
+        Secrets = TestProxy.Create<IEnvironmentSecretService>((method, _) => method.Name switch
+        {
+            "Load" => "sk-" + new string('x', 32),
+            "LooksLikeOpenAiKey" or "IsConfigured" => true,
+            _ => throw new NotSupportedException(method.Name)
+        });
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Reads packaged prompts without creating data directories or accessing user settings.</summary>
+    internal static IPromptCatalogService CreatePackagedPrompts() => new YamlPromptCatalogService(
+        new AppPaths(AppContext.BaseDirectory, string.Empty, AppContext.BaseDirectory, string.Empty,
+            Path.Combine(AppContext.BaseDirectory, "prompt")), NullLogger<YamlPromptCatalogService>.Instance);
+
+    /// <summary>Constructs the actual provider service with local HTTP responses and deterministic runtime facts.</summary>
+    internal OpenAiService CreateOpenAi(HttpClient http, ILogger<OpenAiService>? logger = null, IDatabaseService? database = null,
+        string promptId = "query-system", ArtifactLimits? limits = null) => new(
+        http, Secrets,
+        TestProxy.Create<IPromptCatalogService>((_, args) => Task.FromResult(new PromptDefinition(
+            args[0] is "chat-display-intent" ? "chat-display-intent" : promptId, 1, "Synthetic regression prompt", [],
+            new Dictionary<string, string> { ["en"] = "Answer the user's question." }, new Dictionary<string, string>()))),
+        TestProxy.Create<IRuntimeContextService>((_, _) => new RuntimeContext("test", "PowerShell 7 (pwsh)", "PowerShell 7", true, "~")),
+        database ?? Database, new AiCostCalculator(), Audit, new SensitiveDataRedactor(), new PromptInjectionProtectionService(),
+        logger ?? NullLogger<OpenAiService>.Instance, limits);
+
+    /// <summary>Executes fixture-only SQL with bound values and returns its scalar result.</summary>
+    internal async Task<object?> ScalarAsync(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = Paths.DatabasePath,
+            Pooling = false
+        }.ToString());
+        await connection.OpenAsync();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+
+        foreach (var parameter in parameters)
+        {
+            command.Parameters.AddWithValue(parameter.Name, parameter.Value);
+        }
+
+        return await command.ExecuteScalarAsync();
+    }
+
+    /// <summary>Provides synthetic, visibly test-only prices for checking band selection independently of live prices.</summary>
+    internal static AiModelPrice Price(string band, decimal input = 1m, string model = "gpt-5.6-terra") =>
+        new("openai", model, "standard", band, "usd", input, input / 10, input * 1.25m, 0,
+            "https://example.invalid/synthetic-prices", DateTimeOffset.UtcNow);
+
+    /// <summary>Builds a local Responses envelope with usage and structured assistant content.</summary>
+    internal static string ResponseJson(string text = "Answer", long inputTokens = 20, string model = "gpt-5.6-terra") =>
+        StructuredResponseJson(text, [], inputTokens, model);
+
+    /// <summary>Builds a local Responses envelope with strict command suggestions for workflow tests.</summary>
+    internal static string StructuredResponseJson(
+        string text,
+        IReadOnlyList<SuggestedCommand> commands,
+        long inputTokens = 20,
+        string model = "gpt-5.6-terra") =>
+        JsonSerializer.Serialize(new
+        {
+            id = "synthetic-response",
+            model,
+            status = "completed",
+            output = new[]
+            {
+                new
+                {
+                    type = "message",
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "output_text",
+                            text = JsonSerializer.Serialize(new
+                            {
+                                answer_markdown = text,
+                                commands = commands.Select(command => new { label = command.Label, command = command.Command })
+                            })
+                        }
+                    }
+                }
+            },
+            usage = new { input_tokens = inputTokens, output_tokens = 1, total_tokens = inputTokens + 1 }
+        });
+
+    /// <summary>Identifies the display classifier by its structured response properties in an outgoing provider payload.</summary>
+    internal static bool IsDisplayIntentRequest(string body)
+    {
+        using var request = JsonDocument.Parse(body);
+        var textConfiguration = request.RootElement.GetProperty("text");
+
+        // Only display classification requests declare the session-summary response field.
+        return textConfiguration.TryGetProperty("format", out var format)
+               && format.GetProperty("schema").GetProperty("properties").TryGetProperty("session_summary", out _);
+    }
+
+    /// <summary>Builds a raw display-intent reply with independently observable provider usage.</summary>
+    internal static string DisplayIntentResponseJson(
+        string sessionSummary = "unchanged",
+        string commandSuggestions = "unchanged",
+        bool continueChat = true,
+        long inputTokens = 10,
+        string executionConfirmation = "unchanged") => JsonSerializer.Serialize(new
+        {
+            id = "synthetic-display-response",
+            model = "gpt-5.6-terra",
+            status = "completed",
+            output = new[]
+            {
+                new
+                {
+                    type = "message",
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "output_text",
+                            text = JsonSerializer.Serialize(new
+                            {
+                                session_summary = sessionSummary,
+                                command_suggestions = commandSuggestions,
+                                execution_confirmation = executionConfirmation,
+                                continue_chat = continueChat
+                            })
+                        }
+                    }
+                }
+            },
+            usage = new { input_tokens = inputTokens, output_tokens = 1, total_tokens = inputTokens + 1 }
+        });
+
+    /// <summary>Releases pooled handles and removes only this fixture's temporary directory.</summary>
+    public void Dispose()
+    {
+        SqliteTestPool.Clear(Paths.DatabasePath);
+        Directory.Delete(_directory, recursive: true);
+    }
+
+    #endregion
+}
+
+/// <summary>Routes interface calls to explicit test behavior without invoking real services.</summary>
+public class TestProxy : DispatchProxy
+{
+
+    #region Fields
+
+    private Func<MethodInfo, object?[], object?> _handler = null!;
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Creates an explicit interface fake that rejects any unexpected collaborator call.</summary>
+    internal static T Create<T>(Func<MethodInfo, object?[], object?> handler) where T : class
+    {
+        var instance = Create<T, TestProxy>();
+        var proxy = (TestProxy)(object)instance;
+        proxy._handler = handler;
+
+        return instance;
+    }
+
+    /// <summary>Routes the invocation to the test's explicit behavior.</summary>
+    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) => _handler(targetMethod!, args ?? []);
+
+    #endregion
+}
+
+/// <summary>Returns configured in-memory HTTP responses without network access.</summary>
+internal sealed class SyntheticHttpHandler(Func<HttpResponseMessage> response) : HttpMessageHandler
+{
+
+    #region Methods
+
+    /// <summary>Returns only in-memory content without opening a network connection.</summary>
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        Task.FromResult(response());
+
+    #endregion
+}
+
+/// <summary>Models a delayed response body with cancellation-aware serialization.</summary>
+internal sealed class DelayedHttpContent(string body, TimeSpan delay) : HttpContent
+{
+
+    #region Methods
+
+    /// <summary>Delegates serialization to the cancellation-aware implementation.</summary>
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) =>
+        SerializeToStreamAsync(stream, context, CancellationToken.None);
+
+    /// <summary>Models headers arriving immediately followed by a delayed response body.</summary>
+    protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+    {
+        await Task.Delay(delay, cancellationToken);
+
+        var bodyBytes = Encoding.UTF8.GetBytes(body);
+        await stream.WriteAsync(bodyBytes, cancellationToken);
+    }
+
+    /// <summary>Models a chunked response without a declared content length.</summary>
+    protected override bool TryComputeLength(out long length)
+    {
+        length = 0;
+        return false;
+    }
+
+    #endregion
+}

@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: promptmeup-quality-${{ github.workflow }}-${{ github.ref }}
+  group: helpme-quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -52,21 +52,21 @@ jobs:
           global-json-file: global.json
 
       - name: Run repository preflight
-        run: pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command preflight
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command preflight
 
       - name: Restore
-        run: dotnet restore PromptMeUp.slnx
+        run: dotnet restore HelpMe.slnx
 
       - name: Verify redistribution notices
-        run: pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command notices -OutputDirectory ./artifacts/notice-check -Runtime linux-x64
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command notices -OutputDirectory ./artifacts/notice-check -Runtime linux-x64
 
       - name: Apply automatic dotnet formatting fixes
         shell: pwsh
-        run: pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command format
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command format
 
       - name: Verify dotnet formatting after automatic fixes
         shell: pwsh
-        run: pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command check-format
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command check-format
 
       - name: Summarize automatic formatting fixes
         shell: pwsh
@@ -78,14 +78,14 @@ jobs:
             '```text' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
             $changes | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
             '```' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
-            Write-Warning 'Automatic formatting changed the CI workspace. Run ./scripts/PromptMeUp.ps1 -Command format locally and commit the result.'
+            Write-Warning 'Automatic formatting changed the CI workspace. Run ./scripts/HelpMe.ps1 -Command format locally and commit the result.'
           }
           else {
             'No automatic formatting changes were required.' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
 
       - name: Verify XML method comments
-        run: pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command check-xml
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command check-xml
 
   build:
     name: Build (${{ matrix.os }})
@@ -108,22 +108,22 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore PromptMeUp.slnx
+        run: dotnet restore HelpMe.slnx
 
       - name: Build with warnings as errors
-        run: dotnet build PromptMeUp.slnx --configuration Release --no-restore --warnaserror
+        run: dotnet build HelpMe.slnx --configuration Release --no-restore --warnaserror
 
       - name: Test
-        run: dotnet test PromptMeUp.slnx --configuration Release --no-build
+        run: dotnet test HelpMe.slnx --configuration Release --no-build
 
       - name: Smoke test the CLI without credentials
         shell: pwsh
         run: |
-          $env:PROMPTMEUP_DATA_DIR = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString())
+          $env:HELPME_DATA_DIR = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString())
           $env:OPENAI_API_KEY = $null
           $env:OPENAI_ADMIN_KEY = $null
           foreach ($command in @('--version', '--help', '--third-party')) {
-            dotnet run --project PromptMeUp/PromptMeUp.csproj --configuration Release --no-build -- $command --no-animation --no-emoji
+            dotnet run --project HelpMe/HelpMe.csproj --configuration Release --no-build -- $command --no-animation --no-emoji
             if ($LASTEXITCODE -ne 0) { throw "Smoke test failed: $command" }
           }
 
@@ -132,18 +132,18 @@ jobs:
         run: |
           $platform = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
           $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-          pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command portable -Runtime "$platform-$architecture"
+          pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command portable -Runtime "$platform-$architecture"
           if ($LASTEXITCODE -ne 0) { throw 'Portable package validation failed.' }
 
       - name: Validate Windows installer compilation
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          [xml]$project = Get-Content PromptMeUp/PromptMeUp.csproj -Raw
+          [xml]$project = Get-Content HelpMe/HelpMe.csproj -Raw
           $version = [string]$project.Project.PropertyGroup.Version
           $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
           $payload = "artifacts/portable/$version/win-$architecture/payload"
-          pwsh -NoProfile -File ./scripts/PromptMeUp.ps1 -Command windows-installer -Architecture $architecture -PublishDirectory $payload -OutputDirectory artifacts/windows-installer
+          pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command windows-installer -Architecture $architecture -PublishDirectory $payload -OutputDirectory artifacts/windows-installer
           if ($LASTEXITCODE -ne 0) { throw 'Windows installer compilation failed.' }
 
       - name: Clean build output
@@ -152,12 +152,12 @@ jobs:
         run: |
           $platform = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
           $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-          [xml]$project = Get-Content PromptMeUp/PromptMeUp.csproj -Raw
+          [xml]$project = Get-Content HelpMe/HelpMe.csproj -Raw
           $version = [string]$project.Project.PropertyGroup.Version
           $payload = [System.IO.Path]::GetFullPath("artifacts/portable/$version/$platform-$architecture/payload")
-          dotnet clean ./PromptMeUp/PromptMeUp.csproj --configuration Release --runtime "$platform-$architecture" "-p:PublishDir=$payload"
+          dotnet clean ./HelpMe/HelpMe.csproj --configuration Release --runtime "$platform-$architecture" "-p:PublishDir=$payload"
           $runtimeCleanExitCode = $LASTEXITCODE
-          dotnet clean ./PromptMeUp.slnx --configuration Release
+          dotnet clean ./HelpMe.slnx --configuration Release
           $solutionCleanExitCode = $LASTEXITCODE
           git status --short
           if ($LASTEXITCODE -ne 0) { throw 'Cannot verify the working tree after cleanup.' }

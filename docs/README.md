@@ -1,4 +1,4 @@
-# PromptMeUp documentation
+# HelpMe documentation
 
 To try `hm` for the first time, start with the [README](../README.md#get-started).
 
@@ -14,9 +14,9 @@ To try `hm` for the first time, start with the [README](../README.md#get-started
 | Check what is saved locally and what is sent to OpenAI | [Privacy](PRIVACY.md) |
 | Get help or report a problem | [Support](../SUPPORT.md) |
 
-The [printable manual](PromptMeUp-CLI-Manual.pdf) is an older edition. The guides above include the newer saved notes, usage counters, and Settings screen.
+The [printable manual](PromptMeUp-CLI-Manual.pdf) is an older edition under the previous product name. The guides above include the newer saved notes, usage counters, and Settings screen.
 
-## Working on PromptMeUp
+## Working on HelpMe
 
 - [Contributing](../CONTRIBUTING.md) covers the local build and contribution process.
 - [Architecture](ARCHITECTURE.md) explains where the code lives and how questions, data, and command approvals move through it.

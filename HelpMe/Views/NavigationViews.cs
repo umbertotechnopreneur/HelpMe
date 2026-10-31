@@ -1,0 +1,539 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using HelpMe.Models;
+using HelpMe.Services;
+using Spectre.Console;
+
+namespace HelpMe.Views;
+
+/// <summary>Displays command help and usage examples.</summary>
+public interface IHelpView
+{
+
+    #region Methods
+
+    /// <summary>Opens section navigation when the terminal supports a disposable fullscreen viewport.</summary>
+    void Render(Action? openMemories = null, Action? openGuide = null, string? guidePath = null);
+
+    /// <summary>Prints every section without hiding errors, entering an alternate buffer, or waiting for input.</summary>
+    void RenderStatic() => Render();
+
+    #endregion
+}
+
+/// <summary>Presents the command reference as a keyboard browser or ordinary scrolling output.</summary>
+public sealed class HelpView(
+    IAnsiConsole console,
+    ILocalizationService text,
+    IConsoleShellView shell,
+    IAboutView about) : IHelpView
+{
+
+    #region Methods
+
+    /// <summary>Opens section navigation when the terminal supports a disposable fullscreen viewport.</summary>
+    public void Render(Action? openMemories = null, Action? openGuide = null, string? guidePath = null)
+    {
+        if (FullscreenHelpView.CanUse(console))
+        {
+            var originalOptions = shell.Options;
+
+            try
+            {
+                shell.Configure(originalOptions with { SuppressFooter = true });
+                new FullscreenHelpView(console, text, shell.Options).Render(CreateSections(openMemories, openGuide, guidePath));
+            }
+            finally
+            {
+                shell.Configure(originalOptions);
+            }
+
+            return;
+        }
+
+        RenderStatic();
+
+        if (openGuide is not null && console.Profile.Capabilities.Interactive && console.Profile.Out.IsTerminal)
+        {
+            var choice = TerminalChoiceMenu.Select<bool>(console,
+            [
+                new TerminalMenuChoice<bool>(false, text.Text("Guide.Finish"), Tone: TerminalMenuTone.Positive),
+                new TerminalMenuChoice<bool>(true, text.Text("Guide.Open"))
+            ]);
+
+            if (choice) { openGuide(); }
+        }
+    }
+
+    /// <summary>Prints every section without hiding errors, entering an alternate buffer, or waiting for input.</summary>
+    public void RenderStatic()
+    {
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, "⌨", ">") + text.Text("Help.Title"),
+            TerminalTheme.Accent);
+        console.Write(HelpCommandLine.CreateDescription(text.Text("Help.Usage"), "hm"));
+        console.WriteLine();
+
+        foreach (var section in CreateSections())
+        {
+            RenderGroup(section);
+        }
+
+        shell.RenderProjectBanner();
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Shares the complete localized command catalog between fullscreen and scrolling help.</summary>
+    private IReadOnlyList<HelpSection> CreateSections(Action? openMemories = null, Action? openGuide = null, string? guidePath = null) =>
+    [
+        new("⚡", text.Text("Help.Examples"), text.Text("Help.Browse.Examples"),
+            [
+                new($"hm \"{text.Text("Help.ExamplePrompt")}\"", text.Text("Help.Query"))
+                {
+                    Arguments = [new($"\"{text.Text("Help.ExamplePrompt")}\"", text.Text("Help.Argument.Question"))]
+                },
+                new("hm --chat", text.Text("Help.Chat")),
+                new("hm --help", text.Text("Help.Usage"))
+            ]),
+        new("💬", text.Text("Help.Group.Ai"), text.Text("Help.Browse.Ai"),
+            [
+                new(text.Text("Help.QuerySyntax"), text.Text("Help.Query"))
+                {
+                    Example = $"hm --query \"{text.Text("Help.ExamplePrompt")}\"",
+                    Arguments = [new($"\"{text.Text("Help.ExamplePrompt")}\"", text.Text("Help.Argument.Question"))]
+                },
+                new("--direct <request>", text.Text("Direct.Help"))
+                {
+                    Example = "hm --direct \"git status\"",
+                    Arguments = [new("\"git status\"", text.Text("Help.Argument.Question"))]
+                },
+                new("--diagnose [--file <path>]", text.Text("Diagnose.Help"))
+                {
+                    Example = $"hm --diagnose \"{text.Text("Help.Browse.DiagnoseExample")}\"",
+                    Arguments = [new($"\"{text.Text("Help.Browse.DiagnoseExample")}\"", text.Text("Help.Argument.Error"))]
+                },
+                new("--script <request> [--file <path>] [--output <path>]", text.Text("Script.Help"))
+                {
+                    Example = $"hm --script \"{text.Text("Help.Browse.ScriptExample")}\"",
+                    Arguments = [new($"\"{text.Text("Help.Browse.ScriptExample")}\"", text.Text("Help.Argument.Script"))]
+                },
+                new("--plan <goal> | --plan --resume <id>", text.Text("Plan.Help"))
+                {
+                    Example = $"hm --plan \"{text.Text("Help.Browse.PlanExample")}\"",
+                    Arguments = [new($"\"{text.Text("Help.Browse.PlanExample")}\"", text.Text("Help.Argument.Goal"))]
+                },
+                new("--preview <copy|move|rename|delete> --file <path>", text.Text("Preview.Help"))
+                {
+                    Example = "hm --preview rename --file . --pattern '*.txt' --prefix reviewed-",
+                    Arguments =
+                    [
+                        new("rename", text.Text("Help.Argument.Rename")),
+                        new("--file", text.Text("Help.Argument.File")),
+                        new(".", text.Text("Help.Argument.CurrentFolder")),
+                        new("--pattern", text.Text("Help.Argument.Pattern")),
+                        new("'*.txt'", text.Text("Help.Argument.TextFiles")),
+                        new("reviewed-", text.Text("Help.Argument.Prefix"))
+                    ]
+                },
+                new("--chat", text.Text("Help.Chat")),
+                new("--test-ai", text.Text("Help.Test"))
+            ]),
+        new("📊", text.Text("Help.Group.Insight"), text.Text("Help.Browse.Insight"),
+            [
+                new("--version, -v", text.Text("Help.Version")) { Example = "hm --version" },
+                new("--status", text.Text("Help.Status")),
+                new("--lenna, lenna", text.Text("Help.Lenna")) { Example = "hm lenna" },
+                new("--costs", text.Text("Help.Costs")),
+                new("--prepare-logs", text.Text("Help.PrepareLogs")) { Example = "hm --prepare-logs" },
+                new("--where, -where", text.Text("Help.Where")) { Example = "hm --where" },
+                new("--third-party", text.Text("Help.ThirdParty"))
+            ]),
+        new("⚙", text.Text("Help.Group.Setup"), text.Text("Help.Browse.Setup"),
+            [
+                new("--setup", text.Text("Help.Setup")),
+                new("--ai-setup, --ai-settings", text.Text("AiSettings.Help")) { Example = "hm --ai-setup" },
+                new("--theme", text.Text("Theme.Help")),
+                new("--path [install|remove|status]", text.Text("Help.Path"))
+                {
+                    Example = "hm --path status",
+                    Arguments = [new("status", text.Text("Help.Argument.PathStatus"))]
+                },
+                new("--install-font [--dry-run]", text.Text("Help.Font")) { Example = "hm --install-font" },
+                new(text.Text("Help.LanguageSyntax"), text.Text("Help.Language"))
+                {
+                    Example = $"hm --status --language {text.Language}",
+                    Arguments = [new(text.Language, text.Text("Help.Argument.Language"))]
+                }
+            ]),
+        new("🛡", text.Text("Help.Group.Safety"), text.Text("Help.Browse.Safety"),
+            [
+                new("--no-animation | --no-emoji", text.Text("Help.Rendering"))
+                {
+                    Example = "hm --status --no-animation --no-emoji",
+                    Arguments =
+                    [
+                        new("--no-animation", text.Text("Help.Argument.NoAnimation")),
+                        new("--no-emoji", text.Text("Help.Argument.NoEmoji"))
+                    ]
+                },
+                new("--yes, -y", text.Text("Help.Yes"))
+                {
+                    Example = "hm --install-font --yes",
+                    Arguments = [new("--yes", text.Text("Help.Argument.Yes"))]
+                },
+                new("--dry-run", text.Text("Help.DryRun"))
+                {
+                    Example = "hm --install-font --dry-run",
+                    Arguments = [new("--dry-run", text.Text("Help.Argument.DryRun"))]
+                }
+            ]),
+        new("📚", text.Text("Settings.Memories"), text.Text("Settings.Memories"),
+            [new("--memories", text.Text("Help.Memories")),
+             new("--remember <text>", text.Text("MemoryCli.RememberHelp")),
+             new("--forget <id or description>", text.Text("MemoryCli.ForgetHelp"))])
+        {
+            Open = openMemories,
+            OpenHintKey = "MemoryManager.OpenHint"
+        },
+        new("🧩", text.Text("Lab.Title"), text.Text("Lab.Title"),
+            [new("--skills", text.Text("Help.Skills")),
+             new("--learning", text.Text("Help.Learning")),
+             new("--proposals", text.Text("Help.Proposals")),
+             new("--dream", text.Text("Help.Dream")),
+             new("--heartbeat", text.Text("Help.Heartbeat"))]),
+        new("📄", text.Text("Guide.Title"), text.Text("Guide.Title"),
+            [new(guidePath ?? "docs/helpme-quick-reference.pdf", text.Text("Guide.Description")) { IsCommand = false }])
+        {
+            Open = openGuide,
+            OpenHintKey = "Guide.OpenHint"
+        },
+        new("ℹ️", text.Text("About.Title"), text.Text("About.MenuLabel"),
+            [new("--about, about", text.Text("Help.About")) { Example = "hm about" }])
+        {
+            Open = about.Render,
+            OpenHintKey = "About.OpenHint"
+        }
+    ];
+
+    /// <summary>Renders one cohesive command category without turning the help screen into a flat flag dump.</summary>
+    private void RenderGroup(HelpSection section)
+    {
+        TerminalTheme.WriteRule(
+            console,
+            $"{TerminalTheme.IconPrefix(shell.Options, section.Icon, ">")}{section.Title}",
+            TerminalTheme.Accent);
+        console.Write(new Rows(section.Entries.Select(FullscreenHelpView.RenderEntry)));
+        console.WriteLine();
+    }
+
+    #endregion
+}
+
+
+/// <summary>Displays executable locations and offers supported follow-up actions.</summary>
+public interface IExecutableLocationView
+{
+
+    #region Methods
+
+    /// <summary>Shows the exact executable location and selects a safe next action when input is interactive.</summary>
+    ExecutableLocationAction RenderAndSelect(ExecutableLocationInfo location, bool interactive);
+
+    /// <summary>Previews the exact file-manager invocation and requests explicit authorization.</summary>
+    bool ConfirmOpen(ExecutableLocationInfo location);
+
+    /// <summary>Reports the authorized file-manager launch or a command that changes the calling terminal manually.</summary>
+    void RenderResult(ExecutableLocationInfo location, ExecutableLocationAction action);
+
+    #endregion
+}
+
+/// <summary>Presents the executable location and its reviewed open-folder action.</summary>
+public sealed class ExecutableLocationView(
+    IAnsiConsole console,
+    ILocalizationService text,
+    IConsoleShellView shell) : IExecutableLocationView
+{
+
+    #region Methods
+
+    /// <summary>Shows the exact executable location and selects a safe next action when input is interactive.</summary>
+    public ExecutableLocationAction RenderAndSelect(ExecutableLocationInfo location, bool interactive)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, "⌖", "@") + text.Text("Where.Title"),
+            TerminalTheme.Accent);
+        var locationGrid = TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(text.Text("Where.Executable"), location.ExecutablePath),
+            TerminalTheme.CompactMetric(text.Text("Where.Directory"), location.DirectoryPath)
+        ], preferredPairs: 1, width: console.Profile.Width);
+
+        console.Write(locationGrid);
+        console.WriteLine();
+
+        if (!interactive)
+        {
+            return ExecutableLocationAction.ShowChangeDirectoryCommand;
+        }
+
+        var choices = new[]
+        {
+            ExecutableLocationAction.DoNothing,
+            ExecutableLocationAction.ShowChangeDirectoryCommand,
+            ExecutableLocationAction.OpenContainingFolder
+        }.Select(action => new TerminalMenuChoice<ExecutableLocationAction>(
+            action, ActionLabel(action), Tone: action == ExecutableLocationAction.DoNothing
+                ? TerminalMenuTone.Muted : TerminalMenuTone.Primary)).ToArray();
+
+        return TerminalChoiceMenu.Select(console, choices, text.Text("Where.Action"));
+    }
+
+    /// <summary>Previews the exact file-manager invocation and requests explicit authorization.</summary>
+    public bool ConfirmOpen(ExecutableLocationInfo location)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+        console.Write(TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(text.Text("Where.OpenPreview"), location.OpenFolderPreview)
+        ], preferredPairs: 1, width: console.Profile.Width));
+        console.WriteLine();
+
+        return console.Prompt(new ConfirmationPrompt(Markup.Escape(text.Text("Where.Confirm")))
+        {
+            DefaultValue = false
+        });
+    }
+
+    /// <summary>Reports the authorized file-manager launch or a command that changes the calling terminal manually.</summary>
+    public void RenderResult(ExecutableLocationInfo location, ExecutableLocationAction action)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+
+        if (action == ExecutableLocationAction.DoNothing)
+        {
+            return;
+        }
+
+        if (action == ExecutableLocationAction.OpenContainingFolder)
+        {
+            console.MarkupLine($"[{TerminalTheme.Success}]{Markup.Escape(text.Text("Where.Opened"))}[/]");
+
+            return;
+        }
+
+        console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Where.ChangeDirectoryHint"))}[/]");
+        console.WriteLine(location.ChangeDirectoryCommand);
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Converts executable-location actions into localized, intentionally ordered menu labels.</summary>
+    private string ActionLabel(ExecutableLocationAction action) => action switch
+    {
+        ExecutableLocationAction.DoNothing => text.Text("Where.None"),
+        ExecutableLocationAction.ShowChangeDirectoryCommand => text.Text("Where.ShowCd"),
+        ExecutableLocationAction.OpenContainingFolder => text.Text("Where.Open"),
+        _ => throw new InvalidOperationException("Unsupported executable-location action.")
+    };
+
+    #endregion
+}
+
+/// <summary>Displays third-party notices and attribution.</summary>
+public interface IThirdPartyView
+{
+
+    #region Methods
+
+    /// <summary>Opens section navigation when the terminal supports a disposable fullscreen viewport.</summary>
+    void Render();
+
+    #endregion
+}
+
+/// <summary>Displays bundled third-party notices without loading external content.</summary>
+public sealed class ThirdPartyView(
+    IAnsiConsole console,
+    ILocalizationService text,
+    IConsoleShellView shell) : IThirdPartyView
+{
+
+    #region Fields
+
+    private static readonly (string Package, string Version, string License)[] Packages =
+    [
+        ("Microsoft.Data.Sqlite", "10.0.12", "MIT"),
+        ("Microsoft.Extensions.DependencyInjection", "10.0.12", "MIT"),
+        ("Microsoft.Extensions.Http", "10.0.12", "MIT"),
+        ("Microsoft.Extensions.Logging", "10.0.12", "MIT"),
+        ("Serilog", "4.4.0", "Apache-2.0"),
+        ("Serilog.Extensions.Logging", "10.0.0", "Apache-2.0"),
+        ("Serilog.Sinks.File", "7.0.0", "Apache-2.0"),
+        ("Spectre.Console", "0.57.2", "MIT"),
+        ("SQLitePCLRaw.bundle_e_sqlite3", "3.0.5", "Apache-2.0 / Public Domain"),
+        ("YamlDotNet", "18.1.0", "MIT")
+    ];
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Renders direct runtime dependencies and their declared licenses.</summary>
+    public void Render()
+    {
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, "⚖", "=") + text.Text("ThirdParty.Title"),
+            TerminalTheme.Accent);
+        console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("ThirdParty.Subtitle"))}[/]");
+        var table = TerminalTable.Create(text.Text("ThirdParty.Package"), text.Text("ThirdParty.Version"),
+            text.Text("ThirdParty.License"));
+
+        foreach (var package in Packages)
+        {
+            table.AddRow(Markup.Escape(package.Package), Markup.Escape(package.Version), Markup.Escape(package.License));
+        }
+
+        console.Write(table);
+        console.WriteLine();
+        console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("ThirdParty.FullNotices"))}[/]");
+    }
+
+    #endregion
+}
+
+/// <summary>Collects and previews executable search-path changes.</summary>
+public interface IPortablePathView
+{
+
+    #region Methods
+
+    /// <summary>Collects an install, remove, or status PATH action.</summary>
+    PortablePathAction SelectAction();
+
+    /// <summary>Shows the exact persistent target and asks before a mutating PATH operation.</summary>
+    bool PreviewAndConfirm(PortablePathPlan plan, bool preauthorized);
+
+    /// <summary>Reports the authorized file-manager launch or a command that changes the calling terminal manually.</summary>
+    void RenderResult(PortablePathResult result);
+
+    #endregion
+}
+
+/// <summary>Presents the portable PATH plan and its confirmed application result.</summary>
+public sealed class PortablePathView(
+    IAnsiConsole console,
+    ILocalizationService text,
+    IConsoleShellView shell) : IPortablePathView
+{
+
+    #region Methods
+
+    /// <summary>Collects an install, remove, or status PATH action.</summary>
+    public PortablePathAction SelectAction()
+    {
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, "↔", "<>") + text.Text("Path.Title"),
+            TerminalTheme.Accent);
+
+        return TerminalChoiceMenu.Select<PortablePathAction>(console,
+        [
+            new TerminalMenuChoice<PortablePathAction>(PortablePathAction.Status, text.Text("Path.Status")),
+            new TerminalMenuChoice<PortablePathAction>(PortablePathAction.Install, text.Text("Path.Install"),
+                Tone: TerminalMenuTone.Positive),
+            new TerminalMenuChoice<PortablePathAction>(PortablePathAction.Remove, text.Text("Path.Remove"),
+                Tone: TerminalMenuTone.Caution)
+        ], text.Text("Path.Action"));
+    }
+
+    /// <summary>Shows the exact persistent target and asks before a mutating PATH operation.</summary>
+    public bool PreviewAndConfirm(PortablePathPlan plan, bool preauthorized)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, "↔", "<>") + text.Text("Path.Title"),
+            TerminalTheme.Accent);
+        console.MarkupLine($"[bold {TerminalTheme.Info}]{Markup.Escape(PreviewText(plan.Action))}[/]");
+        console.Write(TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(text.Text("Path.Target"), DisplayTarget(plan.PersistenceTarget)),
+            TerminalTheme.CompactMetric(text.Text("Path.Directory"), plan.ExecutableDirectory)
+        ], preferredPairs: 1, width: console.Profile.Width));
+        console.WriteLine();
+
+        if (plan.Action == PortablePathAction.Status || !plan.RequiresChange)
+        {
+            return false;
+        }
+
+        return preauthorized || console.Prompt(new ConfirmationPrompt(Markup.Escape(text.Text("Path.Confirm")))
+        {
+            DefaultValue = false
+        });
+    }
+
+    /// <summary>Reports persistent PATH presence after inspection or mutation.</summary>
+    public void RenderResult(PortablePathResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        var message = result.IsPresent ? text.Text("Path.Present") : text.Text("Path.Missing");
+
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, result.IsPresent ? "✅" : "⚠", result.IsPresent ? "+" : "!") + text.Text("Path.Title"),
+            result.IsPresent ? TerminalTheme.Success : TerminalTheme.Warning);
+        console.MarkupLine($"[{(result.IsPresent ? TerminalTheme.Success : TerminalTheme.Warning)}]{Markup.Escape(message)}[/]");
+        console.Write(TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(text.Text("Path.Target"), DisplayTarget(result.PersistenceTarget)),
+            TerminalTheme.CompactMetric(text.Text("Path.Directory"), result.ExecutableDirectory)
+        ], preferredPairs: 1, width: console.Profile.Width));
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Returns the localized intent of one portable PATH operation without altering its exact target data.</summary>
+    private string PreviewText(PortablePathAction action) => action switch
+    {
+        PortablePathAction.Install => text.Text("Path.Preview.Install"),
+        PortablePathAction.Remove => text.Text("Path.Preview.Remove"),
+        _ => text.Text("Path.Preview.Status")
+    };
+
+    /// <summary>Localizes the Windows target description while preserving literal Unix profile paths.</summary>
+    private string DisplayTarget(string target) => target.Equals("Windows user PATH", StringComparison.Ordinal)
+        ? text.Text("Path.WindowsUserTarget")
+        : target;
+
+    #endregion
+}

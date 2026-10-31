@@ -1,0 +1,708 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.Diagnostics;
+using HelpMe.Models;
+using HelpMe.Services;
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace HelpMe.Views;
+
+/// <summary>Provides shared terminal headings, messages, input, and runtime status.</summary>
+public interface IConsoleShellView
+{
+
+    #region Properties
+
+    ConsoleRenderOptions Options { get; }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Applies terminal compatibility preferences for the current invocation.</summary>
+    void Configure(ConsoleRenderOptions options);
+
+    /// <summary>Draws a compact product and invocation header while preserving prior terminal output.</summary>
+    void RenderHeader(string command, AppSettings? settings, bool hasApiKey);
+
+    /// <summary>Draws one responsive turn snapshot after a request or on explicit status demand.</summary>
+    void RenderRuntimeStatus(ShellRuntimeStatus status);
+
+    /// <summary>Shows indeterminate progress while working and retains the measured outcome in scrollback.</summary>
+    Task<T> RunWithStatusAsync<T>(string message, Func<Task<T>> action);
+
+    /// <summary>Displays the shared project banner on exit unless help has already shown it.</summary>
+    void RenderFooter();
+
+    /// <summary>Renders the localized thanks, project links, and copyright at most once per local day.</summary>
+    void RenderProjectBanner();
+
+    /// <summary>Shows a sanitized frameless error without exposing exception internals.</summary>
+    void RenderError(string message);
+
+    /// <summary>Shows a short frameless informational message.</summary>
+    void RenderNotice(string message);
+
+    /// <summary>Identifies each selected skill with its package icon and a readable name color.</summary>
+    void RenderActiveSkills(IReadOnlyList<SkillDefinition> skills);
+
+    /// <summary>Shows one successful operation message using the shared terminal palette.</summary>
+    void RenderSuccess(string message);
+
+    /// <summary>Shows one recoverable warning using the shared terminal palette.</summary>
+    void RenderWarning(string message);
+
+    /// <summary>Shows low-emphasis explanatory text without leaking Spectre into the application layer.</summary>
+    void RenderMuted(string message);
+
+    /// <summary>Shows a compact section heading for a focused command workflow.</summary>
+    void RenderSectionTitle(string message);
+
+    /// <summary>Reads one required text value using a localized passive-view prompt.</summary>
+    string ReadText(string prompt);
+
+    /// <summary>Renders product, runtime, source, and safety details as a compact frameless About section.</summary>
+    void RenderVersion(BuildInformation buildInformation, string runtimeVersion, string runtimeIdentifier);
+
+    /// <summary>Writes one layout separator line through the passive console boundary.</summary>
+    void WriteLine();
+
+    #endregion
+}
+
+/// <summary>Provides the shared terminal shell operations used by passive HelpMe views.</summary>
+public sealed class ConsoleShellView : IConsoleShellView
+{
+
+    #region Fields
+
+    private const string RepositoryUrl = "https://github.com/umbertotechnopreneur/PromptMeUp";
+    private readonly IAnsiConsole _console;
+    private readonly ILocalizationService _text;
+    private readonly IProjectBannerSchedule _projectBannerSchedule;
+    private bool _projectBannerRendered;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates the shared premium console chrome used by every top-level command.</summary>
+    public ConsoleShellView(IAnsiConsole console, ILocalizationService text, IProjectBannerSchedule projectBannerSchedule)
+    {
+        _console = console ?? throw new ArgumentNullException(nameof(console));
+        _text = text ?? throw new ArgumentNullException(nameof(text));
+        _projectBannerSchedule = projectBannerSchedule ?? throw new ArgumentNullException(nameof(projectBannerSchedule));
+    }
+
+    #endregion
+
+    #region Properties
+
+    public ConsoleRenderOptions Options { get; private set; } = new(false, false);
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Applies terminal compatibility preferences for the current invocation.</summary>
+    public void Configure(ConsoleRenderOptions options)
+    {
+        Options = options;
+        TerminalSession.For(_console).Reset(options);
+    }
+
+    /// <summary>Draws a compact product and invocation header while preserving prior terminal output.</summary>
+    public void RenderHeader(string command, AppSettings? settings, bool hasApiKey)
+    {
+        RenderOpeningBanner();
+        RenderHeaderContext(command, settings, hasApiKey);
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Renders the opening identity and product promise as an unmistakable terminal banner.</summary>
+    private void RenderOpeningBanner()
+    {
+        var icon = TerminalTheme.IconPrefix(Options, "✦", "*");
+        var title = $"{icon}[#F5F5F5]P R O M P T M E[/][white] U P[/]";
+        var width = Math.Max(1, (int)Math.Floor(_console.Profile.Width * 0.8d));
+        var dividerWidth = Math.Max(1, width - (icon.Length + "P R O M P T M E U P".Length) - 1);
+
+        _console.WriteLine();
+        _console.MarkupLine($"{title} {ThemeSeparator.Markup(dividerWidth)}");
+        var trial = TrialNotice.MarkupFor(_text, TerminalSession.For(_console).License?.Invoke());
+
+        if (trial.Length > 0) _console.MarkupLine("  " + trial);
+
+        if (_projectBannerSchedule.TryMarkOpeningTipRenderedToday())
+        {
+            _console.MarkupLine($"  [bold {TerminalTheme.Info}]{Markup.Escape(_text.Text("Shell.OpeningKicker"))}[/]");
+            _console.MarkupLine($"  [{TerminalTheme.Primary}]{Markup.Escape(_text.Text("Tagline"))}[/]");
+        }
+
+        _console.WriteLine();
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Draws one responsive turn snapshot after a request or on explicit status demand.</summary>
+    public void RenderRuntimeStatus(ShellRuntimeStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+        TerminalSession.For(_console).LastStatus = status;
+        var turnCost = status.HasTurnCost
+            ? status.TurnCostUsd.HasValue ? FormatCost(status.TurnCostUsd.Value) : _text.Text("Costs.Unavailable")
+            : status.PromptCostUsd.HasValue || status.ResponseCostUsd.HasValue
+                ? FormatCost((status.PromptCostUsd ?? 0m) + (status.ResponseCostUsd ?? 0m))
+                : _text.Text("Costs.Unavailable");
+        var cache = status.CachedInputTokens > 0 || status.CacheWriteTokens > 0
+            ? $"{FormatTokens(status.CachedInputTokens)} / {FormatTokens(status.CacheWriteTokens)}"
+            : _text.Text("Costs.Unavailable");
+        var icon = TerminalTheme.IconPrefix(Options, "📊", "=");
+        var metrics = new List<CompactTerminalMetric>
+        {
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "🧠", "AI")}{_text.Text("Shell.Model")}", status.Model),
+            TerminalTheme.CompactMetric(_text.Text("Shell.ActiveContext"), FormatContextUsage(status.ActiveContextTokens, status.ContextWindowTokens), TerminalTheme.Info),
+            TerminalTheme.CompactMetric(_text.Text("Shell.MemoryUsage"), status.ActiveContextTokens.HasValue
+                ? _text.Text("Shell.MemoryUsageValue", status.MemoryCount, FormatTokens(status.MemoryTokens))
+                : _text.Text("Costs.Unavailable")),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "↘", "in")}{_text.Text("Shell.LastInput")}", FormatTokens(status.InputTokens), TerminalTheme.Info),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "↗", "out")}{_text.Text("Shell.LastOutput")}", FormatTokens(status.OutputTokens), TerminalTheme.Info),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "◈", "$")}{_text.Text("Shell.TurnCost")}", turnCost, TerminalTheme.Info),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "✓", "+")}{_text.Text("Shell.SessionCost")}", status.SessionCostKnown ? FormatCost(status.RunningCostUsd) : _text.Text("Costs.Unavailable"), TerminalTheme.Success),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "▣", "#")}{_text.Text("Shell.Cache")}", cache)
+        };
+
+        if (status.HasSessionUsage)
+        {
+            metrics.Add(TerminalTheme.CompactMetric(_text.Text("Shell.SessionInput"), FormatTokens(status.SessionInputTokens), TerminalTheme.Info));
+            metrics.Add(TerminalTheme.CompactMetric(_text.Text("Shell.SessionOutput"), FormatTokens(status.SessionOutputTokens), TerminalTheme.Info));
+        }
+
+        var pairs = _console.Profile.Width >= 72 ? 2 : 1;
+        var labelWidth = metrics.Where((_, index) => index % pairs == 0)
+            .Select(metric => new Segment(metric.Label + ":").CellCount())
+            .Append(new Segment(_text.Text("Shell.ContextBudget") + ":").CellCount()).Max();
+
+        RenderSessionSnapshot(
+            $"{icon}{_text.Text("Shell.Session")}",
+            metrics,
+            preferredPairs: 2,
+            firstLabelWidth: labelWidth);
+        _console.WriteLine();
+        RenderContextBudget(status, labelWidth);
+
+        if (status.HasContextBreakdown)
+        {
+            RenderContextLegend(status);
+        }
+
+        _console.WriteLine();
+    }
+
+    /// <summary>Shows indeterminate progress while working and retains the measured outcome in scrollback.</summary>
+    /// <typeparam name="T">The operation's result type.</typeparam>
+    /// <param name="message">The localized description of the running operation.</param>
+    /// <param name="action">The asynchronous operation to execute.</param>
+    /// <exception cref="ArgumentException">The operation description is blank.</exception>
+    /// <exception cref="ArgumentNullException">The operation callback is missing.</exception>
+    public async Task<T> RunWithStatusAsync<T>(string message, Func<Task<T>> action)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        ArgumentNullException.ThrowIfNull(action);
+        var session = TerminalSession.For(_console);
+        var indent = session.ChatIndent;
+        using var state = new TerminalStateScope(_console, _text, TerminalActivityState.Working);
+        var elapsed = Stopwatch.StartNew();
+        var outcome = TerminalActivityState.Completed;
+        var row = new TerminalActivityRow(message, TerminalActivityState.Working, useSymbols: !Options.NoEmoji);
+
+        try
+        {
+            if (Options.NoAnimation || !_console.Profile.Capabilities.Interactive || Console.IsOutputRedirected)
+            {
+                _console.Write(new Padder(row, new Padding(indent, 0, 0, 0)));
+                _console.WriteLine();
+
+                return await action().ConfigureAwait(false);
+            }
+
+            return await _console.Progress()
+                .AutoClear(true)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new SpinnerColumn(),
+                    new ProgressBarColumn { Width = 16 },
+                    new ElapsedTimeColumn())
+                .StartAsync(async context =>
+                {
+                    var task = context.AddTask(new string(' ', indent) + Markup.Escape(message));
+
+                    task.IsIndeterminate = true;
+
+                    try
+                    {
+                        return await action().ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        task.StopTask();
+                    }
+                }).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            outcome = TerminalActivityState.Cancelled;
+            throw;
+        }
+        catch
+        {
+            outcome = TerminalActivityState.Failed;
+            throw;
+        }
+        finally
+        {
+            session.State = outcome;
+
+            if (typeof(T) != typeof(CommandExecutionResult) || outcome != TerminalActivityState.Completed)
+            {
+                _console.Write(new Padder(new TerminalActivityRow(message, outcome, elapsed.Elapsed, !Options.NoEmoji),
+                    new Padding(indent, 0, 0, 0)));
+                _console.WriteLine();
+            }
+        }
+    }
+
+    /// <summary>Displays the shared project banner on exit unless help has already shown it.</summary>
+    public void RenderFooter()
+    {
+        if (!Options.SuppressFooter)
+        {
+            RenderProjectBanner();
+        }
+    }
+
+    /// <summary>Renders the localized thanks, project links, and copyright at most once per local day.</summary>
+    public void RenderProjectBanner()
+    {
+        if (_projectBannerRendered || !_projectBannerSchedule.TryMarkRenderedToday())
+        {
+            return;
+        }
+
+        var content = new Grid();
+
+        content.AddColumn();
+        content.AddRow(new Markup($"[bold {TerminalTheme.Primary}]{TerminalTheme.IconPrefix(Options, "👋", "*")}{Markup.Escape(_text.Text("Footer.Thanks"))}[/]"));
+        content.AddRow(new Text(" "));
+        content.AddRow(new Markup($"[{TerminalTheme.Primary}]{Markup.Escape(_text.Text("Footer.Support"))}[/]"));
+        content.AddRow(new Text(" "));
+        content.AddRow(new Markup($"[{TerminalTheme.Info} link={RepositoryUrl}]{RepositoryUrl}[/]"));
+        content.AddRow(new Text(" "));
+        content.AddRow(new Markup($"[{TerminalTheme.Muted}]Copyright (c) [link=https://umbertogiacobbi.biz]umbertogiacobbi.biz[/][/]"));
+        TerminalTheme.WriteRule(_console, "hm · help me", TerminalTheme.Accent);
+        _console.WriteLine();
+        _console.Write(content);
+        _console.WriteLine();
+        _projectBannerRendered = true;
+    }
+
+    /// <summary>Shows a sanitized frameless error without exposing exception internals.</summary>
+    public void RenderError(string message)
+    {
+        var safe = TerminalText.Safe(message);
+        var collapse = safe.Length > 400 || safe.Count(character => character == '\n') > 4;
+
+        if (!collapse)
+        {
+            TerminalTheme.WriteSection(_console, _text.Text("Common.Error"), safe, TerminalTheme.Error);
+
+            return;
+        }
+
+        var summary = safe.Split('\n').FirstOrDefault(line => !string.IsNullOrWhiteSpace(line)) ?? _text.Text("Common.Error");
+
+        _console.Write(new TerminalActivityRow(summary, TerminalActivityState.Failed, useSymbols: !Options.NoEmoji));
+        _console.WriteLine();
+        TerminalDisclosure.Write(_console, _text, TerminalTurnKind.Tool, _text.Text("Common.Error"),
+            new Text(safe, Style.Parse(TerminalTheme.Primary)), safe.Length);
+    }
+
+    /// <summary>Shows a short frameless informational message.</summary>
+    public void RenderNotice(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _console.WriteLine();
+        ConversationText.Write(_console, new Markup(
+            $"[bold {TerminalTheme.Info}]{TerminalTheme.IconPrefix(Options, "ℹ", "i")}[/][{TerminalTheme.Primary}]{Markup.Escape(message)}[/]"));
+        _console.WriteLine();
+    }
+
+    /// <summary>Identifies each selected skill with its package icon and a readable name color.</summary>
+    public void RenderActiveSkills(IReadOnlyList<SkillDefinition> skills)
+    {
+        ArgumentNullException.ThrowIfNull(skills);
+
+        if (skills.Count == 0)
+        {
+            return;
+        }
+
+        var names = skills.Select(skill =>
+        {
+            var color = ThemeCatalogService.ContrastRatio(skill.Color, TerminalTheme.Current.Colors.Background) >= 4.5d
+                ? skill.Color : TerminalTheme.Primary;
+            var label = TerminalTheme.IconPrefix(Options, skill.Icon, "*") + skill.Name;
+
+            return $"[bold {color}]{Markup.Escape(label)}[/]";
+        });
+
+        _console.WriteLine();
+        ConversationText.Write(_console, new Markup(
+            $"[bold {TerminalTheme.Info}]{TerminalTheme.IconPrefix(Options, "ℹ", "i")}[/][{TerminalTheme.Primary}]{_text.Text("Lab.Active", string.Join(", ", names))}[/]"));
+        _console.WriteLine();
+    }
+
+    /// <summary>Shows one successful operation message using the shared terminal palette.</summary>
+    public void RenderSuccess(string message) =>
+        _console.MarkupLine($"[{TerminalTheme.Success}]{Markup.Escape(message)}[/]");
+
+    /// <summary>Shows one recoverable warning using the shared terminal palette.</summary>
+    public void RenderWarning(string message) =>
+        _console.MarkupLine($"[{TerminalTheme.Warning}]{Markup.Escape(message)}[/]");
+
+    /// <summary>Shows low-emphasis explanatory text without leaking Spectre into the application layer.</summary>
+    public void RenderMuted(string message) =>
+        _console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(message)}[/]");
+
+    /// <summary>Shows a compact section heading for a focused command workflow.</summary>
+    public void RenderSectionTitle(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        TerminalTheme.WriteRule(
+            _console,
+            TerminalTheme.IconPrefix(Options, "↻", "~") + message,
+            TerminalTheme.Info);
+    }
+
+    /// <summary>Reads one required text value using a localized passive-view prompt.</summary>
+    public string ReadText(string prompt)
+    {
+        using var state = new TerminalStateScope(_console, _text, TerminalActivityState.NeedsInput);
+
+        TerminalPromptDock.Align(_console, reservedRows: 2);
+
+        return _console.Prompt(new TextPrompt<string>(Markup.Escape(prompt)));
+    }
+
+    /// <summary>Renders product, runtime, source, and safety details as a compact frameless About section.</summary>
+    public void RenderVersion(BuildInformation buildInformation, string runtimeVersion, string runtimeIdentifier)
+    {
+        const string websiteUrl = "https://umbertogiacobbi.biz";
+        const string motto = "Yet another CLI AI assistant :-)";
+        var icon = TerminalTheme.IconPrefix(Options, "✨", "*");
+        var details = TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "◆", "*")}{_text.Text("Shell.Application")}", $"v{buildInformation.Version}", TerminalTheme.Accent),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "⚙", "~")}{_text.Text("Shell.Runtime")}", $".NET {runtimeVersion}", TerminalTheme.Info),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "🖥", "OS")}{_text.Text("Shell.Platform")}", runtimeIdentifier),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "⚖", "=")}{_text.Text("About.License")}", "MIT", TerminalTheme.Success)
+        ], preferredPairs: 2, width: _console.Profile.Width);
+        var buildDetails = TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(_text.Text("About.BuildDate"), buildInformation.BuildTimestamp),
+            TerminalTheme.CompactMetric(_text.Text("About.BuildCommit"), buildInformation.GitCommit)
+        ], preferredPairs: 1, width: _console.Profile.Width);
+        var links = new Grid();
+
+        links.AddColumn(new GridColumn().RightAligned().NoWrap());
+        links.AddColumn(new GridColumn().LeftAligned());
+        links.AddRow(
+            new Markup($"[{TerminalTheme.Muted}]{Markup.Escape(_text.Text("About.Repository"))}:[/]"),
+            new Markup($"[link={RepositoryUrl}]{Markup.Escape(RepositoryUrl)}[/]"));
+        links.AddRow(
+            new Markup($"[{TerminalTheme.Muted}]{Markup.Escape(_text.Text("About.Website"))}:[/]"),
+            new Markup($"[link={websiteUrl}]{Markup.Escape(websiteUrl)}[/]"));
+        TerminalTheme.WriteRule(_console, $"{icon}{_text.Text("About.Title")}", TerminalTheme.Accent);
+        _console.MarkupLine($"[{TerminalTheme.Success}]{Markup.Escape(motto)}[/]");
+        _console.WriteLine();
+        _console.Write(details);
+        _console.Write(buildDetails);
+        _console.WriteLine();
+        _console.Write(links);
+        _console.WriteLine();
+        _console.MarkupLine($"[{TerminalTheme.Info}]{Markup.Escape(_text.Text("About.Note"))}[/]");
+    }
+
+    /// <summary>Writes one layout separator line through the passive console boundary.</summary>
+    public void WriteLine() => _console.WriteLine();
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Aligns startup settings beneath the working directory without a separate heading.</summary>
+    private void RenderHeaderContext(string command, AppSettings? settings, bool hasApiKey)
+    {
+        if (settings is not null && IsAiInvocation(command))
+        {
+            var state = settings.AiEnabled
+                ? hasApiKey ? _text.Text("Status.Ready") : _text.Text("Status.Missing")
+                : _text.Text("Status.Disabled");
+            var stateColor = settings.AiEnabled && hasApiKey
+                ? TerminalTheme.Success
+                : settings.AiEnabled ? TerminalTheme.Warning : TerminalTheme.Muted;
+            var stateIcon = settings.AiEnabled && hasApiKey
+                ? TerminalTheme.Icon(Options, "●", "+")
+                : TerminalTheme.Icon(Options, "!", "!");
+            var grid = TerminalTheme.PairGrid(
+                [
+                    TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(Options, "🌐", "@") + _text.Text("Status.Language"), settings.Language.ToUpperInvariant(), TerminalTheme.Accent),
+                    TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "🧠", "AI")}{_text.Text("Status.Model")}", settings.Model),
+                    TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(Options, "⚙️", "~")}{_text.Text($"Shell.Thinking")}", _text.Text($"Reasoning.{settings.ReasoningEffort}"), TerminalTheme.Info),
+                    TerminalTheme.CompactMetric($"{stateIcon}\u00A0AI", state, stateColor)
+                ],
+                preferredPairs: 3,
+                width: Math.Max(1, _console.Profile.Width - 2));
+
+            _console.Write(new Padder(grid, new Padding(2, 0, 0, 0)));
+        }
+    }
+
+    /// <summary>Identifies invocations that benefit from showing the selected AI model before work begins.</summary>
+    private static bool IsAiInvocation(string command) => command is "main" or "query" or "direct" or "chat" or "test-ai";
+
+    /// <summary>Renders compact metric rows that adapt to the available terminal width.</summary>
+    private void RenderSessionSnapshot(string header, IReadOnlyList<CompactTerminalMetric> metrics, int preferredPairs = 4, int? firstLabelWidth = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(header);
+        ArgumentNullException.ThrowIfNull(metrics);
+        var grid = TerminalTheme.PairGrid(
+            metrics,
+            preferredPairs: preferredPairs,
+            width: _console.Profile.Width,
+            firstLabelWidth: firstLabelWidth);
+
+        TerminalTheme.WriteRule(_console, header, TerminalTheme.Accent);
+        _console.Write(grid);
+    }
+
+    /// <summary>Gives the operating budget its own label, Spectre progress bar, and complete localized values.</summary>
+    private void RenderContextBudget(ShellRuntimeStatus status, int firstLabelWidth)
+    {
+        const int minimumBarWidth = 8;
+        const int maximumBarWidth = 36;
+        var width = Math.Max(1, _console.Profile.Width);
+        var labelText = _text.Text("Shell.ContextBudget") + ":";
+
+        labelText = new string(' ', Math.Max(0, Math.Min(firstLabelWidth, width) - new Segment(labelText).CellCount())) + labelText;
+        var valueText = FormatContextUsage(status.ActiveContextTokens, status.ContextBudgetTokens);
+        var label = new Text(labelText, Style.Parse(TerminalTheme.Muted));
+        var value = new Text(valueText, Style.Parse($"bold {TerminalTheme.Info}"));
+
+        if (width < 4)
+        {
+            // Spectre bars require at least four terminal cells; preserve the text during extreme resizing.
+            _console.Write(new Rows(label, value));
+
+            return;
+        }
+
+        var labelWidth = new Segment(labelText).CellCount();
+        var valueWidth = new Segment(valueText).CellCount();
+        var barWidth = width - labelWidth - valueWidth - 4;
+
+        if (barWidth >= minimumBarWidth)
+        {
+            _console.Write(BudgetColumns(label, BudgetBar(status, Math.Min(maximumBarWidth, barWidth)), value));
+
+            return;
+        }
+
+        barWidth = width - valueWidth - 2;
+        IRenderable detail = barWidth >= minimumBarWidth
+            ? BudgetColumns(BudgetBar(status, Math.Min(maximumBarWidth, barWidth)), value)
+            : new Rows(BudgetBar(status, Math.Min(maximumBarWidth, width)), value);
+
+        _console.Write(new Rows(label, detail));
+    }
+
+    /// <summary>Renders categorized context against the full capacity, preserving an unavailable-data fallback.</summary>
+    private IRenderable BudgetBar(ShellRuntimeStatus status, int width)
+    {
+        if (status.HasContextBreakdown && status.ContextBudgetTokens > 0)
+        {
+            var cells = AllocateContextBarCells(status, width);
+            var useSymbols = UseContextBarSymbols();
+            char[] glyphs = useSymbols ? ['S', 'U', 'T', 'A', '.'] : ['━', '━', '━', '━', '─'];
+            var colors = new[] { TerminalTheme.Warning, TerminalTheme.Info, TerminalTheme.Accent, TerminalTheme.Success, TerminalTheme.Muted };
+            var bar = new Paragraph();
+
+            for (var index = 0; index < cells.Length; index++)
+            {
+                bar.Append(new string(glyphs[index], cells[index]), Style.Parse(colors[index]));
+            }
+
+            return bar;
+        }
+
+        var percentage = status.ActiveContextTokens.HasValue && status.ContextBudgetTokens > 0
+            ? Math.Clamp(status.ActiveContextTokens.Value * 100d / status.ContextBudgetTokens, 0d, 100d)
+            : 0d;
+        var task = new ProgressTask(0, _text.Text("Shell.ContextBudget"), 100d, autoStart: false, timeProvider: TimeProvider.System)
+        {
+            Value = percentage
+        };
+        var column = new ProgressBarColumn
+        {
+            Width = width,
+            CompletedStyle = Style.Parse(TerminalTheme.Info),
+            FinishedStyle = Style.Parse(TerminalTheme.Info),
+            RemainingStyle = Style.Parse(TerminalTheme.Divider)
+        };
+        var options = new RenderOptions(_console.Profile.Capabilities, new Size(width, 1));
+
+        return column.Render(options, task, TimeSpan.Zero);
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Allocates terminal cells by share, including free space, with at most one cell of rounding per category.</summary>
+    internal static int[] AllocateContextBarCells(ShellRuntimeStatus status, int width)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(status.ContextBudgetTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(status.SystemInstructionTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(status.UserMessageTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(status.ToolOutputTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(status.AssistantMessageTokens);
+        ArgumentOutOfRangeException.ThrowIfNegative(status.GuideTokens);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(status.GuideTokens, status.SystemInstructionTokens);
+        var used = (decimal)status.SystemInstructionTokens + status.UserMessageTokens + status.ToolOutputTokens + status.AssistantMessageTokens;
+        var capacity = Math.Max(status.ContextBudgetTokens, used);
+        decimal[] tokens = [status.SystemInstructionTokens, status.UserMessageTokens, status.ToolOutputTokens, status.AssistantMessageTokens, capacity - used];
+        var exact = tokens.Select(value => value * width / capacity).ToArray();
+        var cells = exact.Select(value => (int)decimal.Floor(value)).ToArray();
+
+        // Give leftover cells to the largest fractional shares; never enlarge every tiny segment independently.
+        var remainderOrder = Enumerable.Range(0, cells.Length)
+            .OrderByDescending(index => exact[index] - cells[index])
+            .ThenBy(index => index)
+            .Take(width - cells.Sum());
+
+        foreach (var index in remainderOrder)
+        {
+            cells[index]++;
+        }
+
+        return cells;
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Explains every bar category numerically and identifies the guide as already included in system tokens.</summary>
+    private void RenderContextLegend(ShellRuntimeStatus status)
+    {
+        var useSymbols = UseContextBarSymbols();
+        var free = status.ContextBudgetTokens > 0 && status.ActiveContextTokens.HasValue
+            ? FormatContextTokens(Math.Max(0, status.ContextBudgetTokens - status.ActiveContextTokens.Value))
+            : _text.Text("Costs.Unavailable");
+
+        _console.Write(TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(ContextLegendLabel("Shell.ContextSystem", "S", useSymbols), FormatContextTokens(status.SystemInstructionTokens), TerminalTheme.Warning),
+            TerminalTheme.CompactMetric(ContextLegendLabel("Shell.ContextUser", "U", useSymbols), FormatContextTokens(status.UserMessageTokens), TerminalTheme.Info),
+            TerminalTheme.CompactMetric(ContextLegendLabel("Shell.ContextTool", "T", useSymbols), FormatContextTokens(status.ToolOutputTokens), TerminalTheme.Accent),
+            TerminalTheme.CompactMetric(ContextLegendLabel("Shell.ContextAssistant", "A", useSymbols), FormatContextTokens(status.AssistantMessageTokens), TerminalTheme.Success),
+            TerminalTheme.CompactMetric(ContextLegendLabel("Shell.ContextFree", ".", useSymbols), free, TerminalTheme.Muted),
+            TerminalTheme.CompactMetric(_text.Text("Shell.ContextGuideIncluded"), FormatContextTokens(status.GuideTokens), TerminalTheme.Warning)
+        ], preferredPairs: 2, width: _console.Profile.Width));
+    }
+
+    /// <summary>Uses explicit role letters when the terminal cannot distinguish colored Unicode segments.</summary>
+    private bool UseContextBarSymbols() =>
+        !_console.Profile.Capabilities.Ansi || !_console.Profile.Supports(ColorSystem.Legacy) || !_console.Profile.Capabilities.Unicode;
+
+    /// <summary>Connects a translated category to its colorless bar symbol when needed.</summary>
+    private string ContextLegendLabel(string key, string symbol, bool useSymbols) =>
+        useSymbols ? $"[{symbol}] {_text.Text(key)}" : _text.Text(key);
+
+    /// <summary>Formats full estimated context counts in the interface language without compact-value rounding.</summary>
+    private string FormatContextTokens(long value) =>
+        _text.Text("Shell.ContextTokenEstimate", value.ToString("N0", _text.Culture));
+
+    /// <summary>Aligns budget components on an open row with two spaces between columns.</summary>
+    private static Grid BudgetColumns(params IRenderable[] components)
+    {
+        var grid = new Grid();
+
+        for (var index = 0; index < components.Length; index++)
+        {
+            grid.AddColumn(new GridColumn
+            {
+                NoWrap = true,
+                Padding = new Padding(0, 0, index + 1 < components.Length ? 2 : 0, 0)
+            });
+        }
+
+        grid.AddRow(components);
+
+        return grid;
+    }
+
+    /// <summary>Formats small per-request USD amounts without hiding sub-cent costs.</summary>
+    private static string FormatCost(decimal value) => $"${value:0.00000000}";
+
+    /// <summary>Distinguishes an estimated active request from unavailable context measurements.</summary>
+    private string FormatContextUsage(long? usedTokens, long capacityTokens)
+    {
+        if (!usedTokens.HasValue)
+        {
+            return capacityTokens > 0
+                ? $"{_text.Text("Costs.Unavailable")} / {capacityTokens.ToString("N0", _text.Culture)}"
+                : _text.Text("Costs.Unavailable");
+        }
+
+        return capacityTokens > 0
+            ? $"~{usedTokens.Value.ToString("N0", _text.Culture)} / {capacityTokens.ToString("N0", _text.Culture)} · {(usedTokens.Value * 100d / capacityTokens).ToString("0.0", _text.Culture)}%"
+            : $"~{usedTokens.Value.ToString("N0", _text.Culture)} / {_text.Text("Costs.Unavailable")}";
+    }
+
+    /// <summary>Formats token counts compactly so context summaries remain readable at terminal width.</summary>
+    private static string FormatTokens(long value) => value switch
+    {
+        >= 1_000_000 => $"{value / 1_000_000d:0.0}M",
+        >= 10_000 => $"{value / 1_000d:0.0}K",
+        _ => value.ToString("N0")
+    };
+
+    #endregion
+
+}

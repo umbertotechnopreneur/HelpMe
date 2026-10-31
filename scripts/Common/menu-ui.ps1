@@ -1,7 +1,7 @@
 ﻿# SPDX-License-Identifier: MIT
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -18,7 +18,7 @@
 
 
 # Prepares UTF-8 output for the interactive repository launcher.
-function Initialize-PromptMeUpMenu {
+function Initialize-HelpMeMenu {
     try {
         [Console]::OutputEncoding = [Text.Encoding]::UTF8
         $global:OutputEncoding = [Text.Encoding]::UTF8
@@ -29,14 +29,14 @@ function Initialize-PromptMeUpMenu {
 }
 
 # Writes the open-layout launcher heading without clearing terminal scrollback.
-function Write-PromptMeUpMenuHeader {
+function Write-HelpMeMenuHeader {
     Write-Host ''
-    Write-Host 'PromptMeUp repository tools' -ForegroundColor Cyan
+    Write-Host 'HelpMe repository tools' -ForegroundColor Cyan
     Write-Host ('-' * 58) -ForegroundColor DarkCyan
 }
 
 # Writes one numbered launcher action.
-function Write-PromptMeUpMenuItem {
+function Write-HelpMeMenuItem {
     param(
         [Parameter(Mandatory)][int]$Number,
         [Parameter(Mandatory)][string]$Icon,
@@ -51,7 +51,7 @@ function Write-PromptMeUpMenuItem {
 }
 
 # Reads a bounded numeric choice, treating zero and Escape text as exit.
-function Read-PromptMeUpMenuChoice {
+function Read-HelpMeMenuChoice {
     param([Parameter(Mandatory)][int]$Maximum)
 
     while ($true) {
@@ -75,7 +75,7 @@ function Read-PromptMeUpMenuChoice {
 }
 
 # Pauses after an interactive action so its output remains readable.
-function Wait-PromptMeUpMenu {
+function Wait-HelpMeMenu {
     Write-Host ''
     $null = Read-Host '  Press Enter to return to the menu'
 }

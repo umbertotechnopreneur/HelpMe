@@ -1,0 +1,547 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+using HelpMe.Models;
+
+namespace HelpMe.Services;
+
+/// <summary>Parses command-line arguments into validated application options.</summary>
+public interface ICommandLineParser
+{
+    #region Methods
+
+    /// <summary>Parses and validates the supplied command-line arguments.</summary>
+    CommandLineParseResult Parse(IReadOnlyList<string> args);
+
+    #endregion
+}
+
+/// <summary>Parses the supported command-line switches into a single validated command request.</summary>
+public sealed class CommandLineParser : ICommandLineParser
+{
+    #region Fields
+
+    private readonly ILocalizationService _text;
+
+    #endregion
+
+    #region Initialization
+
+    /// <summary>Creates the strict command-line parser with localized validation messages.</summary>
+    public CommandLineParser(ILocalizationService text)
+    {
+        _text = text;
+    }
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Parses one strict hm invocation without performing environment or network work.</summary>
+    public CommandLineParseResult Parse(IReadOnlyList<string> args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        var command = AppCommand.Main;
+        string? language = null;
+        var noAnimation = false;
+        var noEmoji = false;
+        var yes = false;
+        var dryRun = false;
+        string? pathAction = null;
+        string? inputFile = null;
+        string? outputFile = null;
+        string? resumeId = null;
+        string? previewAction = null;
+        string? prefix = null;
+        string? pattern = null;
+        var resetAll = false;
+        var commandWasSelected = false;
+        var queryOptionWasSpecified = false;
+        var queryParts = new List<string>();
+
+        for (var index = 0; index < args.Count; index++)
+        {
+            var argument = args[index];
+            switch (argument.ToLowerInvariant())
+            {
+                case "--direct":
+                    if (command == AppCommand.Direct)
+                    {
+                        return Failure("Direct.Usage");
+                    }
+                    if (!TrySelect(AppCommand.Direct, ref command, ref commandWasSelected, out var directError))
+                    {
+                        return FailureMessage(directError);
+                    }
+                    break;
+                case "--skills" or "--learning" or "--proposals" or "--dream" or "--heartbeat":
+                    var skillsAndMemoryCommand = argument.ToLowerInvariant() switch
+                    {
+                        "--skills" => AppCommand.Skills,
+                        "--learning" => AppCommand.Learning,
+                        "--proposals" => AppCommand.Proposals,
+                        "--dream" => AppCommand.Dream,
+                        _ => AppCommand.Heartbeat
+                    };
+                    if (!TrySelect(skillsAndMemoryCommand, ref command, ref commandWasSelected, out var skillsError))
+                    {
+                        return FailureMessage(skillsError);
+                    }
+                    break;
+                case "--preview":
+                    if (!TrySelect(AppCommand.Preview, ref command, ref commandWasSelected, out var previewError))
+                    {
+                        return FailureMessage(previewError);
+                    }
+                    if (previewAction is not null || !TryReadValue(args, ref index, argument, out previewAction, out _))
+                    {
+                        return Failure("Preview.Usage");
+                    }
+                    previewAction = previewAction!.ToLowerInvariant();
+                    break;
+                case "--prefix":
+                    if (prefix is not null || !TryReadValue(args, ref index, argument, out prefix, out _))
+                    {
+                        return Failure("Preview.Usage");
+                    }
+                    break;
+                case "--pattern":
+                    if (pattern is not null || !TryReadValue(args, ref index, argument, out pattern, out _))
+                    {
+                        return Failure("Preview.Usage");
+                    }
+                    break;
+                case "--plan":
+                    if (!TrySelect(AppCommand.Plan, ref command, ref commandWasSelected, out var planError))
+                    {
+                        return FailureMessage(planError);
+                    }
+                    break;
+                case "--resume":
+                    if (resumeId is not null || !TryReadValue(args, ref index, argument, out resumeId, out _))
+                    {
+                        return Failure("Plan.Usage");
+                    }
+                    break;
+                case "--script":
+                    if (!TrySelect(AppCommand.Script, ref command, ref commandWasSelected, out var scriptError))
+                    {
+                        return FailureMessage(scriptError);
+                    }
+                    break;
+                case "--output":
+                    if (outputFile is not null || !TryReadValue(args, ref index, argument, out outputFile, out _))
+                    {
+                        return Failure("Script.OutputOption");
+                    }
+                    break;
+                case "--diagnose":
+                    if (!TrySelect(AppCommand.Diagnose, ref command, ref commandWasSelected, out var diagnoseError))
+                    {
+                        return FailureMessage(diagnoseError);
+                    }
+                    break;
+                case "--file":
+                    if (inputFile is not null || !TryReadValue(args, ref index, argument, out inputFile, out _))
+                    {
+                        return Failure("Input.FileOption");
+                    }
+                    break;
+                case "--help" or "-h" or "/?":
+                    if (!TrySelect(AppCommand.Help, ref command, ref commandWasSelected, out var helpError))
+                    {
+                        return FailureMessage(helpError);
+                    }
+                    break;
+                case "--version" or "-v":
+                    if (!TrySelect(AppCommand.Version, ref command, ref commandWasSelected, out var versionError))
+                    {
+                        return FailureMessage(versionError);
+                    }
+                    break;
+                case "--about":
+                    if (!TrySelect(AppCommand.About, ref command, ref commandWasSelected, out var aboutError))
+                    {
+                        return FailureMessage(aboutError);
+                    }
+                    break;
+                case "--setup":
+                    if (!TrySelect(AppCommand.Setup, ref command, ref commandWasSelected, out var setupError))
+                    {
+                        return FailureMessage(setupError);
+                    }
+                    break;
+                case "--reset":
+                    if (!TrySelect(AppCommand.Reset, ref command, ref commandWasSelected, out var resetError))
+                    {
+                        return FailureMessage(resetError);
+                    }
+                    if (index + 1 < args.Count && args[index + 1].Equals("all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        resetAll = true;
+                        index++;
+                    }
+                    break;
+                case "--ai-settings" or "--ai-setup":
+                    if (!TrySelect(AppCommand.AiSettings, ref command, ref commandWasSelected, out var aiSettingsError))
+                    {
+                        return FailureMessage(aiSettingsError);
+                    }
+                    break;
+                case "--theme":
+                    if (!TrySelect(AppCommand.Theme, ref command, ref commandWasSelected, out var themeError))
+                    {
+                        return FailureMessage(themeError);
+                    }
+                    break;
+                case "--status":
+                    if (!TrySelect(AppCommand.Status, ref command, ref commandWasSelected, out var statusError))
+                    {
+                        return FailureMessage(statusError);
+                    }
+                    break;
+                case "--lenna":
+                    if (!TrySelect(AppCommand.Lenna, ref command, ref commandWasSelected, out var lennaError))
+                    {
+                        return FailureMessage(lennaError);
+                    }
+                    break;
+                case "--chat":
+                    if (!TrySelect(AppCommand.Chat, ref command, ref commandWasSelected, out var chatError))
+                    {
+                        return FailureMessage(chatError);
+                    }
+                    break;
+                case "--remember" or "/remember" or "--forget" or "/forget":
+                    var memoryCommand = argument.EndsWith("remember", StringComparison.OrdinalIgnoreCase)
+                        ? AppCommand.Remember : AppCommand.Forget;
+                    if (commandWasSelected && command == memoryCommand)
+                    {
+                        return Failure("MemoryCli.Usage");
+                    }
+                    if (!TrySelect(memoryCommand, ref command, ref commandWasSelected, out var memoryError))
+                    {
+                        return FailureMessage(memoryError);
+                    }
+                    if (!TryReadValue(args, ref index, argument, out var memoryText, out var missingMemory))
+                    {
+                        return FailureMessage(missingMemory);
+                    }
+                    queryParts.Add(memoryText!);
+                    break;
+                case "--memories":
+                    if (!TrySelect(AppCommand.Memories, ref command, ref commandWasSelected, out var memoriesError))
+                    {
+                        return FailureMessage(memoriesError);
+                    }
+                    break;
+                case "--test-ai":
+                    if (!TrySelect(AppCommand.TestAi, ref command, ref commandWasSelected, out var testError))
+                    {
+                        return FailureMessage(testError);
+                    }
+                    break;
+                case "--costs":
+                    if (!TrySelect(AppCommand.Costs, ref command, ref commandWasSelected, out var costsError))
+                    {
+                        return FailureMessage(costsError);
+                    }
+                    break;
+                case "--prepare-logs":
+                    if (!TrySelect(AppCommand.PrepareLogs, ref command, ref commandWasSelected, out var prepareLogsError))
+                    {
+                        return FailureMessage(prepareLogsError);
+                    }
+                    break;
+                case "--third-party":
+                    if (!TrySelect(AppCommand.ThirdParty, ref command, ref commandWasSelected, out var thirdPartyError))
+                    {
+                        return FailureMessage(thirdPartyError);
+                    }
+                    break;
+                case "--where" or "-where":
+                    if (!TrySelect(AppCommand.Where, ref command, ref commandWasSelected, out var whereError))
+                    {
+                        return FailureMessage(whereError);
+                    }
+                    break;
+                case "--install-font":
+                    if (!TrySelect(AppCommand.InstallFont, ref command, ref commandWasSelected, out var fontError))
+                    {
+                        return FailureMessage(fontError);
+                    }
+                    break;
+                case "--path":
+                    if (!TrySelect(AppCommand.Path, ref command, ref commandWasSelected, out var pathError))
+                    {
+                        return FailureMessage(pathError);
+                    }
+                    if (index + 1 < args.Count && !args[index + 1].StartsWith('-'))
+                    {
+                        pathAction = args[++index].Trim().ToLowerInvariant();
+                        if (!IsPathAction(pathAction))
+                        {
+                            return Failure("Cli.PathAction");
+                        }
+                    }
+                    break;
+                case "--query" or "-q":
+                    if (queryOptionWasSpecified)
+                    {
+                        return Failure("Cli.QueryDuplicate");
+                    }
+                    if (!TrySelect(AppCommand.Query, ref command, ref commandWasSelected, out var queryError))
+                    {
+                        return FailureMessage(queryError);
+                    }
+                    if (!TryReadValue(args, ref index, argument, out var queryValue, out var missingQuery))
+                    {
+                        return FailureMessage(missingQuery);
+                    }
+                    queryOptionWasSpecified = true;
+                    queryParts.Add(queryValue!);
+                    break;
+                case "--language" or "-l":
+                    if (!TryReadValue(args, ref index, argument, out language, out var missingLanguage))
+                    {
+                        return FailureMessage(missingLanguage);
+                    }
+                    if (!SupportedLanguages.IsSupported(language))
+                    {
+                        return Failure("Cli.UnsupportedLanguage", language, string.Join(", ", SupportedLanguages.Codes));
+                    }
+                    language = SupportedLanguages.Normalize(language!);
+                    _text.SetLanguage(language);
+                    break;
+                case "--no-animation":
+                    noAnimation = true;
+                    break;
+                case "--no-emoji":
+                    noEmoji = true;
+                    break;
+                case "--yes" or "-y":
+                    yes = true;
+                    break;
+                case "--dry-run":
+                    dryRun = true;
+                    break;
+                default:
+                    if (argument.StartsWith("--query=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (queryOptionWasSpecified)
+                        {
+                            return Failure("Cli.QueryDuplicate");
+                        }
+                        if (!TrySelect(AppCommand.Query, ref command, ref commandWasSelected, out var inlineQueryError))
+                        {
+                            return FailureMessage(inlineQueryError);
+                        }
+                        var inlineQueryValue = argument[(argument.IndexOf('=') + 1)..].Trim();
+                        if (string.IsNullOrWhiteSpace(inlineQueryValue))
+                        {
+                            return Failure("Cli.QueryText");
+                        }
+                        queryOptionWasSpecified = true;
+                        queryParts.Add(inlineQueryValue);
+                    }
+                    else if (argument.StartsWith("--language=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        language = argument[(argument.IndexOf('=') + 1)..].Trim();
+                        if (!SupportedLanguages.IsSupported(language))
+                        {
+                            return Failure("Cli.UnsupportedLanguage", language, string.Join(", ", SupportedLanguages.Codes));
+                        }
+                        language = SupportedLanguages.Normalize(language);
+                        _text.SetLanguage(language);
+                    }
+                    else if (argument.StartsWith("--path=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!TrySelect(AppCommand.Path, ref command, ref commandWasSelected, out var inlinePathError))
+                        {
+                            return FailureMessage(inlinePathError);
+                        }
+                        pathAction = argument[(argument.IndexOf('=') + 1)..].Trim().ToLowerInvariant();
+                        if (!IsPathAction(pathAction))
+                        {
+                            return Failure("Cli.PathAction");
+                        }
+                    }
+                    else
+                    {
+                        if (argument.StartsWith('-'))
+                        {
+                            return Failure("Cli.UnknownArgument", argument);
+                        }
+
+                        queryParts.Add(argument);
+                    }
+                    break;
+            }
+        }
+
+        if (!commandWasSelected && queryParts.Count == 1
+            && (queryParts[0].Equals("lenna", StringComparison.OrdinalIgnoreCase)
+                || queryParts[0].Equals("about", StringComparison.OrdinalIgnoreCase)))
+        {
+            command = queryParts[0].Equals("lenna", StringComparison.OrdinalIgnoreCase)
+                ? AppCommand.Lenna
+                : AppCommand.About;
+            commandWasSelected = true;
+            queryParts.Clear();
+        }
+
+        string? query = null;
+        if (queryParts.Count > 0)
+        {
+            if (commandWasSelected && command is not (AppCommand.Query or AppCommand.Direct or AppCommand.Diagnose or AppCommand.Script or AppCommand.Plan or AppCommand.Remember or AppCommand.Forget))
+            {
+                return Failure("Cli.PositionalConflict");
+            }
+
+            command = command is AppCommand.Direct or AppCommand.Diagnose or AppCommand.Script or AppCommand.Plan or AppCommand.Remember or AppCommand.Forget ? command : AppCommand.Query;
+            commandWasSelected = true;
+            query = string.Join(' ', queryParts).Trim();
+        }
+
+        if (command == AppCommand.Query && string.IsNullOrWhiteSpace(query))
+        {
+            return Failure("Cli.QueryText");
+        }
+
+        if (command == AppCommand.Direct && string.IsNullOrWhiteSpace(query))
+        {
+            return Failure("Direct.Usage");
+        }
+
+        if (query is not null && !string.Equals(query, new SensitiveDataRedactor().Redact(query), StringComparison.Ordinal))
+        {
+            return Failure("Input.SecretArgument");
+        }
+
+        if (dryRun && command != AppCommand.InstallFont)
+        {
+            return Failure("Cli.DryRunScope");
+        }
+
+        if (inputFile is not null && command is not (AppCommand.Script or AppCommand.Preview)
+            && (command != AppCommand.Diagnose || query is not null))
+        {
+            return Failure("Input.SourceConflict");
+        }
+
+        if ((outputFile is not null && command is not (AppCommand.Script or AppCommand.Preview))
+            || (command == AppCommand.Script && string.IsNullOrWhiteSpace(query)))
+        {
+            return Failure("Script.Usage");
+        }
+
+        if ((command != AppCommand.Preview && (prefix is not null || pattern is not null))
+            || (command == AppCommand.Preview && (inputFile is null || previewAction is not ("copy" or "move" or "rename" or "delete")
+                || (previewAction is "copy" or "move") != (outputFile is not null)
+                || (previewAction == "rename") != (prefix is not null))))
+        {
+            return Failure("Preview.Usage");
+        }
+
+        if ((resumeId is not null && (command != AppCommand.Plan || query is not null || !Guid.TryParseExact(resumeId, "N", out _)))
+            || (command == AppCommand.Plan && query is null && resumeId is null))
+        {
+            return Failure("Plan.Usage");
+        }
+
+        return new CommandLineParseResult(
+            new CommandLineOptions(command, query, language, noAnimation, noEmoji, yes, dryRun, pathAction, inputFile, outputFile, resumeId, previewAction, prefix, pattern, resetAll),
+            null);
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Selects one top-level command and rejects ambiguous command combinations.</summary>
+    private bool TrySelect(
+        AppCommand selected,
+        ref AppCommand command,
+        ref bool commandWasSelected,
+        out string? error)
+    {
+        if (commandWasSelected && command != selected)
+        {
+            error = _text.Text("Cli.CommandConflict", $"--{ToSwitch(command)}", $"--{ToSwitch(selected)}");
+            return false;
+        }
+
+        command = selected;
+        commandWasSelected = true;
+        error = null;
+        return true;
+    }
+
+    /// <summary>Reads one required non-empty value following a command-line option.</summary>
+    private bool TryReadValue(
+        IReadOnlyList<string> args,
+        ref int index,
+        string option,
+        out string? value,
+        out string? error)
+    {
+        if (index + 1 >= args.Count || args[index + 1].StartsWith('-'))
+        {
+            value = null;
+            error = _text.Text("Cli.ValueRequired", option);
+            return false;
+        }
+
+        value = args[++index].Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            error = _text.Text("Cli.NonEmptyValueRequired", option);
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    /// <summary>Creates a failed parse result with a stable user-facing message.</summary>
+    private CommandLineParseResult Failure(string key, params object?[] arguments) =>
+        new(null, _text.Text(key, arguments));
+
+    /// <summary>Creates a failed parse result from an already localized validation message.</summary>
+    private CommandLineParseResult FailureMessage(string? message) =>
+        new(null, message ?? _text.Text("Cli.Invalid"));
+
+    /// <summary>Checks the bounded action vocabulary for portable PATH management.</summary>
+    private static bool IsPathAction(string? action) => action is "install" or "remove" or "status";
+
+    /// <summary>Maps command identifiers to their public kebab-case switch names.</summary>
+    private static string ToSwitch(AppCommand command) => command switch
+    {
+        AppCommand.TestAi => "test-ai",
+        AppCommand.AiSettings => "ai-settings",
+        AppCommand.Theme => "theme",
+        AppCommand.InstallFont => "install-font",
+        AppCommand.PrepareLogs => "prepare-logs",
+        AppCommand.ThirdParty => "third-party",
+        AppCommand.Path => "path",
+        _ => command.ToString().ToLowerInvariant()
+    };
+
+    #endregion
+}

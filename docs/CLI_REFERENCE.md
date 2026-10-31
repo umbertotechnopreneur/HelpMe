@@ -1,4 +1,4 @@
-# PromptMeUp command guide
+# HelpMe command guide
 
 Ask `hm` a terminal question, check its answer, and choose whether to run a suggested command. `hm` means **help me** and works on Windows, Linux, and macOS.
 
@@ -6,13 +6,13 @@ Ask `hm` a terminal question, check its answer, and choose whether to run a sugg
 
 The Microsoft Store edition gives you all features during its 30-day trial. A small notice in the prompt, welcome, Setup, and About shows the remaining days and links to Microsoft Store. The final partial day is shown as one day.
 
-When the trial expires, only `hm --about` and `hm --help` remain available. Other commands return exit code `3` and show a purchase link. Help stays read-only after expiration. PromptMeUp checks licensing again before provider requests and command execution in sessions that remain open. Buying the app enables subsequent operations once the Store reports your active full license.
+When the trial expires, only `hm --about` and `hm --help` remain available. Other commands return exit code `3` and show a purchase link. Help stays read-only after expiration. HelpMe checks licensing again before provider requests and command execution in sessions that remain open. Buying the app enables subsequent operations once the Store reports your active full license.
 
 The countdown uses the expiration supplied by Microsoft Store. Resetting preferences does not restart the trial. If the license cannot be verified, operational commands remain blocked; open the Store and try again. Debug builds and unpackaged source builds do not use commercial Store licensing.
 
 ## Skills and memory
 
-PromptMeUp includes opt-in `hm --skills`, `hm --learning`, `hm --dream`, `hm --heartbeat`, and `hm --proposals` screens. They require an interactive terminal. The same names are available as slash commands inside chat. `hm --proposals` opens the suggested-memory entry in the shared memory editor. `--yes` never approves skill actions or memory changes.
+HelpMe includes opt-in `hm --skills`, `hm --learning`, `hm --dream`, `hm --heartbeat`, and `hm --proposals` screens. They require an interactive terminal. The same names are available as slash commands inside chat. `hm --proposals` opens the suggested-memory entry in the shared memory editor. `--yes` never approves skill actions or memory changes.
 
 See the [skills and memory guide](SKILLS_AND_MEMORY.md) before collecting messages or importing a skill. Dream and heartbeat suggest changes; they do not silently change saved notes or schedule background work.
 
@@ -134,7 +134,7 @@ command list. Help after an invalid command also stays below the error so you
 can still read it. If you shrink an open fullscreen guide too far, it asks you
 to enlarge the window or close help.
 
-## About PromptMeUp
+## About HelpMe
 
 ```powershell
 hm about
@@ -203,9 +203,9 @@ activity and usage records. Use `hm --learning` to manage learning.
 
 Skills remain disabled until you enable them with `hm --skills`. The final welcome
 screen suggests a first question, chat, and diagnosis command. It offers **Open the
-PDF guide** to open the installed [two-page command guide](../output/pdf/promptmeup-quick-reference.pdf)
+PDF guide** to open the installed [two-page command guide](../output/pdf/helpme-quick-reference.pdf)
 in your default PDF reader. **Finish** is selected by default. The English PDF is
-included with the app at `docs/promptmeup-quick-reference.pdf` beside the executable,
+included with the app at `docs/helpme-quick-reference.pdf` beside the executable,
 works offline, and can be opened again from **Command guide (PDF)** in `hm --help`
 without setup or an API key. The final screen also shows
 `hm --status`, `hm --prepare-logs`, `hm --help`, and `hm --setup` as recovery and
@@ -215,7 +215,7 @@ request automatically. Once the command alias or PATH is configured, you can use
 
 With the Windows MSIX installed and its `hm` execution alias enabled, the final
 step also offers an unchecked desktop shortcut option. Selecting it creates a
-PromptMeUp icon that opens `hm` directly in your default terminal. It preserves
+HelpMe icon that opens `hm` directly in your default terminal. It preserves
 an existing shortcut and does not change your terminal or shell preferences.
 
 ## Change the model or conversation limits
@@ -262,10 +262,10 @@ million tokens, with the selected model highlighted. Prices cover input, cached
 input, and output; missing cached prices are marked unavailable. Use Ctrl+Up and
 Ctrl+Down to scroll the overview. Opening it does not refresh prices.
 
-To override the saved input budget, set `PROMPTMEUP_CONTEXT_TOKENS` before launch:
+To override the saved input budget, set `HELPME_CONTEXT_TOKENS` before launch:
 
 ```powershell
-$env:PROMPTMEUP_CONTEXT_TOKENS = '24000'
+$env:HELPME_CONTEXT_TOKENS = '24000'
 hm --chat
 ```
 
@@ -300,7 +300,7 @@ stops the remaining operations.
 
 ## Follow a resumable plan
 
-Use `hm --plan "Build, test, and package this project"`. PromptMeUp creates one
+Use `hm --plan "Build, test, and package this project"`. HelpMe creates one
 to ten ordered PowerShell steps, saves their pending state locally, and shows
 `hm --plan --resume <id>`. The plan must be resumed from its original directory.
 
@@ -343,14 +343,14 @@ Set these environment variables before starting `hm`. Check their values with
 
 | Variable | Default | Accepted values | Scope |
 | --- | --- | --- | --- |
-| `PROMPTMEUP_MAX_SCRIPT_MIB` | `1` | Integer `1`–`64` | UTF-8 script source, for both reading and saving. |
-| `PROMPTMEUP_MAX_PLAN_MIB` | `8` | Integer `1`–`64` | Complete serialized UTF-8 JSON for plans. |
-| `PROMPTMEUP_MAX_ARTIFACT_OUTPUT_TOKENS` | `16384` | Integer `1`–`65536` | Provider output budget for script and plan generation. |
+| `HELPME_MAX_SCRIPT_MIB` | `1` | Integer `1`–`64` | UTF-8 script source, for both reading and saving. |
+| `HELPME_MAX_PLAN_MIB` | `8` | Integer `1`–`64` | Complete serialized UTF-8 JSON for plans. |
+| `HELPME_MAX_ARTIFACT_OUTPUT_TOKENS` | `16384` | Integer `1`–`65536` | Provider output budget for script and plan generation. |
 
 ```powershell
-$env:PROMPTMEUP_MAX_SCRIPT_MIB = '4'
-$env:PROMPTMEUP_MAX_PLAN_MIB = '16'
-$env:PROMPTMEUP_MAX_ARTIFACT_OUTPUT_TOKENS = '32768'
+$env:HELPME_MAX_SCRIPT_MIB = '4'
+$env:HELPME_MAX_PLAN_MIB = '16'
+$env:HELPME_MAX_ARTIFACT_OUTPUT_TOKENS = '32768'
 hm --status
 ```
 
@@ -384,7 +384,7 @@ suggested check before it runs. Piped input only produces suggestions.
 
 `--dry-run` is accepted only with `--install-font`. Unknown options, unsupported languages, invalid PATH actions, missing values, and conflicting commands return exit code `2` without guessing.
 
-PromptMeUp helps with terminal tasks. It doesn't generate images or write, edit, or translate general prose. AI questions include a filtered summary of your current folder, operating system, shell, CPU, memory, and GPU name when available, so the suggested commands fit your machine.
+HelpMe helps with terminal tasks. It doesn't generate images or write, edit, or translate general prose. AI questions include a filtered summary of your current folder, operating system, shell, CPU, memory, and GPU name when available, so the suggested commands fit your machine.
 
 ## Keep a conversation moving
 
@@ -485,7 +485,7 @@ An upgrade preserves existing notes, including their IDs and dates. If the older
 list has more than 100, you can still read, edit, or delete those notes.
 `/memories` lists the notes available here; use an ID from that list with `/forget`.
 
-For each query or chat request, PromptMeUp considers the shared list of notes.
+For each query or chat request, HelpMe considers the shared list of notes.
 It loads at most five notes, within
 800 estimated tokens including their formatting. Selection happens locally,
 without an extra AI call. Saving more notes does not make every request larger.
@@ -500,7 +500,7 @@ to remove a saved note from future selection. Neither command erases earlier
 audit records or recorded usage, and `/forget` does not remove text already in
 the active conversation.
 
-### Ask about PromptMeUp
+### Ask about HelpMe
 
 Ask in your own words, for example, "How do I change this app's conversation
 budget?" or "How do saved memories work?" The assistant can request relevant
@@ -518,7 +518,7 @@ Skills and memory have dedicated chapters too. Try asking:
 The assistant explains the relevant steps; it does not enable features, run a
 skill, approve a memory, or create a reminder just by answering.
 
-PromptMeUp supplies up to two chapters in your selected language, then makes
+HelpMe supplies up to two chapters in your selected language, then makes
 one additional AI call for the answer. The guide stays available for follow-up
 questions. New topics can replace earlier chapters; `/clear` removes the loaded
 guide from the active context. Reading a chapter only reads packaged help. It
@@ -576,7 +576,7 @@ is the smallest of your saved or overridden budget, your chosen percentage of
 the model window, and the space left after reserving output tokens. Instructions
 and notes count toward that limit, along with the conversation.
 
-As the conversation grows, PromptMeUp removes the oldest complete turns to fit
+As the conversation grows, HelpMe removes the oldest complete turns to fit
 the budget and turn limit. If a new request cannot fit even without older turns,
 it shows an explanation and keeps chat open so you can shorten the request.
 Completed answers are shown in full even when they are too large to keep for
@@ -613,14 +613,14 @@ Read-only commands such as `--help`, `--about`, `--version`, `--status`, `--thir
 - fish: a marked block in `~/.config/fish/config.fish`;
 - other Unix shells: a marked block in `~/.profile`.
 
-Removal touches only the exact Windows entry or the clearly marked PromptMeUp block. Companion `hm-path.ps1` and `hm-path.sh` scripts call the same application flow.
+Removal touches only the exact Windows entry or the clearly marked HelpMe block. Companion `hm-path.ps1` and `hm-path.sh` scripts call the same application flow.
 
 ## Data-directory override
 
-Set `PROMPTMEUP_DATA_DIR` before launch to place the database and logs in a specific directory:
+Set `HELPME_DATA_DIR` before launch to place the database and logs in a specific directory:
 
 ```powershell
-$env:PROMPTMEUP_DATA_DIR = 'D:\PortableData\PromptMeUp'
+$env:HELPME_DATA_DIR = 'D:\PortableData\HelpMe'
 hm --status
 ```
 

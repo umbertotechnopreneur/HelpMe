@@ -1,0 +1,509 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using System.Text.RegularExpressions;
+using HelpMe.Models;
+using HelpMe.Services;
+using HelpMe.Views;
+using Spectre.Console;
+
+namespace HelpMe.Tests;
+
+/// <summary>Verifies terminal view behavior.</summary>
+public sealed class TerminalViewTests
+{
+
+    #region Methods
+
+    /// <summary>Escape cancels only the active command and releases input polling before the next prompt.</summary>
+    /// <param name="wrapped">Whether input uses the application's general Escape cancellation wrapper.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommandOutput_EscapeRequestsLocalStop(bool wrapped)
+    {
+        var keys = new Queue<ConsoleKeyInfo>([new('\u001b', ConsoleKey.Escape, false, false, false)]);
+        var input = TestProxy.Create<IAnsiConsoleInput>((method, _) => method.Name switch
+        {
+            "IsKeyAvailable" => keys.Count > 0,
+            "ReadKeyAsync" => Task.FromResult<ConsoleKeyInfo?>(keys.Dequeue()),
+            _ => throw new NotSupportedException(method.Name)
+        });
+        var rendering = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(new StringWriter())
+        });
+        rendering.Profile.Capabilities.Interactive = true;
+        IAnsiConsoleInput sessionInput = wrapped
+            ? new EscapeAwareConsoleInput(input, CancellationToken.None)
+            : input;
+        var console = TestProxy.Create<IAnsiConsole>((method, args) =>
+            method.Name == "get_Input" ? sessionInput : method.Invoke(rendering, args));
+        using (var live = new TerminalCommandOutput(console, new LocalizationService(), TimeSpan.FromSeconds(30)))
+        {
+            var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var registration = live.StopToken.Register(() => stopped.TrySetResult());
+            await stopped.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(live.StopToken.IsCancellationRequested);
+        }
+        Assert.Empty(keys);
+    }
+
+    /// <summary>Keeps the supplied branding and URL readable without requiring terminal image support.</summary>
+    /// <param name="width">Terminal width covering narrow fallback and full color artwork.</param>
+    /// <param name="color">Whether ANSI color output is supported.</param>
+    [Theory]
+    [InlineData(48, false)]
+    [InlineData(120, false)]
+    [InlineData(60, true)]
+    [InlineData(120, true)]
+    public void VibeWareBrand_AdaptsWithoutHidingContentOrManifesto(int width, bool color)
+    {
+        var output = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = color ? AnsiSupport.Yes : AnsiSupport.No,
+            ColorSystem = color ? ColorSystemSupport.TrueColor : ColorSystemSupport.NoColors,
+            Out = new AnsiConsoleOutput(output)
+        });
+        console.Profile.Width = width;
+        console.Profile.Capabilities.Unicode = true;
+        console.Profile.Capabilities.Links = false;
+        console.Write(new VibeWareBrand(console, new Text("Product details stay visible")));
+
+        var rendered = StripAnsi(output.ToString());
+        Assert.Contains("Product details stay visible", rendered);
+        Assert.Contains("VibeWare", rendered);
+        Assert.Contains(VibeWareBrand.ManifestoUrl, Regex.Replace(rendered, @"\s+", ""));
+        Assert.All(rendered.Split('\n'), line => Assert.True(line.TrimEnd('\r').Length <= width));
+        Assert.Equal(color && width >= 88, rendered.Contains('▀'));
+        if (color && width >= 88)
+        {
+            Assert.All(rendered.Split('\n').Where(line => line.Contains('▀')),
+                line => Assert.True(line.IndexOf('▀') >= width - 20));
+        }
+    }
+
+    /// <summary>Verifies that icon labels have no leading space and keep a separator after emoji or ASCII prefixes.</summary>
+    [Fact]
+    public void IconPrefix_OmitsLeadingSpace()
+    {
+        Assert.Equal("🇮🇹 ", TerminalTheme.IconPrefix(new ConsoleRenderOptions(false, false), "🇮🇹", "@"));
+        Assert.Equal("@\u00A0", TerminalTheme.IconPrefix(new ConsoleRenderOptions(false, true), "🇮🇹", "@"));
+    }
+
+    /// <summary>Verifies that every setup language choice starts with its spaced country flag.</summary>
+    [Fact]
+    public void SetupLanguageChoices_RenderCountryFlags()
+    {
+        var options = new ConsoleRenderOptions(NoAnimation: true, NoEmoji: false);
+
+        foreach (var language in SupportedLanguages.All)
+        {
+            var rendered = FullscreenSetupView.LanguageLabel(language, options);
+            Assert.StartsWith($"{language.Flag} {language.NativeName}", rendered, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Verifies the chat intro stays short while help preserves the full localized command guide.</summary>
+    [Fact]
+    public void ChatIntro_OffersCompactShortcutsAndFullHelpWithoutCards()
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        text.SetLanguage("it");
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        shell.Configure(new ConsoleRenderOptions(NoAnimation: true, NoEmoji: false));
+        var view = new ChatView(console, text, new PoorMarkdownRenderer(console), shell);
+
+        view.RenderIntro();
+
+        var intro = output.ToString();
+        Assert.Contains("/help", intro, StringComparison.Ordinal);
+        Assert.DoesNotContain("/clear", intro, StringComparison.Ordinal);
+        Assert.DoesNotContain("/remember", intro, StringComparison.Ordinal);
+
+        view.RenderCommandGuide();
+
+        var rendered = output.ToString();
+        Assert.Contains("/run <comando>", rendered, StringComparison.Ordinal);
+        Assert.Contains("/clear", rendered, StringComparison.Ordinal);
+        Assert.Contains("/costs", rendered, StringComparison.Ordinal);
+        Assert.Contains("/status", rendered, StringComparison.Ordinal);
+        Assert.Contains("/context", rendered, StringComparison.Ordinal);
+        Assert.Contains("/remember <testo>", rendered, StringComparison.Ordinal);
+        Assert.Contains("/memories", rendered, StringComparison.Ordinal);
+        Assert.Contains("/forget <id>", rendered, StringComparison.Ordinal);
+        Assert.Contains("Memorie in chat:", rendered, StringComparison.Ordinal);
+        Assert.Contains("/exit", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("╭", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("╮", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies that teletype rendering preserves formatted content without exposing Markdown markers.</summary>
+    [Fact]
+    public void MarkdownAnimation_RendersContentWithoutRawMarkers()
+    {
+        var (console, output) = CreateConsole();
+        var renderer = new PoorMarkdownRenderer(console);
+
+        renderer.RenderAnimated("Testo **importante** con `codice`.", CancellationToken.None);
+
+        var rendered = StripAnsi(output.ToString());
+        Assert.Contains("Testo importante con codice.", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("**", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("`", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>Checks that wrapping retains every word and Unicode grapheme with identical static and animated output.</summary>
+    [Theory]
+    [InlineData(32)]
+    [InlineData(200)]
+    public void MarkdownWrapping_PreservesContentAcrossTerminalWidths(int width)
+    {
+        var (console, output) = CreateConsole();
+        console.Profile.Width = width;
+        var renderer = new PoorMarkdownRenderer(console);
+        var markdown = string.Join(" ", Enumerable.Repeat("Testo **importante** con `codice`.", 8)) + "\n\nCaffè 👩‍💻.";
+        var expected = markdown.Replace("**", string.Empty).Replace("`", string.Empty);
+
+        renderer.Render(markdown);
+        var rendered = StripAnsi(output.ToString());
+        Assert.Equal(Regex.Replace(expected, @"\s+", " ").Trim(), Regex.Replace(rendered, @"\s+", " ").Trim());
+        Assert.Contains("👩‍💻", rendered, StringComparison.Ordinal);
+        Assert.All(rendered.Split('\n'), line => Assert.True(line.TrimEnd('\r').Length <= Math.Min(108, width - 1)));
+
+        output.GetStringBuilder().Clear();
+        renderer.RenderAnimated(markdown, CancellationToken.None);
+        Assert.Equal(rendered, StripAnsi(output.ToString()));
+    }
+
+    /// <summary>Shares the exact parsed document between the displayed answer and retained history.</summary>
+    [Fact]
+    public void ChatAnswer_ReusesParsedDocumentForHistory()
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        shell.Configure(new ConsoleRenderOptions(NoAnimation: true, NoEmoji: false));
+        var renderer = new PoorMarkdownRenderer(console);
+        MarkdownDocument? displayed = null;
+        var capture = TestProxy.Create<IPoorMarkdownRenderer>((method, arguments) =>
+        {
+            displayed = Assert.IsType<MarkdownDocument>(arguments[0]);
+            renderer.Render(displayed, (bool)arguments[1]!, (CancellationToken)arguments[2]!);
+            return null;
+        });
+        var view = new ChatView(console, text, capture, shell);
+
+        view.RenderAssistant("## Result\nA **formatted** answer.\n```sh\necho '[red]'\n```", false, default);
+
+        Assert.Same(displayed, Assert.Single(TerminalSession.For(console).History.Turns).Content);
+        var rendered = StripAnsi(output.ToString());
+        Assert.Contains("A formatted answer.", rendered);
+        Assert.Contains("echo '[red]'", rendered);
+        Assert.DoesNotContain("**", rendered);
+    }
+
+    /// <summary>Verifies that status data uses frameless localized label-value rows.</summary>
+    [Fact]
+    public void StatusView_RendersFramelessLabelValueGrid()
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        text.SetLanguage("it");
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        shell.Configure(new ConsoleRenderOptions(NoAnimation: true, NoEmoji: false));
+        var status = new AppStatus(
+            AppSettings.Default with { Language = "it" },
+            HasApiKey: true,
+            HasAdminKey: false,
+            LastPricingSync: null,
+            DatabasePath: "data.db",
+            LogsDirectory: "logs",
+            PromptDirectory: "prompt",
+            PromptCount: 4);
+
+        new StatusView(console, text, shell).Render(status);
+
+        var rendered = output.ToString();
+        Assert.Contains("Configurazione:", rendered, StringComparison.Ordinal);
+        Assert.Contains("Chiave API:", rendered, StringComparison.Ordinal);
+        Assert.Contains("data.db", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("╭", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("╮", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies that the Nerd Font dry run is localized and suppresses internal English service copy.</summary>
+    [Fact]
+    public void NerdFontDryRun_RendersLocalizedCopyOnly()
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        text.SetLanguage("it");
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        shell.Configure(new ConsoleRenderOptions(NoAnimation: true, NoEmoji: false));
+        var view = new NerdFontView(console, text, shell);
+
+        Assert.True(view.PreviewAndConfirm(dryRun: true, preauthorized: true));
+        view.RenderResult(new FontInstallResult(
+            Changed: false,
+            DryRun: true,
+            FontName: "JetBrainsMono Nerd Font",
+            Message: "Would run: internal command"));
+
+        var rendered = output.ToString();
+        Assert.Contains("SIMULAZIONE", rendered, StringComparison.Ordinal);
+        Assert.Contains("nessuna modifica al sistema", rendered, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Would run", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies that command results retain measured status and captured error output without a frame.</summary>
+    [Fact]
+    public void CommandResult_RendersFramelessAlignedMetadata()
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        text.SetLanguage("it");
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        shell.Configure(new ConsoleRenderOptions(NoAnimation: true, NoEmoji: false));
+        var view = new CommandAuthorizationView(console, text, new PoorMarkdownRenderer(console), shell, new CommandClipboard());
+
+        view.RenderExecutionResult(new CommandExecutionResult(
+            Command: "git branch --all",
+            ExitCode: 1,
+            StandardOutput: string.Empty,
+            StandardError: "fatal: not a git repository",
+            TimedOut: false,
+            OutputTruncated: false,
+            ElapsedMilliseconds: 750));
+
+        var rendered = output.ToString();
+        Assert.Contains("Codice uscita:", rendered, StringComparison.Ordinal);
+        Assert.Contains("750 ms", rendered, StringComparison.Ordinal);
+        Assert.Contains("STDERR", rendered, StringComparison.Ordinal);
+        Assert.Contains("fatal: not a git repository", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("╭", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("╮", rendered, StringComparison.Ordinal);
+        Assert.Contains("Segnala un problema con l'output del comando", rendered, StringComparison.Ordinal);
+        Assert.Contains("https://github.com/umbertotechnopreneur/PromptMeUp/issues", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>Streams partial lines before completion and avoids repeating them in the final result.</summary>
+    [Fact]
+    public void CommandResult_LiveOutput_IsVisibleImmediatelyAndNotRepeated()
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        text.SetLanguage("it");
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        var view = new CommandAuthorizationView(console, text, new PoorMarkdownRenderer(console), shell, new CommandClipboard());
+        using (var live = view.BeginExecution(TimeSpan.FromSeconds(30)))
+        {
+            live.Write(new CommandOutputUpdate([new("first", -1, false)], false, false));
+            Assert.Contains("first", output.ToString(), StringComparison.Ordinal);
+            live.Write(new CommandOutputUpdate([new("first line", -1, false)], false, true));
+            live.Write(new CommandOutputUpdate([new("error detail", -1, false)], true, true));
+        }
+        view.RenderExecutionResult(new CommandExecutionResult("synthetic", 1, "first line", "error detail", false, false, 10)
+        {
+            OutputWasStreamed = true
+        });
+        var rendered = output.ToString();
+        Assert.Single(Regex.Matches(rendered, "first line"));
+        Assert.Single(Regex.Matches(rendered, "error detail"));
+        Assert.DoesNotContain("Tool", rendered, StringComparison.Ordinal);
+        Assert.Contains("Segnala un problema", rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies the copy choice transfers the exact previewed command and never authorizes execution.</summary>
+    [Fact]
+    public async Task CommandPreview_CopyChoice_DoesNotAuthorizeExecution()
+    {
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Out = new AnsiConsoleOutput(new StringWriter())
+        });
+        var text = new LocalizationService();
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        shell.Configure(new ConsoleRenderOptions(NoAnimation: true, NoEmoji: true));
+        string? copied = null;
+        var clipboard = TestProxy.Create<ICommandClipboard>((method, args) =>
+        {
+            if (method.Name != "TryCopy") throw new NotSupportedException(method.Name);
+            copied = (string?)args![0];
+            return true;
+        });
+        var view = new CommandAuthorizationView(console, text, new PoorMarkdownRenderer(console), shell, clipboard,
+            () => CommandAuthorizationView.CommandDecision.Copy);
+        const string command = "git status --short && echo café";
+        view.RenderPreview(command, new CommandRiskAssessment(5, CommandRiskLevel.Low, "Safe preview.", false, null));
+
+        var authorized = await view.AuthorizeAsync(CommandExecutionMode.Confirm, CancellationToken.None);
+
+        Assert.False(authorized);
+        Assert.Equal(command, copied);
+    }
+
+    /// <summary>Verifies that copy-and-exit preserves the exact command and stays open when copying fails.</summary>
+    /// <param name="clipboardAccepted">Whether the simulated clipboard accepts the command.</param>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CommandPreview_CopyAndExit_ExitsOnlyAfterClipboardSuccess(bool clipboardAccepted)
+    {
+        var (console, output) = CreateConsole();
+        var text = new LocalizationService();
+        var shell = new ConsoleShellView(console, text, new AlwaysShowProjectBannerSchedule());
+        string? copied = null;
+        var clipboard = TestProxy.Create<ICommandClipboard>((method, args) =>
+        {
+            if (method.Name != "TryCopy") throw new NotSupportedException(method.Name);
+            copied = (string?)args![0];
+            return clipboardAccepted;
+        });
+        var view = new CommandAuthorizationView(console, text, new PoorMarkdownRenderer(console), shell, clipboard,
+            () => CommandAuthorizationView.CommandDecision.CopyAndExit);
+        const string command = "Write-Output 'café'\nGet-Date";
+        view.RenderPreview(command, new CommandRiskAssessment(5, CommandRiskLevel.Low, "Safe preview.", false, null));
+
+        if (clipboardAccepted)
+        {
+            await Assert.ThrowsAsync<ApplicationExitRequestedException>(() =>
+                view.AuthorizeAsync(CommandExecutionMode.Confirm, CancellationToken.None));
+        }
+        else
+        {
+            Assert.False(await view.AuthorizeAsync(CommandExecutionMode.Confirm, CancellationToken.None));
+            Assert.Contains(text.Text("Command.CopyFailed"), output.ToString(), StringComparison.Ordinal);
+        }
+        Assert.Equal(command, copied);
+    }
+
+    /// <summary>Verifies that the inline command menu consumes arrow and Enter keys without a live renderer.</summary>
+    [Fact]
+    public void ConversationMenu_AcceptsKeyboardChoice()
+    {
+        var keys = new Queue<ConsoleKeyInfo>(
+        [
+            new('\0', ConsoleKey.DownArrow, false, false, false),
+            new('\r', ConsoleKey.Enter, false, false, false)
+        ]);
+        var input = TestProxy.Create<IAnsiConsoleInput>((method, _) => method.Name switch
+        {
+            "IsKeyAvailable" => keys.Count > 0,
+            "ReadKey" => keys.Dequeue(),
+            "ReadKeyAsync" => Task.FromResult<ConsoleKeyInfo?>(keys.Dequeue()),
+            _ => throw new NotSupportedException(method.Name)
+        });
+        var output = new StringWriter();
+        var rendering = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(output)
+        });
+        var console = TestProxy.Create<IAnsiConsole>((method, args) =>
+            method.Name == "get_Input" ? input : method.Invoke(rendering, args));
+
+        var selected = TerminalConversationPrompt.SelectInteractive(console, new LocalizationService(),
+        [
+            new TerminalMenuChoice<int>(0, "Stop"),
+            new TerminalMenuChoice<int>(1, "Inspect git status", "git status")
+        ], "Choose a command", numbered: true);
+
+        Assert.Equal(1, selected);
+        Assert.Empty(keys);
+        Assert.Contains("Inspect git status", output.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>Ignores unrelated input and erases every physical row before repainting a changed selection.</summary>
+    [Fact]
+    public void ConversationMenu_RedrawsOnlyForChangedSelectionAndErasesPhysicalRows()
+    {
+        var keys = new Queue<ConsoleKeyInfo>(
+        [
+            new('a', ConsoleKey.A, false, false, false),
+            new('\0', ConsoleKey.Home, false, false, false),
+            new('\0', ConsoleKey.DownArrow, false, false, false),
+            new('\0', ConsoleKey.LeftArrow, false, false, false),
+            new('\r', ConsoleKey.Enter, false, false, false)
+        ]);
+        var output = new StringWriter();
+        string? initialFrame = null;
+        var input = TestProxy.Create<IAnsiConsoleInput>((method, _) =>
+        {
+            if (method.Name == "IsKeyAvailable") return keys.Count > 0;
+            if (method.Name != "ReadKeyAsync") throw new NotSupportedException(method.Name);
+            initialFrame ??= output.ToString();
+            return Task.FromResult<ConsoleKeyInfo?>(keys.Dequeue());
+        });
+        var rendering = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(output)
+        });
+        rendering.Profile.Width = 100;
+        rendering.Profile.Height = 40;
+        var console = TestProxy.Create<IAnsiConsole>((method, args) =>
+            method.Name == "get_Input" ? input : method.Invoke(rendering, args));
+
+        var selected = TerminalConversationPrompt.SelectInteractive(console, new LocalizationService(),
+        [
+            new TerminalMenuChoice<int>(0, "Stop"),
+            new TerminalMenuChoice<int>(1, "Inspect git status", "git status")
+        ], "Choose a command", numbered: true);
+
+        Assert.Equal(1, selected);
+        Assert.Empty(keys);
+        var rendered = output.ToString();
+        Assert.Equal(2, Regex.Matches(rendered, "Choose a command").Count);
+        Assert.NotNull(initialFrame);
+        var firstErase = Regex.Match(rendered[initialFrame.Length..], @"\x1B\[(\d+)A");
+        Assert.True(firstErase.Success);
+        Assert.Equal(initialFrame.Count(character => character == '\n'), int.Parse(firstErase.Groups[1].Value));
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Creates a deterministic colorless Spectre console backed by an in-memory writer.</summary>
+    private static (IAnsiConsole Console, StringWriter Output) CreateConsole()
+    {
+        var output = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Out = new AnsiConsoleOutput(output)
+        });
+        return (console, output);
+    }
+
+    /// <summary>Removes ANSI control sequences so assertions verify semantic text independently of the host terminal.</summary>
+    private static string StripAnsi(string value) =>
+        Regex.Replace(value, @"\x1B\[[0-?]*[ -/]*[@-~]", string.Empty, RegexOptions.CultureInvariant);
+
+    #endregion
+}

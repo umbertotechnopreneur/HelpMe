@@ -1,0 +1,69 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace HelpMe.Views;
+
+/// <summary>Shares the open header, sidebar, content, and footer geometry of terminal workspaces.</summary>
+internal static class FullscreenWorkspace
+{
+
+    #region Methods
+
+    /// <summary>Reserves the same responsive sidebar width for help, settings, and interactive menus.</summary>
+    internal static int SidebarWidth(int terminalWidth) => Math.Clamp(terminalWidth / 4, 20, 30);
+
+    /// <summary>Marks the focused content area and optionally separates its heading from the body.</summary>
+    internal static IRenderable SectionHeading(string title, bool focused, bool showDivider = true)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
+        return new Rows(
+            new FullscreenLine($"{(focused ? "> " : "  ")}{title}", Style.Parse("bold " + TerminalTheme.Accent)),
+            showDivider ? new ThemeSeparator() : new Text(" "));
+    }
+
+    /// <summary>Builds the common fullscreen shell around passive content and action renderables.</summary>
+    internal static IRenderable Create(string title, ConsoleRenderOptions options, int terminalWidth,
+        IRenderable content, IRenderable? sidebar, IRenderable footer, int noticeRows, bool showRepository = false,
+        int? sidebarWidth = null)
+    {
+        var root = new Layout("workspace").SplitRows(
+            new Layout("header", FullscreenHeader.Create(title, options, showRepository)).Size(FullscreenHeader.Height),
+            new Layout("body"),
+            new Layout("footer", footer).Size(FullscreenFooter.Height(noticeRows)));
+
+        if (sidebar is null)
+        {
+            root["body"].Update(content);
+        }
+        else
+        {
+            root["body"].SplitColumns(
+                new Layout("sections", sidebar).Size(sidebarWidth ?? SidebarWidth(terminalWidth)),
+                new Layout("content", content));
+        }
+
+        return new FormSurface(root);
+    }
+
+    #endregion
+}

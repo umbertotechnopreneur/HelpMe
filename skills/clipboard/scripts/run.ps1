@@ -1,6 +1,6 @@
 # VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -16,7 +16,7 @@
 #
 # VBWR E
 
-# Adapted for PromptMeUp from the author's CLI-Intelligence clipboard tool.
+# Adapted for HelpMe from the author's CLI-Intelligence clipboard tool.
 [CmdletBinding()]
 param(
     [string]$Action = 'read',
@@ -38,7 +38,7 @@ using System;
 using System.Runtime.InteropServices;
 
 /// <summary>Reads only a bounded Unicode clipboard prefix without allocating its full contents.</summary>
-public static class PromptMeUpClipboardReader
+public static class HelpMeClipboardReader
 {
     /// <summary>Opens the clipboard for bounded text access.</summary>
     [DllImport("user32.dll", SetLastError = true)]
@@ -86,7 +86,7 @@ public static class PromptMeUpClipboardReader
     }
 }
 '@
-$content = [PromptMeUpClipboardReader]::Read()
+$content = [HelpMeClipboardReader]::Read()
 $truncated = $content.Length -gt 2048
 if ($truncated) { $content = $content.Substring(0, 2048) }
 while ($content.Length -gt 0 -and ([char]::IsHighSurrogate($content[$content.Length - 1]) -or [Text.Encoding]::UTF8.GetByteCount($content) -gt 4096)) {

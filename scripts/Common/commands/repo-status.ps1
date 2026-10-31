@@ -1,6 +1,6 @@
 ﻿# VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -18,7 +18,7 @@
 
 <#
 .SYNOPSIS
-  Show the current Git status for PromptMeUp.
+  Show the current Git status for HelpMe.
 #>
 [CmdletBinding()]
 param([switch]$Help)

@@ -1,0 +1,123 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using HelpMe.Models;
+using HelpMe.Services;
+using Spectre.Console;
+
+namespace HelpMe.Views;
+
+/// <summary>Displays a proposed plan and collects execution and outcome decisions.</summary>
+public interface IPlanView
+{
+
+    #region Methods
+
+    /// <summary>Displays ordered progress and the explicit resume command without executing any step.</summary>
+    void Render(ExecutionPlan plan);
+
+    /// <summary>Confirms starting or resuming guidance while each command still requires its own approval.</summary>
+    bool ConfirmStart();
+
+    /// <summary>Requires the user to compare observed output with the declared outcome after a successful check.</summary>
+    bool ConfirmOutcome(PlanStep step);
+
+    #endregion
+}
+
+/// <summary>Presents a saved plan and captures explicit progress confirmations for each step.</summary>
+public sealed class PlanView(IAnsiConsole console, ILocalizationService text, IConsoleShellView shell) : IPlanView
+{
+
+    #region Methods
+
+    /// <summary>Displays ordered progress and the explicit resume command without executing any step.</summary>
+    public void Render(ExecutionPlan plan)
+    {
+        TerminalSession.For(console).SetMode(ConversationDisplayMode.Plan);
+        TerminalTurnHeader.Write(console, text, TerminalTurnKind.Plan);
+        console.Write(new Rows(
+            new Text(plan.Goal, Style.Parse(TerminalTheme.Primary)),
+            new Text(plan.Directory, Style.Parse(TerminalTheme.Muted))));
+        console.WriteLine();
+        var table = TerminalTable.Create("#", text.Text("Plan.Step"), text.Text("Plan.Status"));
+
+        for (var index = 0; index < plan.Steps.Count; index++)
+        {
+            var step = plan.Steps[index];
+
+            table.AddRow(new Text(StepIndicator(index)), new Text(step.Label + "\n" + step.Expected), new Text(text.Text("Plan." + step.Status)));
+        }
+
+        console.Write(table);
+        TerminalSession.For(console).History.Add(TerminalTurnKind.Plan, plan.Goal,
+            new Rows(new Text(TerminalText.Safe(plan.Goal)), new Text(TerminalText.Safe(plan.Directory)), table),
+            plan.Goal.Length + plan.Directory.Length + plan.Steps.Sum(step => step.Label.Length + step.Expected.Length));
+        console.WriteLine();
+        console.Write(new Text(text.Text("Plan.Resume"), Style.Parse(TerminalTheme.Muted)));
+        console.WriteLine();
+        console.Write(new Text("hm --plan --resume " + plan.Id));
+        console.WriteLine();
+        console.WriteLine();
+    }
+
+    /// <summary>Confirms starting or resuming guidance while each command still requires its own approval.</summary>
+    public bool ConfirmStart()
+    {
+        using var state = new TerminalStateScope(console, text, TerminalActivityState.NeedsInput);
+
+        TerminalPromptDock.Align(console, reservedRows: 2);
+
+        return TerminalConversationPrompt.Confirm(console, text, text.Text("Plan.Start"));
+    }
+
+    /// <summary>Requires the user to compare observed output with the declared outcome after a successful check.</summary>
+    public bool ConfirmOutcome(PlanStep step)
+    {
+        using var state = new TerminalStateScope(console, text, TerminalActivityState.NeedsInput);
+
+        TerminalPromptDock.Align(console, reservedRows: 2);
+
+        return TerminalConversationPrompt.Confirm(console, text, text.Text("Plan.Outcome", step.Expected));
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Returns a compact zero-based visual marker while preserving a text-only fallback.</summary>
+    private string StepIndicator(int index) => shell.Options.NoEmoji
+        ? index.ToString()
+        : index switch
+        {
+            0 => "0️⃣ ",
+            1 => "1️⃣ ",
+            2 => "2️⃣ ",
+            3 => "3️⃣ ",
+            4 => "4️⃣ ",
+            5 => "5️⃣ ",
+            6 => "6️⃣ ",
+            7 => "7️⃣ ",
+            8 => "8️⃣ ",
+            9 => "9️⃣ ",
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
+
+    #endregion
+}

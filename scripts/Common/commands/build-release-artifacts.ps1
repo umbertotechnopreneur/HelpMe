@@ -1,6 +1,6 @@
 ﻿# VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -28,7 +28,7 @@ param(
     [string[]]$MsiArchitectures = @('x64'),
 
     [ValidatePattern('^[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)+$')]
-    [string]$PackageIdentifier = 'UmbertoGiacobbi.PromptMeUp',
+    [string]$PackageIdentifier = 'UmbertoGiacobbi.HelpMe',
 
     [ValidateNotNullOrEmpty()]
     [string]$ArtifactBaseUrl = 'http://127.0.0.1:8765',
@@ -49,8 +49,8 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\bundled-skills.ps1')
 
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
-$solutionPath = Join-Path $repositoryRoot 'PromptMeUp.slnx'
-$projectPath = Join-Path $repositoryRoot 'PromptMeUp\PromptMeUp.csproj'
+$solutionPath = Join-Path $repositoryRoot 'HelpMe.slnx'
+$projectPath = Join-Path $repositoryRoot 'HelpMe\HelpMe.csproj'
 $artifactsRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts'))
 
 function Write-Step {
@@ -124,7 +124,7 @@ function Get-ProjectVersion {
     [xml]$project = Get-Content -Raw -LiteralPath $projectPath
     $declaredVersion = [string]($project.Project.PropertyGroup.Version | Select-Object -First 1)
     if ($declaredVersion -notmatch '^\d+\.\d+\.\d+$') {
-        throw "PromptMeUp.csproj must declare a three-part numeric Version before packaging. Found '$declaredVersion'."
+        throw "HelpMe.csproj must declare a three-part numeric Version before packaging. Found '$declaredVersion'."
     }
 
     return $declaredVersion
@@ -345,7 +345,7 @@ function New-MsiInstaller {
     $productPath = Join-Path $workDirectory 'Product.wxs'
     $payloadObject = Join-Path $workDirectory 'Payload.wixobj'
     $productObject = Join-Path $workDirectory 'Product.wixobj'
-    $msiName = "PromptMeUp-$Version-win-$Architecture.msi"
+    $msiName = "HelpMe-$Version-win-$Architecture.msi"
     $msiPath = Join-Path $OutputDirectory $msiName
 
     Invoke-ExternalCommand $WixTools.Heat @(
@@ -369,7 +369,7 @@ function New-MsiInstaller {
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="$productCode"
-           Name="PromptMeUp"
+           Name="HelpMe"
            Language="1033"
            Version="$(Escape-XmlAttribute $Version)"
            Manufacturer="Umberto Giacobbi"
@@ -379,7 +379,7 @@ function New-MsiInstaller {
              InstallScope="perUser"
              InstallPrivileges="limited"
              Description="Ask from the terminal and explicitly approve every command before it runs." />
-    <MajorUpgrade DowngradeErrorMessage="A newer version of PromptMeUp is already installed."
+    <MajorUpgrade DowngradeErrorMessage="A newer version of HelpMe is already installed."
                   Schedule="afterInstallInitialize" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
     <Property Id="ARPHELPLINK" Value="https://github.com/umbertotechnopreneur/PromptMeUp/issues" />
@@ -389,7 +389,7 @@ function New-MsiInstaller {
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="LocalAppDataFolder">
         <Directory Id="ProgramsFolder" Name="Programs">
-          <Directory Id="INSTALLFOLDER" Name="PromptMeUp" />
+          <Directory Id="INSTALLFOLDER" Name="HelpMe" />
         </Directory>
       </Directory>
     </Directory>
@@ -404,7 +404,7 @@ function New-MsiInstaller {
                      Permanent="no"
                      System="no" />
         <RegistryValue Root="HKCU"
-                       Key="Software\Umberto Giacobbi\PromptMeUp"
+                       Key="Software\Umberto Giacobbi\HelpMe"
                        Name="InstallPath"
                        Type="string"
                        Value="[INSTALLFOLDER]"
@@ -412,7 +412,7 @@ function New-MsiInstaller {
       </Component>
     </DirectoryRef>
 
-    <Feature Id="ProductFeature" Title="PromptMeUp" Level="1">
+    <Feature Id="ProductFeature" Title="HelpMe" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="PathComponent" />
     </Feature>
@@ -472,12 +472,12 @@ Publisher: Umberto Giacobbi
 PublisherUrl: https://github.com/umbertotechnopreneur
 PublisherSupportUrl: https://github.com/umbertotechnopreneur/PromptMeUp/issues
 Author: Umberto Giacobbi
-PackageName: PromptMeUp
+PackageName: HelpMe
 PackageUrl: https://github.com/umbertotechnopreneur/PromptMeUp
 License: MIT
 LicenseUrl: https://github.com/umbertotechnopreneur/PromptMeUp/blob/main/LICENSE
 ShortDescription: Ask from the terminal, understand the answer, and explicitly approve every command before it runs.
-Description: PromptMeUp exposes the hm command for concise AI help, short conversations, and carefully reviewed command execution.
+Description: HelpMe exposes the hm command for concise AI help, short conversations, and carefully reviewed command execution.
 Moniker: hm
 Tags:
 - ai
@@ -623,18 +623,18 @@ foreach ($architecture in $PortableArchitectures) {
     Copy-PackagePayload -PublishDirectory $publishDirectory -StageDirectory $stageDirectory
     if ($architecture -eq $currentArchitecture) {
         Write-Step "Smoke test staged $runtime executable"
-        $previousDataDirectory = $env:PROMPTMEUP_DATA_DIR
+        $previousDataDirectory = $env:HELPME_DATA_DIR
         try {
-            $env:PROMPTMEUP_DATA_DIR = Join-Path $smokeDataRoot $runtime
+            $env:HELPME_DATA_DIR = Join-Path $smokeDataRoot $runtime
             Invoke-ExternalCommand (Join-Path $stageDirectory 'hm.exe') @('--version', '--no-animation', '--no-emoji')
             Invoke-ExternalCommand (Join-Path $stageDirectory 'hm.exe') @('-where', '--no-animation', '--no-emoji')
         }
         finally {
-            $env:PROMPTMEUP_DATA_DIR = $previousDataDirectory
+            $env:HELPME_DATA_DIR = $previousDataDirectory
         }
     }
 
-    $archiveName = "PromptMeUp-$Version-$runtime.zip"
+    $archiveName = "HelpMe-$Version-$runtime.zip"
     $archivePath = Join-Path $packageDirectory $archiveName
     Write-Step "Create $archiveName"
     New-DeterministicZip -SourceDirectory $stageDirectory -DestinationPath $archivePath

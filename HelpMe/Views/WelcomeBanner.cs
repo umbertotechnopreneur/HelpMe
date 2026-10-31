@@ -1,0 +1,98 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace HelpMe.Views;
+
+/// <summary>Draws the shared product wordmark with active theme colors and an optional compact presentation.</summary>
+internal sealed class WelcomeBanner(bool compact = false) : IRenderable
+{
+
+    #region Fields
+
+    private static readonly IReadOnlyDictionary<char, string[]> Glyphs = new Dictionary<char, string[]>
+    {
+        ['H'] = ["#   #", "#   #", "#   #", "#####", "#   #", "#   #", "#   #"],
+        ['L'] = ["#    ", "#    ", "#    ", "#    ", "#    ", "#    ", "#####"],
+        ['P'] = ["#### ", "#   #", "#   #", "#### ", "#    ", "#    ", "#    "],
+        ['R'] = ["#### ", "#   #", "#   #", "#### ", "# #  ", "#  # ", "#   #"],
+        ['O'] = [" ### ", "#   #", "#   #", "#   #", "#   #", "#   #", " ### "],
+        ['M'] = ["#   #", "## ##", "# # #", "# # #", "#   #", "#   #", "#   #"],
+        ['T'] = ["#####", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  "],
+        ['E'] = ["#####", "#    ", "#    ", "#### ", "#    ", "#    ", "#####"],
+        ['U'] = ["#   #", "#   #", "#   #", "#   #", "#   #", "#   #", " ### "]
+    };
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>Adds the shared wordmark to a scrolling surface with one blank row on either side.</summary>
+    internal static void Render(IAnsiConsole console)
+    {
+        console.WriteLine();
+        console.Write(new WelcomeBanner());
+        console.WriteLine();
+    }
+
+    /// <summary>Allows the containing view to center either the complete artwork or the compact product name.</summary>
+    public Measurement Measure(RenderOptions options, int maxWidth) =>
+        CreateContent(options, maxWidth).Measure(options, maxWidth);
+
+    /// <summary>Rebuilds the color bands at render time so previews and theme changes remain consistent.</summary>
+    public IEnumerable<Segment> Render(RenderOptions options, int maxWidth) =>
+        CreateContent(options, maxWidth).Render(options, maxWidth);
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Keeps the product name readable when the full wordmark cannot fit.</summary>
+    private IRenderable CreateContent(RenderOptions options, int maxWidth)
+    {
+        const string word = "HELPME";
+
+        if (compact || maxWidth < word.Length * 6 - 1)
+        {
+            return new Text("HelpMe", Style.Parse("bold " + TerminalTheme.Accent));
+        }
+
+        string[] colors = [TerminalTheme.Primary, TerminalTheme.Primary, TerminalTheme.Accent,
+            TerminalTheme.Accent, TerminalTheme.Info, TerminalTheme.Info, TerminalTheme.AccentSecondary];
+        var rows = new List<IRenderable>();
+
+        for (var row = 0; row < 7; row++)
+        {
+            var line = string.Join(' ', word.Select(letter => Glyphs[letter][row]));
+
+            if (options.Capabilities.Unicode)
+            {
+                line = line.Replace('#', '█');
+            }
+
+            rows.Add(new Text(line, Style.Parse("bold " + colors[row])));
+        }
+
+        return new Rows(rows);
+    }
+
+    #endregion
+}

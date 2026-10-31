@@ -1,6 +1,6 @@
 ﻿# VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -18,7 +18,7 @@
 
 <#
 .SYNOPSIS
-  Previews, installs, removes, or inspects the portable PromptMeUp PATH entry.
+  Previews, installs, removes, or inspects the portable HelpMe PATH entry.
 #>
 [CmdletBinding()]
 param(
@@ -38,9 +38,9 @@ $candidates = @(
     (Join-Path $PSScriptRoot 'hm'),
     (Join-Path $repositoryRoot 'scripts\hm.exe'),
     (Join-Path $repositoryRoot 'scripts\hm'),
-    (Join-Path $repositoryRoot 'PromptMeUp\bin\Release\net10.0-windows10.0.19041.0\hm.exe'),
-    (Join-Path $repositoryRoot 'PromptMeUp\bin\Release\net10.0\hm.exe'),
-    (Join-Path $repositoryRoot 'PromptMeUp\bin\Release\net10.0\hm')
+    (Join-Path $repositoryRoot 'HelpMe\bin\Release\net10.0-windows10.0.19041.0\hm.exe'),
+    (Join-Path $repositoryRoot 'HelpMe\bin\Release\net10.0\hm.exe'),
+    (Join-Path $repositoryRoot 'HelpMe\bin\Release\net10.0\hm')
 ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
 $executable = $candidates |
@@ -52,7 +52,7 @@ if (-not $executable) {
 }
 
 if (-not $executable) {
-    throw 'hm was not found. Publish or build PromptMeUp first, or pass -ExecutablePath.'
+    throw 'hm was not found. Publish or build HelpMe first, or pass -ExecutablePath.'
 }
 
 $arguments = @("--path=$Action")

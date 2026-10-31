@@ -1,6 +1,6 @@
 ﻿# VBWR B
 #
-# Project: PromptMeUp
+# Project: HelpMe
 # Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 # Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 #
@@ -33,7 +33,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
-$solution = Join-Path $root 'PromptMeUp.slnx'
+$solution = Join-Path $root 'HelpMe.slnx'
 
 if (-not (Test-Path -LiteralPath $solution -PathType Leaf)) {
     throw "Solution not found: $solution"

@@ -1,0 +1,144 @@
+﻿// SPDX-License-Identifier: MIT
+/* VBWR B
+ *
+ * Project: HelpMe
+ * Repository: https://github.com/umbertotechnopreneur/PromptMeUp
+ * Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
+ *
+ * VibeWare: Human intent, AI execution, and plenty of tokens
+ * Manifesto: https://umbertogiacobbi.biz/vibeware/manifesto
+ *
+ * Modified with AI: OpenAI Codex; added this header on 2026-10-10.
+ * Human guidance: Umberto Giacobbi; requested VibeWare branding.
+ *
+ * Copyright (c) 2026 Umberto Giacobbi
+ * License: MIT - see LICENSE
+ *
+ * VBWR E */
+
+
+using HelpMe.Models;
+using HelpMe.Services;
+using Spectre.Console;
+
+namespace HelpMe.Views;
+
+/// <summary>Displays the current application and conversation status.</summary>
+public interface IStatusView
+{
+
+    #region Methods
+
+    /// <summary>Renders configuration, secrets, prompts, storage, and synchronization status as a readable dashboard.</summary>
+    void Render(AppStatus status);
+
+    #endregion
+}
+
+/// <summary>Displays the current local application status with readable terminal hierarchy.</summary>
+public sealed class StatusView(
+    IAnsiConsole console,
+    ILocalizationService text,
+    IConsoleShellView shell) : IStatusView
+{
+
+    #region Methods
+
+    /// <summary>Renders configuration, secrets, prompts, storage, and synchronization status as a readable dashboard.</summary>
+    public void Render(AppStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+        var configuration = TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "◈", "#") + text.Text("Status.Setup"), status.Settings.SetupCompleted ? text.Text("Status.Completed") : text.Text("Status.Required"), status.Settings.SetupCompleted ? TerminalTheme.Success : TerminalTheme.Warning),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "🌐", "@") + text.Text("Status.Language"), status.Settings.Language.ToUpperInvariant(), TerminalTheme.Accent),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "🧠", "AI") + text.Text("Status.Model"), status.Settings.Model),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "🔑", "K") + text.Text("Status.ApiKey"), status.HasApiKey ? text.Text("Status.Ready") : text.Text("Status.Missing"), status.HasApiKey ? TerminalTheme.Success : TerminalTheme.Warning),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "🔐", "K") + text.Text("Status.AdminKey"), status.HasAdminKey ? text.Text("Status.Ready") : text.Text("Status.Missing"), status.HasAdminKey ? TerminalTheme.Success : TerminalTheme.Warning),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "↻", "~") + text.Text("Status.Pricing"), status.LastPricingSync?.ToLocalTime().ToString("g", text.Culture) ?? text.Text("Costs.Unavailable"), TerminalTheme.Info)
+        ], preferredPairs: 3, width: console.Profile.Width);
+
+        TerminalTheme.WriteRule(console, $"{TerminalTheme.IconPrefix(shell.Options, "⚙", "~")}{text.Text("Status.Configuration")}", TerminalTheme.Accent);
+        console.Write(configuration);
+        console.WriteLine();
+
+        console.Write(TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(text.Text("Artifact.ScriptLimit"), $"{status.ArtifactLimits.MaxScriptBytes / ArtifactLimits.Mebibyte} MiB"),
+            TerminalTheme.CompactMetric(text.Text("Artifact.PlanLimit"), $"{status.ArtifactLimits.MaxPlanBytes / ArtifactLimits.Mebibyte} MiB"),
+            TerminalTheme.CompactMetric(text.Text("Artifact.OutputBudget"), status.ArtifactLimits.MaxOutputTokens.ToString("N0", text.Culture))
+        ], preferredPairs: 3, width: console.Profile.Width));
+        console.WriteLine();
+
+        var localData = TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "▣", "#") + text.Text("Status.Database"), status.DatabasePath),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "▤", "#") + text.Text("Status.Logs"), status.LogsDirectory),
+            TerminalTheme.CompactMetric(TerminalTheme.IconPrefix(shell.Options, "✦", "*") + text.Text("Status.Prompts"), $"{status.PromptCount} · {status.PromptDirectory}")
+        ], preferredPairs: 1, width: console.Profile.Width);
+
+        TerminalTheme.WriteRule(console, $"{TerminalTheme.IconPrefix(shell.Options, "💾", "#")}{text.Text("Status.LocalData")}", TerminalTheme.Accent);
+        console.Write(localData);
+        console.WriteLine();
+    }
+
+    #endregion
+
+}
+
+/// <summary>Displays provider usage and cost information.</summary>
+public interface ICostsView
+{
+
+    #region Methods
+
+    /// <summary>Renders configuration, secrets, prompts, storage, and synchronization status as a readable dashboard.</summary>
+    void Render(CostOverview overview);
+
+    #endregion
+}
+
+/// <summary>Displays normalized model prices and the current local cost overview.</summary>
+public sealed class CostsView(
+    IAnsiConsole console,
+    ILocalizationService text,
+    IConsoleShellView shell) : ICostsView
+{
+
+    #region Methods
+
+    /// <summary>Renders local usage estimates and cached official prices with semantic pricing chips.</summary>
+    public void Render(CostOverview overview)
+    {
+        ArgumentNullException.ThrowIfNull(overview);
+        TerminalTheme.WriteRule(
+            console,
+            TerminalTheme.IconPrefix(shell.Options, "💳", "$") + text.Text("Costs.Title"),
+            TerminalTheme.Accent);
+        console.MarkupLine($"[{TerminalTheme.Muted}]{Markup.Escape(text.Text("Costs.Subtitle"))}[/]");
+        var metrics = TerminalTheme.PairGrid(
+        [
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "💵", "$")}{text.Text("Costs.TodayEstimate")}", FormatUsd(overview.EstimatedCostTodayUsd), TerminalTheme.Success),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "📅", "#")}{text.Text("Costs.MonthEstimate")}", FormatUsd(overview.EstimatedCostCurrentMonthUsd), TerminalTheme.Info),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "🏢", "#")}{text.Text("Costs.ApiCost")}", overview.ActualOrganizationCostCurrentMonthUsd.HasValue ? FormatUsd(overview.ActualOrganizationCostCurrentMonthUsd.Value) : text.Text("Costs.Unavailable")),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "↗", "+")}{text.Text("Costs.Requests")}", overview.RequestsToday.ToString("N0", text.Culture)),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "◌", "~")}{text.Text("Costs.Tokens")}", overview.TotalTokensToday.ToString("N0", text.Culture)),
+            TerminalTheme.CompactMetric($"{TerminalTheme.IconPrefix(shell.Options, "↻", "~")}{text.Text("Costs.LastSync")}", overview.LastPricingSync?.ToLocalTime().ToString("g", text.Culture) ?? text.Text("Costs.Unavailable"))
+        ], preferredPairs: 3, width: console.Profile.Width);
+
+        TerminalTheme.WriteRule(console, $"{TerminalTheme.IconPrefix(shell.Options, "📈", "=")}{text.Text("Costs.Overview")}", TerminalTheme.Accent);
+        console.Write(metrics);
+        console.WriteLine();
+
+        console.Write(ModelPricingTable.Create(text, shell.Options, overview.Prices.OrderBy(price => price.Model, StringComparer.OrdinalIgnoreCase).ToArray()));
+    }
+
+    #endregion
+
+    #region Implementation
+
+    /// <summary>Formats USD amounts using invariant decimal notation.</summary>
+    private static string FormatUsd(decimal value) => $"${value:0.########}";
+
+    #endregion
+}

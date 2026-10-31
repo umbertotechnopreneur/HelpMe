@@ -1,10 +1,10 @@
-# PromptMeUp repository instructions
+# HelpMe repository instructions
 
 These instructions apply to every change in this repository.
 
 ## Product writing and author voice
 
-- Keep AgentInbox, PromptMeUp, and WorkTrail visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
+- Keep AgentInbox, HelpMe, and WorkTrail visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
 
 - Open each README with the concrete problem I encountered in daily work, then explain how I built the app to solve it and what the reader can do with it. Keep the problem and solution ahead of architecture, branding, optional examples, and project history. Use honest, specific language; light humor is welcome when it fits.
 - Apply this style throughout repository documentation: plain English, short sentences, concrete actions, and useful examples. Cut filler, vague slogans, hype, corporate language, and formulaic AI-sounding prose.
@@ -67,7 +67,7 @@ These instructions apply to every change in this repository.
 
 ## Product boundaries
 
-- PromptMeUp is a lightweight .NET 10 console assistant whose public command is `hm`.
+- HelpMe is a lightweight .NET 10 console assistant whose public command is `hm`.
 - Skills, memory collection, proposals, and reminders are global. Do not introduce project-scoped labels, groups, availability, configuration, storage, or retention in `hm --skills`, `hm --learning`, or their Setup controls.
 - Keep the application code portable across Windows, Linux, and macOS. Windows distribution is MSIX-only. Do not introduce a background agent or platform-specific runtime dependency.
 - Keep GitHub as the project home and write public copy in product language before implementation detail.
@@ -87,7 +87,7 @@ These instructions apply to every change in this repository.
 
 ## Code and documentation
 
-- PromptMeUp is in pre-production. Backward compatibility is not required: update affected callers and contracts directly instead of adding compatibility wrappers or legacy paths. Reuse shared workflows and helpers; keep differences between normal and direct command approval in their interaction views.
+- HelpMe is in pre-production. Backward compatibility is not required: update affected callers and contracts directly instead of adding compatibility wrappers or legacy paths. Reuse shared workflows and helpers; keep differences between normal and direct command approval in their interaction views.
 - `--direct` requires local risk scoring and a successful AI review. High or critical risk must block execution. Preview each eligible command and use a five-second cancellable countdown instead of a confirmation prompt, then reuse the normal output-analysis and conversation flow.
 - Direct execution is enabled by default for questions and chat. Keep its persisted opt-out in `hm --setup`; `--direct` overrides that preference for the current session. Keep the session summary hidden by default during work, show it at exit, and override hiding when operating context reaches 80 percent. Explicit `/status` and `/context` requests must still show it.
 - Add a brief XML `<summary>` to every C# implementation method, including constructors, tests, and private helpers.
@@ -113,7 +113,7 @@ These instructions apply to every change in this repository.
 - Use `apply_patch` for deliberate tracked-file edits and avoid broad formatting churn.
 - Fail fast on invalid input and unsupported state; do not conceal failures with silent fallbacks.
 - Run automated tests and CLI smoke tests only when the user explicitly requests them. Implementation, review, commit, and push requests do not authorize test execution.
-- If this task attempted a build, follow Mandatory artifact cleanup after the last build, requested test, packaging, or installation step, including after failure and before handoff. Use `dotnet clean .\PromptMeUp.slnx` with the matching configuration, runtime, and output paths, then remove leftover task-owned intermediates. Preserve pending deliverables and unrelated artifacts. Commit or push alone does not require cleanup.
+- If this task attempted a build, follow Mandatory artifact cleanup after the last build, requested test, packaging, or installation step, including after failure and before handoff. Use `dotnet clean .\HelpMe.slnx` with the matching configuration, runtime, and output paths, then remove leftover task-owned intermediates. Preserve pending deliverables and unrelated artifacts. Commit or push alone does not require cleanup.
 - Record active work in `.github/tasks/todo.md` and move completed work to `.github/tasks/archive.md`.
 
 ## Required validation
@@ -128,11 +128,11 @@ Choose non-test checks by the changed files and run them once after the final re
 Non-test commands for code changes:
 
 ```powershell
-pwsh -NoProfile -File .\scripts\PromptMeUp.ps1 -Command preflight
-dotnet restore .\PromptMeUp.slnx
-dotnet format .\PromptMeUp.slnx --verify-no-changes --no-restore
-pwsh -NoProfile -File .\scripts\PromptMeUp.ps1 -Command check-xml
-dotnet build .\PromptMeUp.slnx --configuration Release --no-restore --warnaserror
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command preflight
+dotnet restore .\HelpMe.slnx
+dotnet format .\HelpMe.slnx --verify-no-changes --no-restore
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command check-xml
+dotnet build .\HelpMe.slnx --configuration Release --no-restore --warnaserror
 ```
 
-Only when explicitly requested by the user, run the appropriate automated tests, such as `dotnet test .\PromptMeUp.slnx --configuration Release --no-build`, or proportionate CLI smoke tests with a disposable `PROMPTMEUP_DATA_DIR`. Run these checks before cleanup when they need the build output. Do not use real secrets or mutate PATH/fonts during validation.
+Only when explicitly requested by the user, run the appropriate automated tests, such as `dotnet test .\HelpMe.slnx --configuration Release --no-build`, or proportionate CLI smoke tests with a disposable `HELPME_DATA_DIR`. Run these checks before cleanup when they need the build output. Do not use real secrets or mutate PATH/fonts during validation.

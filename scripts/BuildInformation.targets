@@ -1,6 +1,6 @@
 <!-- VBWR B
 
-  Project: PromptMeUp
+  Project: HelpMe
   Repository: https://github.com/umbertotechnopreneur/PromptMeUp
   Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 
@@ -18,30 +18,30 @@ VBWR E -->
 <!-- SPDX-License-Identifier: MIT -->
 <Project>
   <!-- Stamp assembly metadata during builds and publish, never when the application starts. -->
-  <Target Name="CapturePromptMeUpBuildInformation" BeforeTargets="GetAssemblyAttributes;CoreCompile">
+  <Target Name="CaptureHelpMeBuildInformation" BeforeTargets="GetAssemblyAttributes;CoreCompile">
     <PropertyGroup>
-      <PromptMeUpBuildDateLocal Condition="'$(PromptMeUpBuildDateLocal)' == ''">$([System.DateTimeOffset]::Now.ToString('O'))</PromptMeUpBuildDateLocal>
-      <PromptMeUpBuildMachine Condition="'$(PromptMeUpBuildMachine)' == ''">$([System.Environment]::MachineName)</PromptMeUpBuildMachine>
+      <HelpMeBuildDateLocal Condition="'$(HelpMeBuildDateLocal)' == ''">$([System.DateTimeOffset]::Now.ToString('O'))</HelpMeBuildDateLocal>
+      <HelpMeBuildMachine Condition="'$(HelpMeBuildMachine)' == ''">$([System.Environment]::MachineName)</HelpMeBuildMachine>
     </PropertyGroup>
-    <Exec Command="git rev-parse --short=12 HEAD" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" StandardOutputImportance="Low" Condition="'$(PromptMeUpBuildGitCommit)' == ''">
-      <Output TaskParameter="ConsoleOutput" PropertyName="PromptMeUpBuildGitCommitRaw" />
+    <Exec Command="git rev-parse --short=12 HEAD" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" StandardOutputImportance="Low" Condition="'$(HelpMeBuildGitCommit)' == ''">
+      <Output TaskParameter="ConsoleOutput" PropertyName="HelpMeBuildGitCommitRaw" />
     </Exec>
     <PropertyGroup>
-      <PromptMeUpBuildGitCommit Condition="'$(PromptMeUpBuildGitCommit)' == ''">$([System.String]::Copy('$(PromptMeUpBuildGitCommitRaw)').Trim())</PromptMeUpBuildGitCommit>
+      <HelpMeBuildGitCommit Condition="'$(HelpMeBuildGitCommit)' == ''">$([System.String]::Copy('$(HelpMeBuildGitCommitRaw)').Trim())</HelpMeBuildGitCommit>
     </PropertyGroup>
     <Error Condition="'$(GenerateAssemblyInfo)' != 'true'" Text="Build information requires GenerateAssemblyInfo=true." />
     <Error Condition="'$(GenerateAssemblyMetadataAttributes)' != 'true'" Text="Build information requires GenerateAssemblyMetadataAttributes=true." />
-    <Error Condition="$([System.String]::IsNullOrWhiteSpace('$(PromptMeUpBuildMachine)'))" Text="The build machine name must not be empty." />
-    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(PromptMeUpBuildDateLocal)', '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}[+-]\d{2}:\d{2}$'))" Text="The build date must use the ISO 8601 round-trip format with a local UTC offset." />
-    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(PromptMeUpBuildGitCommit)', '^[0-9a-f]{12}$'))" Text="The build Git commit must be a 12-character lowercase SHA." />
+    <Error Condition="$([System.String]::IsNullOrWhiteSpace('$(HelpMeBuildMachine)'))" Text="The build machine name must not be empty." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(HelpMeBuildDateLocal)', '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}[+-]\d{2}:\d{2}$'))" Text="The build date must use the ISO 8601 round-trip format with a local UTC offset." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(HelpMeBuildGitCommit)', '^[0-9a-f]{12}$'))" Text="The build Git commit must be a 12-character lowercase SHA." />
     <PropertyGroup>
       <!-- Parsing also rejects impossible calendar dates supplied through build overrides. -->
-      <PromptMeUpBuildDateLocal>$([System.DateTimeOffset]::ParseExact('$(PromptMeUpBuildDateLocal)', 'O', $([System.Globalization.CultureInfo]::GetCultureInfo(''))).ToString('O'))</PromptMeUpBuildDateLocal>
+      <HelpMeBuildDateLocal>$([System.DateTimeOffset]::ParseExact('$(HelpMeBuildDateLocal)', 'O', $([System.Globalization.CultureInfo]::GetCultureInfo(''))).ToString('O'))</HelpMeBuildDateLocal>
     </PropertyGroup>
     <ItemGroup>
-      <AssemblyMetadata Include="BuildDateLocal" Value="$(PromptMeUpBuildDateLocal)" />
-      <AssemblyMetadata Include="BuildMachine" Value="$(PromptMeUpBuildMachine)" />
-      <AssemblyMetadata Include="BuildGitCommit" Value="$(PromptMeUpBuildGitCommit)" />
+      <AssemblyMetadata Include="BuildDateLocal" Value="$(HelpMeBuildDateLocal)" />
+      <AssemblyMetadata Include="BuildMachine" Value="$(HelpMeBuildMachine)" />
+      <AssemblyMetadata Include="BuildGitCommit" Value="$(HelpMeBuildGitCommit)" />
     </ItemGroup>
   </Target>
 </Project>

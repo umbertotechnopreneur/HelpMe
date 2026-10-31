@@ -1,4 +1,4 @@
-# PromptMeUp — Can't remember that command?
+# HelpMe — Can't remember that command?
 
 [![Quality gate status](https://github.com/umbertotechnopreneur/PromptMeUp/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/umbertotechnopreneur/PromptMeUp/actions/workflows/quality.yml)
 ![Platform: Windows 11](https://img.shields.io/badge/platform-Windows_11-0078D4)
@@ -11,7 +11,7 @@ But Git is only part of it. In the daily trenches, I work with more and more too
 
 ## How I solved it
 
-I built PromptMeUp so I can describe what I want to do instead of trying to remember the syntax. Its command is `hm`, short for **help me**. I ask a question in plain language, read the explanation, and inspect the suggested commands. If I need more context, I keep the conversation going in the same terminal.
+I built HelpMe so I can describe what I want to do instead of trying to remember the syntax. Its command is `hm`, short for **help me**. I ask a question in plain language, read the explanation, and inspect the suggested commands. If I need more context, I keep the conversation going in the same terminal.
 
 ```powershell
 hm "How do I undo my last local commit without losing my changes?"
@@ -24,18 +24,18 @@ You can use it for Git, Bash, PowerShell, and other CLI tools, with your own Ope
   <a href="#meet-hm"><strong>Meet hm</strong></a> ·
   <a href="#download"><strong>Download</strong></a> ·
   <a href="#get-started"><strong>Get started</strong></a> ·
-  <a href="https://umbertogiacobbi.biz/promptmeup/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=promptmeup&amp;utm_content=readme_product_page"><strong>Product page</strong></a> ·
+  <a href="https://umbertogiacobbi.biz/promptmeup/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=helpme&amp;utm_content=readme_product_page"><strong>Product page</strong></a> ·
   <a href="docs/PRIVACY.md"><strong>Privacy</strong></a> ·
   <a href="https://github.com/umbertotechnopreneur/PromptMeUp/discussions"><strong>Join the conversation</strong></a>
 </p>
 
 [![PromptMeUp answering a Git question in Italian, with session usage and a choice to inspect a suggested command or run nothing](docs/assets/promptmeup-command-it-framed-v1.png)](docs/assets/promptmeup-command-it-framed-v1.png)
 
-*This is my screenshot of the app in Italian. I've cropped and framed it and hidden my personal path. Select it to view at full size.*
+*This screenshot shows the app in Italian under its previous name, PromptMeUp. I've cropped and framed it and hidden my personal path. Select it to view at full size.*
 
 ## Your PC restarted unexpectedly. Why?
 
-You could spend hours hunting through Windows logs. Or give PromptMeUp (pmUp) a clear goal and use Plan mode to work through the investigation one step at a time.
+You could spend hours hunting through Windows logs. Or give HelpMe a clear goal and use Plan mode to work through the investigation one step at a time.
 
 ![Four-step diagnostic workflow: an unexpected restart, a goal described in conversation, ordered terminal checks, and output examined for clues](docs/assets/meup/promptmeup-reboot-plan-v1.png)
 
@@ -58,9 +58,9 @@ Plan saves your progress, so you can pause and resume. It shows commands and the
 
 ## Download
 
-Download PromptMeUp for Windows 11 from the Microsoft Store.
+The existing Microsoft Store listing is for the previous PromptMeUp release. The HelpMe rebrand has not been submitted to the Store.
 
-<a href="https://apps.microsoft.com/detail/9P2WJBVQMW4J"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Download PromptMeUp from the Microsoft Store" width="160" /></a>
+<a href="https://apps.microsoft.com/detail/9P2WJBVQMW4J"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="View PromptMeUp in the Microsoft Store" width="160" /></a>
 
 AI features use your own OpenAI API account. PowerShell 7 is required to run commands.
 
@@ -69,18 +69,18 @@ AI features use your own OpenAI API account. PowerShell 7 is required to run com
 To build from source, install the **.NET 10 SDK**, **Git**, and **PowerShell 7**.
 
 ```powershell
-git clone https://github.com/umbertotechnopreneur/PromptMeUp.git
-cd PromptMeUp
-dotnet build PromptMeUp.slnx --configuration Release
-dotnet run --project PromptMeUp/PromptMeUp.csproj -- --setup
-dotnet run --project PromptMeUp/PromptMeUp.csproj -- "How do I list the largest files here?"
+git clone https://github.com/umbertotechnopreneur/PromptMeUp.git HelpMe
+cd HelpMe
+dotnet build HelpMe.slnx --configuration Release
+dotnet run --project HelpMe/HelpMe.csproj -- --setup
+dotnet run --project HelpMe/HelpMe.csproj -- "How do I list the largest files here?"
 ```
 
 Setup walks you through your language, model, answer style, and command checks. Choose from English, Italian, French, German, Spanish, and Vietnamese. You don't need a special font. Add `--no-emoji` or `--no-animation` if you prefer simpler output.
 
 Enter your API key in setup or use your usual secret manager. Don't put it in a command. On Windows, setup can save the key for your user account. It works right away in the open `hm` session. Before starting `hm` again, fully close and reopen your terminal app — and your IDE too, if that's where the terminal runs. On Linux and macOS, a key entered in setup lasts only for that session; use your shell or secret manager to make it available next time.
 
-The other examples use the shorter `hm` command. When running from source, replace it with `dotnet run --project PromptMeUp/PromptMeUp.csproj --` and keep the same arguments.
+The other examples use the shorter `hm` command. When running from source, replace it with `dotnet run --project HelpMe/HelpMe.csproj --` and keep the same arguments.
 
 ### Linux and macOS
 
@@ -100,9 +100,9 @@ See [what is saved and shared](docs/PRIVACY.md) for the details. The app is MIT-
 
 ## Meet `hm`
 
-`hm` means **help me**. It is the front door to every PromptMeUp feature: start with a question, open a chat, manage memories, adjust setup, or ask for help with a command, tool, error, file, or script. Start with a question:
+`hm` means **help me**. It is the front door to every HelpMe feature: start with a question, open a chat, manage memories, adjust setup, or ask for help with a command, tool, error, file, or script. Start with a question:
 
-Prefer a printable overview? Open **Command guide (PDF)** from `hm --help` or choose **Open the PDF guide** after setup. The two-page English guide is included with the app and works offline in your default PDF reader. The first page covers everyday commands; the second collects advanced workflows and switches. You can also [read it on GitHub](output/pdf/promptmeup-quick-reference.pdf).
+Prefer a printable overview? Open **Command guide (PDF)** from `hm --help` or choose **Open the PDF guide** after setup. The two-page English guide is included with the app and works offline in your default PDF reader. The first page covers everyday commands; the second collects advanced workflows and switches. You can also [read it on GitHub](output/pdf/helpme-quick-reference.pdf).
 
 ```powershell
 hm "How do I undo my last local commit without losing my changes?"
@@ -139,7 +139,7 @@ Run `hm` to browse help or `hm --setup` to open settings. Use the sidebar to cha
 </tr>
 </table>
 
-*Real screenshots with matching frames. Personal identifiers are hidden; app text and numbers have not been redrawn. [Image credits](docs/assets/README.md).*
+*Real screenshots from before the rebrand, with matching frames. Personal identifiers are hidden; app text and numbers have not been redrawn. [Image credits](docs/assets/README.md).*
 
 ## Remember the details you keep repeating
 
@@ -210,7 +210,7 @@ You can give `hm` a build log, ask for a script, or work through a task step by 
 | See commands and options | `hm --help` |
 | See the libraries behind the app | `hm --third-party` |
 
-The [command guide](docs/CLI_REFERENCE.md) has more examples and options. PromptMeUp helps with terminal work: commands, tools, errors, files, and scripts. It doesn't write general prose or generate images.
+The [command guide](docs/CLI_REFERENCE.md) has more examples and options. HelpMe helps with terminal work: commands, tools, errors, files, and scripts. It doesn't write general prose or generate images.
 
 ## Skills and memory
 
@@ -218,7 +218,7 @@ Use [skills and reviewed memory](docs/SKILLS_AND_MEMORY.md) from `hm --skills` o
 
 ## A weekend project that stayed
 
-I built PromptMeUp over a weekend and kept using it in my [daily work](https://umbertogiacobbi.biz/promptmeup/?utm_source=github&utm_medium=referral&utm_campaign=promptmeup&utm_content=readme_origin_story), so I shared it. I maintain it with help from a few contributors. Tell me what works for you and what needs fixing.
+I built HelpMe over a weekend and kept using it in my [daily work](https://umbertogiacobbi.biz/promptmeup/?utm_source=github&utm_medium=referral&utm_campaign=helpme&utm_content=readme_origin_story), so I shared it. I maintain it with help from a few contributors. Tell me what works for you and what needs fixing.
 
 ## Get involved
 
@@ -237,25 +237,25 @@ Security issue? [Report it privately](https://github.com/umbertotechnopreneur/Pr
 
 ## License and credits
 
-PromptMeUp is released under the **[MIT License](LICENSE)**. Use it, adapt it, and build on it while keeping the copyright and license notice.
+HelpMe is released under the **[MIT License](LICENSE)**. Use it, adapt it, and build on it while keeping the copyright and license notice.
 
-I built PromptMeUp with help from contributors, and I’m grateful to the people behind the libraries I use. See the [library credits](THIRD_PARTY_NOTICES.md), [license texts](LICENSES/README.md), and [artwork credits](docs/assets/README.md).
+I built HelpMe with help from contributors, and I’m grateful to the people behind the libraries I use. See the [library credits](THIRD_PARTY_NOTICES.md), [license texts](LICENSES/README.md), and [artwork credits](docs/assets/README.md).
 
 ## More from MeUp
 
 <p align="center">
-  <img src="docs/assets/meup/promptmeup-mark-v1.png" alt="PromptMeUp brand mark: a terminal prompt and guiding spark" width="132" />
+  <img src="docs/assets/meup/promptmeup-mark-v1.png" alt="HelpMe brand mark: a terminal prompt and guiding spark" width="132" />
 </p>
 
 <p align="center">
   <a href="https://github.com/umbertotechnopreneur/AgentInbox"><strong>AgentInbox</strong></a> · Connect your inboxes to your AI assistant.<br />
-  <a href="https://github.com/umbertotechnopreneur/PromptMeUp"><strong>PromptMeUp</strong></a> · Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help.<br />
+  <a href="https://github.com/umbertotechnopreneur/PromptMeUp"><strong>HelpMe</strong></a> · Can't remember that command? Git, Bash, or PowerShell: describe what you want to do. hm is here to help.<br />
   <a href="https://github.com/umbertotechnopreneur/WorkTrail"><strong>WorkTrail</strong></a> · Track your time. Find what you worked on.
 </p>
 
 <p align="center"><sub>Brand mark, not an app icon. <a href="docs/assets/meup/README.md">Visual style and image credits</a>.</sub></p>
 
-<p align="center">I’m Umberto Giacobbi. I built and maintain PromptMeUp with help from contributors.<br />Find me on <a href="https://www.linkedin.com/in/umbertogiacobbi/">LinkedIn</a> or at <a href="https://umbertogiacobbi.biz/">umbertogiacobbi.biz</a>.</p>
+<p align="center">I’m Umberto Giacobbi. I built and maintain HelpMe with help from contributors.<br />Find me on <a href="https://www.linkedin.com/in/umbertogiacobbi/">LinkedIn</a> or at <a href="https://umbertogiacobbi.biz/">umbertogiacobbi.biz</a>.</p>
 
 ## A note on security
 
