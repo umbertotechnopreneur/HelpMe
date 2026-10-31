@@ -1,6 +1,6 @@
 ; VBWR B
 ;
-; Project: PromptMeUp
+; Project: HelpMe
 ; Repository: https://github.com/umbertotechnopreneur/PromptMeUp
 ; Creator: Umberto Giacobbi | https://umbertogiacobbi.biz
 ;
@@ -16,7 +16,7 @@
 ; VBWR E
 
 ; SPDX-License-Identifier: MIT
-; Build only through scripts/PromptMeUp.ps1 -Command windows-installer, which validates the payload.
+; Build only through scripts/HelpMe.ps1 -Command windows-installer, which validates the payload.
 ; ISCC.exe has its own file version; Ver identifies the loaded Inno Setup compiler.
 #if Ver < EncodeVer(6, 3, 0, 0) || Ver >= EncodeVer(7, 0, 0, 0)
   #error Use Inno Setup 6.3 or later in the 6.x series.
@@ -42,14 +42,14 @@
 #endif
 
 [Setup]
-AppId=UmbertoGiacobbi.PromptMeUp
-AppName=PromptMeUp
+AppId=UmbertoGiacobbi.HelpMe
+AppName=HelpMe
 AppVersion={#AppVersion}
 AppPublisher=Umberto Giacobbi
 AppPublisherURL=https://github.com/umbertotechnopreneur/PromptMeUp
 AppSupportURL=https://github.com/umbertotechnopreneur/PromptMeUp/issues
 VersionInfoVersion={#AppVersion}.0
-DefaultDirName={localappdata}\Programs\PromptMeUp
+DefaultDirName={localappdata}\Programs\HelpMe
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
@@ -58,7 +58,7 @@ ArchitecturesInstallIn64BitMode={#TargetArchitecture}
 MinVersion=10.0.19041
 ChangesEnvironment=yes
 UninstallDisplayIcon={app}\hm.exe
-SetupIconFile={#RepositoryDirectory}\assets\PromptMeUp.ico
+SetupIconFile={#RepositoryDirectory}\assets\HelpMe.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -70,12 +70,12 @@ SignedUninstaller=no
 Source: "{#PublishDirectory}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Messages]
-FinishedLabel=PromptMeUp is installed.%n%nOpen a new terminal and type hm to get started. PowerShell 7 is required for command execution.%n%nIf you already installed PromptMeUp as an MSIX package, remove that package to avoid conflicting hm command aliases.
+FinishedLabel=HelpMe is installed.%n%nOpen a new terminal and type hm to get started. PowerShell 7 is required for command execution.%n%nIf you already installed HelpMe as an MSIX package, remove that package to avoid conflicting hm command aliases.
 
 [Code]
 const
-  InstallerKey = 'Software\Umberto Giacobbi\PromptMeUp\Installer';
-  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\UmbertoGiacobbi.PromptMeUp_is1';
+  InstallerKey = 'Software\Umberto Giacobbi\HelpMe\Installer';
+  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\UmbertoGiacobbi.HelpMe_is1';
 
 function NormalizePathEntry(Value: String): String;
 begin
@@ -128,7 +128,7 @@ begin
   begin
     if NormalizePathEntry(PreviousDirectory) <> NormalizePathEntry(ExpandConstant('{app}')) then
     begin
-      Result := 'Use the existing installation folder, or uninstall PromptMeUp before moving it.';
+      Result := 'Use the existing installation folder, or uninstall HelpMe before moving it.';
       Exit;
     end;
   end
@@ -143,12 +143,12 @@ begin
     if not GetPackedVersion(ExistingExecutable, InstalledVersion) or
        not StrToVersion('{#AppVersion}.0', PackageVersion) then
     begin
-      Result := 'Cannot read the installed version. Uninstall PromptMeUp before reinstalling.';
+      Result := 'Cannot read the installed version. Uninstall HelpMe before reinstalling.';
       Exit;
     end;
     if ComparePackedVersion(InstalledVersion, PackageVersion) > 0 then
     begin
-      Result := 'A newer version of PromptMeUp is installed. Uninstall it before installing an older version.';
+      Result := 'A newer version of HelpMe is installed. Uninstall it before installing an older version.';
       Exit;
     end;
   end;
@@ -183,7 +183,7 @@ begin
   begin
     if not HadOwnership then
       RegDeleteValue(HKCU, InstallerKey, 'PathEntry');
-    RaiseException('Cannot add PromptMeUp to your user PATH.');
+    RaiseException('Cannot add HelpMe to your user PATH.');
   end;
 end;
 
@@ -218,7 +218,7 @@ begin
     end;
   end;
   if (UpdatedPath <> CurrentPath) and not RegWriteStringValue(HKCU, 'Environment', 'Path', UpdatedPath) then
-    RaiseException('Cannot remove the PromptMeUp entry from your user PATH.');
+    RaiseException('Cannot remove the HelpMe entry from your user PATH.');
   if not RegDeleteValue(HKCU, InstallerKey, 'PathEntry') then
     RaiseException('Cannot remove the installer PATH record.');
   RegDeleteKeyIfEmpty(HKCU, InstallerKey);
