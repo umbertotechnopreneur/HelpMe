@@ -52,6 +52,7 @@ internal static class BoundedProcessRunner
         stopToken.ThrowIfCancellationRequested();
 
         startInfo.UseShellExecute = false;
+        EnvironmentSecretService.RemoveFromChildEnvironment(startInfo);
         startInfo.CreateNoWindow = true;
         startInfo.RedirectStandardInput = true;
         startInfo.RedirectStandardOutput = true;
@@ -60,6 +61,7 @@ internal static class BoundedProcessRunner
         startInfo.StandardOutputEncoding = Encoding.UTF8;
         startInfo.StandardErrorEncoding = Encoding.UTF8;
 
+        using var supervisor = OperatingSystem.IsLinux() ? new LinuxCommandSupervisor(startInfo) : null;
         using var process = new Process { StartInfo = startInfo };
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopToken);
         deadline.CancelAfter(timeout);
@@ -84,18 +86,30 @@ internal static class BoundedProcessRunner
         var errorTask = ReadBoundedAsync(process.StandardError.BaseStream, true, publish, deadline);
         var inputTask = WriteInputAsync(process.StandardInput, standardInput, deadline);
         var timedOut = false;
+        var outputDrainInterrupted = false;
 
         try
         {
-            await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+            if (supervisor is null)
+            {
+                await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                await supervisor.WaitForCommandExitAsync(process, deadline.Token).ConfigureAwait(false);
+            }
             // A descendant retaining a pipe must not keep the UI waiting after the launched process exits.
             if (timeout == Timeout.InfiniteTimeSpan)
             {
                 deadline.CancelAfter(TimeSpan.FromSeconds(2));
             }
 
-            await Task.WhenAll(inputTask, outputTask, errorTask).ConfigureAwait(false);
+            await Task.WhenAll(inputTask, outputTask, errorTask).WaitAsync(deadline.Token).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
+            if (supervisor is not null && !deadline.IsCancellationRequested)
+            {
+                await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+            }
             timedOut = deadline.IsCancellationRequested && !stopToken.IsCancellationRequested;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -113,6 +127,8 @@ internal static class BoundedProcessRunner
         {
             if (deadline.IsCancellationRequested)
             {
+                // Killing the tree may make a pending read return EOF instead of throwing for cancellation.
+                outputDrainInterrupted = !outputTask.IsCompletedSuccessfully || !errorTask.IsCompletedSuccessfully;
                 TryKill(process);
                 await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             }
@@ -133,7 +149,7 @@ internal static class BoundedProcessRunner
         cancellationToken.ThrowIfCancellationRequested();
         var cancelled = stopToken.IsCancellationRequested;
         int? exitCode = timedOut || cancelled ? null : process.ExitCode;
-        var outputTruncated = capturedOutput.Truncated || error.Truncated;
+        var outputTruncated = outputDrainInterrupted || capturedOutput.Truncated || error.Truncated;
 
         return new CommandExecutionResult(displayCommand, exitCode,
             capturedOutput.Text, error.Text, timedOut, outputTruncated, stopwatch.ElapsedMilliseconds)

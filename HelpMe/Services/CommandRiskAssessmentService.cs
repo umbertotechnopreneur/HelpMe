@@ -123,12 +123,12 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
         var score = 35;
         var effect = Translate(language, "Risk.Unknown");
 
-        if (CriticalPattern().IsMatch(normalized))
+        if (CriticalPattern().IsMatch(normalized) || RecursiveRmPattern().IsMatch(normalized))
         {
             score = 95;
             effect = Translate(language, "Risk.Critical");
         }
-        else if (HighPattern().IsMatch(normalized))
+        else if (HighPattern().IsMatch(normalized) || (RmCommandPattern().IsMatch(normalized) && !IsReadOnlyCommand(normalized)))
         {
             score = 75;
             effect = Translate(language, "Risk.High");
@@ -184,8 +184,18 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
     }
 
     /// <summary>Matches operations that can erase broad state, reboot the machine, or discard repository work.</summary>
-    [GeneratedRegex(@"(?ix)(\bformat(?:\.com)?\b|\bdiskpart\b|\bclear-disk\b|\binitialize-disk\b|\bremove-item\b[^\r\n]*(?:-recurse|-force)|\brm\b[^\r\n]*\s-rf\b|\bgit\s+(?:reset\s+--hard|clean\s+-[^\s]*f)|\b(?:stop|restart)-computer\b|\bshutdown(?:\.exe)?\b)")]
+    [GeneratedRegex(@"(?ix)(\bformat(?:\.com)?\b|\bdiskpart\b|\bclear-disk\b|\binitialize-disk\b|\bremove-item\b[^\r\n]*(?:-recurse|-force)|\bgit\s+(?:reset\s+--hard|clean\s+-[^\s]*f)|\b(?:stop|restart)-computer\b|\bshutdown(?:\.exe)?\b)")]
     private static partial Regex CriticalPattern();
+
+    private const string RmCommand = """(?:^|[\s/|;&('"'])rm['"]?(?=\s|$|[|;&)])""";
+
+    /// <summary>Treats a native rm invocation as a direct file mutation.</summary>
+    [GeneratedRegex(RmCommand, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex RmCommandPattern();
+
+    /// <summary>Recognizes recursive rm options on their own or anywhere in a short option cluster.</summary>
+    [GeneratedRegex(RmCommand + """[^\r\n|;&]*?[ \t]+['"]?(?:-[a-z]*r[a-z]*|--recursive)['"]?(?=\s|$|[|;&)])""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex RecursiveRmPattern();
 
     /// <summary>Matches direct file, registry, service, policy, or force-push mutations.</summary>
     [GeneratedRegex(@"(?ix)(\bremove-item\b|\bdel(?:ete)?\b|\berase\b|\brd\b|\bmove-item\b|\b(?:set|add|clear)-content\b|\bout-file\b|\bset-itemproperty\b|\bnew-item\b|\breg(?:\.exe)?\s+(?:add|delete)\b|\bset-executionpolicy\b|\b(?:start|stop|restart)-service\b|\bgit\s+push\b[^\r\n]*--force|\bgit\s+branch\b[^\r\n]*(?:\s-[dDmMcCfF]\b|--(?:delete|move|copy|force)\b)|\b(?:invoke-expression|iex|sudo|doas|runas(?:\.exe)?)\b|\b-verb\s+runas\b)")]

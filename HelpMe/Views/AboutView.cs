@@ -92,13 +92,34 @@ public sealed class AboutView(
 
     /// <summary>Provides shared product content, with an optional installation card for first-run setup.</summary>
     /// <param name="renderInstallationCard">Whether to emphasize installation details during first-run setup.</param>
-    public IRenderable CreateContent(bool renderInstallationCard = false) => new Rows(
-        new VibeWareBrand(console, new ProductBanner(text)),
-        new Text(" "),
-        new Text(text.Text("About.Description"), Style.Parse(TerminalTheme.Primary)),
-        new Text(" "),
-        new InstallationInfo(text, buildInformation, renderCard: renderInstallationCard),
-        TrialNotice.Create(console, text, detailed: renderInstallationCard));
+    public IRenderable CreateContent(bool renderInstallationCard = false)
+    {
+        var banner = new ProductBanner(text);
+        var installation = new InstallationInfo(text, buildInformation, renderCard: renderInstallationCard);
+        var trialNotice = TrialNotice.Create(console, text, detailed: renderInstallationCard);
+        if (renderInstallationCard)
+        {
+            return new Rows(
+                new VibeWareBrand(console, banner),
+                new Text(" "),
+                new Text(text.Text("About.Description"), Style.Parse(TerminalTheme.Primary)),
+                new Text(" "),
+                installation,
+                trialNotice);
+        }
+
+        return new Rows(
+            banner,
+            Align.Center(new Text($"{text.Text("Footer.Version")} {buildInformation.Version}", Style.Parse(TerminalTheme.Muted))),
+            Text.Empty,
+            Align.Center(new Text(text.Text("About.Purpose"), Style.Parse(TerminalTheme.Primary))),
+            Align.Center(new Text("Umberto Giacobbi · MIT", Style.Parse(TerminalTheme.Primary))),
+            Text.Empty,
+            installation,
+            trialNotice,
+            Text.Empty,
+            new VibeWareBrand(console, InstallationInfo.CreateAboutLinks(text), centered: true));
+    }
 
     #endregion
 

@@ -122,6 +122,24 @@ public sealed class CommandExecutionServiceTests
             new ProcessStartInfo("synthetic-executable-that-does-not-exist"), "No start", TimeSpan.FromSeconds(1), new CancellationToken(true)));
     }
 
+    /// <summary>Verifies command children receive neither supported OpenAI variable and retain unrelated variables.</summary>
+    [Fact]
+    public async Task SharedRunner_StripsBothOpenAiVariables()
+    {
+        var startInfo = new ProcessStartInfo("pwsh");
+        startInfo.Environment["OPENAI_API_KEY"] = "fixture";
+        startInfo.Environment["OPENAI_ADMIN_KEY"] = "fixture";
+        startInfo.Environment["HM_CHILD_FIXTURE"] = "preserved";
+        startInfo.ArgumentList.Add("-NoProfile");
+        startInfo.ArgumentList.Add("-NonInteractive");
+        startInfo.ArgumentList.Add("-Command");
+        startInfo.ArgumentList.Add("if ((Test-Path Env:OPENAI_API_KEY) -or (Test-Path Env:OPENAI_ADMIN_KEY)) { exit 1 }; $env:HM_CHILD_FIXTURE");
+
+        var result = await BoundedProcessRunner.RunAsync(startInfo, "Synthetic environment check", ProcessDeadline, default);
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("preserved", result.StandardOutput);
+    }
+
     /// <summary>Verifies a still-running process is terminated at its deadline while retaining output already received.</summary>
     [Fact]
     public async Task ExecuteAsync_ParentStillRunning_TimesOutWithPartialOutput()
@@ -181,6 +199,13 @@ public sealed class CommandExecutionServiceTests
             Assert.Null(result.ExitCode);
             Assert.Contains("parent-finished", result.StandardOutput, StringComparison.Ordinal);
             Assert.True(stopwatch.Elapsed < MaximumReturnTime, stopwatch.Elapsed.ToString());
+            if (OperatingSystem.IsLinux())
+            {
+                var pidLine = Assert.Single(result.StandardOutput.Split('\n'), line => line.StartsWith("child-id=", StringComparison.Ordinal));
+                var childId = int.Parse(pidLine[9..], System.Globalization.CultureInfo.InvariantCulture);
+                Assert.True(SpinWait.SpinUntil(() => HasStoppedOnLinux(childId), TimeSpan.FromSeconds(2)),
+                    "The descendant still ran after the shell exited and its deadline expired.");
+            }
         }
         finally
         {
@@ -215,6 +240,20 @@ public sealed class CommandExecutionServiceTests
     /// <summary>Creates the test-only authorization capability for the exact safe fixture command.</summary>
     private static ApprovedCommand Approve(string command) => ApprovedCommand.Create(command,
         CommandRiskAssessmentService.AssessLocally(command, "en"));
+
+    /// <summary>Accepts a terminated descendant even while its system reaper still owns the zombie.</summary>
+    private static bool HasStoppedOnLinux(int pid)
+    {
+        try
+        {
+            var stat = File.ReadAllText($"/proc/{pid}/stat");
+            return stat[stat.LastIndexOf(')') + 2] is 'Z' or 'X';
+        }
+        catch (IOException exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return true;
+        }
+    }
 
     /// <summary>Stops only the synthetic sleeping child whose identifier was returned by this fixture.</summary>
     private static void StopFixtureChild(int childId)

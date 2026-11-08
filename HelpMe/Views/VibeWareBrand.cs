@@ -25,7 +25,7 @@ namespace HelpMe.Views;
 /// <summary>Places the supplied VibeWare artwork beside product content with a readable manifesto link.</summary>
 /// <param name="console">The terminal whose color capabilities determine whether artwork is useful.</param>
 /// <param name="content">Product information that remains readable without image support.</param>
-internal sealed class VibeWareBrand(IAnsiConsole console, IRenderable content) : IRenderable
+internal sealed class VibeWareBrand(IAnsiConsole console, IRenderable content, bool centered = false) : IRenderable
 {
 
     #region Fields
@@ -52,18 +52,20 @@ internal sealed class VibeWareBrand(IAnsiConsole console, IRenderable content) :
 
     #region Implementation
 
-    /// <summary>Keeps artwork at the top right without reserving space on narrow or colorless terminals.</summary>
+    /// <summary>Places the mark in the header or centers it above the About footer.</summary>
     /// <param name="options">Terminal rendering capabilities.</param>
     /// <param name="width">Available terminal columns.</param>
     private IRenderable CreateContent(RenderOptions options, int width)
     {
         var name = new Markup($"[bold {TerminalTheme.Info} link={ManifestoUrl}]VibeWare[/]");
         var link = new Markup($"[{TerminalTheme.Muted} link={ManifestoUrl}]{ManifestoUrl}[/]");
-        var requiredWidth = Math.Max(88, content.Measure(options, width).Min + ImageSize + 2);
+        var requiredWidth = centered ? 88 : Math.Max(88, content.Measure(options, width).Min + ImageSize + 2);
 
         if (width < requiredWidth || !console.Profile.Capabilities.Ansi || !console.Profile.Capabilities.Unicode
             || !console.Profile.Supports(ColorSystem.Legacy))
-            return new Rows(content, Text.Empty, name, link);
+            return centered
+                ? new Rows(Align.Center(name), Align.Center(link), Text.Empty, content)
+                : new Rows(content, Text.Empty, name, link);
 
         var artwork = new Canvas(ImageSize, ImageSize) { Scale = false };
         var pixels = Pixels.Value;
@@ -77,6 +79,9 @@ internal sealed class VibeWareBrand(IAnsiConsole console, IRenderable content) :
                 artwork.SetPixel(x, y, new Color(pixels[offset], pixels[offset + 1], pixels[offset + 2]));
             }
         }
+
+        if (centered)
+            return new Rows(Align.Center(artwork), Align.Center(name), Align.Center(link), Text.Empty, content);
 
         var header = new Grid().Expand()
             .AddColumn(new GridColumn { Padding = new Padding(0, 0, 2, 0) })

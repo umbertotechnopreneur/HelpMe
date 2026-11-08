@@ -37,6 +37,19 @@ internal static class Program
     /// <summary>Bootstraps UTF-8 output, Serilog, dependency injection, cancellation, and the HelpMe application.</summary>
     private static async Task<int> Main(string[] args)
     {
+        if (OperatingSystem.IsLinux() && args is [LinuxCommandSupervisor.Switch, var pipeName])
+        {
+            try
+            {
+                return await LinuxCommandSupervisor.RunChildAsync(pipeName).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is IOException or System.ComponentModel.Win32Exception or TimeoutException or UnauthorizedAccessException)
+            {
+                // The caller observes the closed control connection. Keep command data out of startup errors.
+                return 1;
+            }
+        }
+
         Console.InputEncoding = Encoding.UTF8;
         Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 

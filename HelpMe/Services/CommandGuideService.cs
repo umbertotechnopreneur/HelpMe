@@ -51,6 +51,7 @@ public sealed class CommandGuideService
             start.FileName = OperatingSystem.IsMacOS() ? "open" : "xdg-open";
             start.UseShellExecute = false;
             start.ArgumentList.Add(DocumentPath);
+            EnvironmentSecretService.RemoveFromChildEnvironment(start);
         }
         else
         {

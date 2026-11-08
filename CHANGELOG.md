@@ -1,5 +1,7 @@
-# What's new
+﻿# What's new
 
-## 2026-11-01
+Selected user-facing changes to HelpMe. These are task completion dates, not release dates. See [GitHub Releases](https://github.com/umbertotechnopreneur/PromptMeUp/releases) for published versions.
 
-- PromptMeUp is now HelpMe. The `hm` command remains the same; the renamed app uses new local data and credential locations.
+## 2026-11-08
+
+- HelpMe keeps OpenAI credentials out of child processes, treats recursive rm commands as a critical risk, and stops descendant processes when you cancel a Linux command.

@@ -117,6 +117,13 @@ internal static partial class UiTextCatalog
             German: "hm-Ordner",
             Spanish: "Carpeta de hm",
             Vietnamese: "Thư mục hm"));
+        entries.Add("Path.UnixSeparator", new(
+            English: "Move hm to a folder without a colon (:) in its path before adding it to PATH.",
+            Italian: "Prima di aggiungere hm al PATH, spostalo in una cartella il cui percorso non contenga i due punti (:).",
+            French: "Avant d’ajouter hm au PATH, déplacez-le dans un dossier dont le chemin ne contient pas de deux-points (:).",
+            German: "Verschiebe hm in einen Ordner ohne Doppelpunkt (:) im Pfad, bevor du es zum PATH hinzufügst.",
+            Spanish: "Antes de añadir hm al PATH, muévelo a una carpeta cuya ruta no contenga dos puntos (:).",
+            Vietnamese: "Trước khi thêm hm vào PATH, hãy chuyển hm đến một thư mục có đường dẫn không chứa dấu hai chấm (:)."));
         entries.Add("Path.Install", new(
             English: "Add this hm folder to the user PATH",
             Italian: "Aggiungi questa cartella hm al PATH utente",
