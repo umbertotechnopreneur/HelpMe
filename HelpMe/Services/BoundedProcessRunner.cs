@@ -86,6 +86,7 @@ internal static class BoundedProcessRunner
         var errorTask = ReadBoundedAsync(process.StandardError.BaseStream, true, publish, deadline);
         var inputTask = WriteInputAsync(process.StandardInput, standardInput, deadline);
         var timedOut = false;
+        var outputDrainInterrupted = false;
 
         try
         {
@@ -126,6 +127,8 @@ internal static class BoundedProcessRunner
         {
             if (deadline.IsCancellationRequested)
             {
+                // Killing the tree may make a pending read return EOF instead of throwing for cancellation.
+                outputDrainInterrupted = !outputTask.IsCompletedSuccessfully || !errorTask.IsCompletedSuccessfully;
                 TryKill(process);
                 await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             }
@@ -146,7 +149,7 @@ internal static class BoundedProcessRunner
         cancellationToken.ThrowIfCancellationRequested();
         var cancelled = stopToken.IsCancellationRequested;
         int? exitCode = timedOut || cancelled ? null : process.ExitCode;
-        var outputTruncated = capturedOutput.Truncated || error.Truncated;
+        var outputTruncated = outputDrainInterrupted || capturedOutput.Truncated || error.Truncated;
 
         return new CommandExecutionResult(displayCommand, exitCode,
             capturedOutput.Text, error.Text, timedOut, outputTruncated, stopwatch.ElapsedMilliseconds)
