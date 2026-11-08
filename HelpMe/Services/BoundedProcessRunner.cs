@@ -52,6 +52,7 @@ internal static class BoundedProcessRunner
         stopToken.ThrowIfCancellationRequested();
 
         startInfo.UseShellExecute = false;
+        EnvironmentSecretService.RemoveFromChildEnvironment(startInfo);
         startInfo.CreateNoWindow = true;
         startInfo.RedirectStandardInput = true;
         startInfo.RedirectStandardOutput = true;
@@ -60,6 +61,7 @@ internal static class BoundedProcessRunner
         startInfo.StandardOutputEncoding = Encoding.UTF8;
         startInfo.StandardErrorEncoding = Encoding.UTF8;
 
+        using var supervisor = OperatingSystem.IsLinux() ? new LinuxCommandSupervisor(startInfo) : null;
         using var process = new Process { StartInfo = startInfo };
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, stopToken);
         deadline.CancelAfter(timeout);
@@ -87,15 +89,27 @@ internal static class BoundedProcessRunner
 
         try
         {
-            await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+            if (supervisor is null)
+            {
+                await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+            }
+            else
+            {
+                await supervisor.WaitForCommandExitAsync(process, deadline.Token).ConfigureAwait(false);
+            }
             // A descendant retaining a pipe must not keep the UI waiting after the launched process exits.
             if (timeout == Timeout.InfiniteTimeSpan)
             {
                 deadline.CancelAfter(TimeSpan.FromSeconds(2));
             }
 
-            await Task.WhenAll(inputTask, outputTask, errorTask).ConfigureAwait(false);
+            await Task.WhenAll(inputTask, outputTask, errorTask).WaitAsync(deadline.Token).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
+            if (supervisor is not null && !deadline.IsCancellationRequested)
+            {
+                supervisor.Release();
+                await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+            }
             timedOut = deadline.IsCancellationRequested && !stopToken.IsCancellationRequested;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

@@ -21,6 +21,9 @@ using HelpMe.Models;
 
 namespace HelpMe.Services;
 
+/// <summary>Reports that the install directory would create multiple entries in the Unix PATH.</summary>
+internal sealed class AmbiguousUnixPathException() : InvalidOperationException("The install directory contains the Unix PATH separator.");
+
 /// <summary>Plans and applies user-approved changes that expose the command on PATH.</summary>
 public interface IPortablePathService
 {
@@ -60,6 +63,7 @@ public sealed class PortablePathService : IPortablePathService
     public PortablePathPlan CreatePlan(PortablePathAction action)
     {
         var executableDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(AppContext.BaseDirectory));
+        ValidateInstallDirectory(action, executableDirectory);
         var target = ResolvePersistenceTarget();
         var isPresent = IsPersisted(executableDirectory, target);
         var requiresChange = action switch
@@ -82,6 +86,7 @@ public sealed class PortablePathService : IPortablePathService
     {
         ArgumentNullException.ThrowIfNull(plan);
         cancellationToken.ThrowIfCancellationRequested();
+        ValidateInstallDirectory(plan.Action, plan.ExecutableDirectory);
         if (plan.Action == PortablePathAction.Status || !plan.RequiresChange)
         {
             return new PortablePathResult(plan.Action, plan.ExecutableDirectory, plan.PersistenceTarget, false, plan.IsPresent);
@@ -110,6 +115,15 @@ public sealed class PortablePathService : IPortablePathService
     #endregion
 
     #region Implementation
+
+    /// <summary>Rejects Unix directories that cannot be represented as one PATH entry before any install writes.</summary>
+    private static void ValidateInstallDirectory(PortablePathAction action, string directory)
+    {
+        if (action == PortablePathAction.Install && !OperatingSystem.IsWindows() && directory.Contains(Path.PathSeparator))
+        {
+            throw new AmbiguousUnixPathException();
+        }
+    }
 
     /// <summary>Adds or removes the executable directory from the Windows user PATH.</summary>
     private static void ApplyWindowsPath(PortablePathPlan plan)
@@ -162,7 +176,18 @@ public sealed class PortablePathService : IPortablePathService
     /// <summary>Updates the child process environment so status checks are immediately consistent.</summary>
     private static void UpdateCurrentProcessPath(PortablePathPlan plan)
     {
-        var entries = SplitPath(Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Process)).ToList();
+        var current = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Process) ?? string.Empty;
+        if (plan.Action == PortablePathAction.Remove && !OperatingSystem.IsWindows() && plan.ExecutableDirectory.Contains(Path.PathSeparator))
+        {
+            // Older installs prepended the whole string. Splitting it first would leave its injected entries behind.
+            var prefix = plan.ExecutableDirectory + Path.PathSeparator;
+            if (current.StartsWith(prefix, StringComparison.Ordinal) || current == plan.ExecutableDirectory)
+            {
+                Environment.SetEnvironmentVariable("PATH", current.Length < prefix.Length ? null : current[prefix.Length..]);
+            }
+            return;
+        }
+        var entries = SplitPath(current).ToList();
         entries.RemoveAll(entry => PathsEqual(entry, plan.ExecutableDirectory));
         if (plan.Action == PortablePathAction.Install)
         {

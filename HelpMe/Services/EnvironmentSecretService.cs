@@ -16,6 +16,7 @@
  *
  * VBWR E */
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using HelpMe.Models;
 
@@ -79,6 +80,13 @@ public sealed class EnvironmentSecretService(ILogger<EnvironmentSecretService> l
 
     /// <summary>Reports whether a variable contains a plausible OpenAI secret.</summary>
     public bool IsConfigured(string variableName) => LooksLikeOpenAiKey(Load(variableName));
+
+    /// <summary>Removes both supported OpenAI credentials from the environment passed to a child.</summary>
+    internal static void RemoveFromChildEnvironment(ProcessStartInfo startInfo)
+    {
+        startInfo.Environment.Remove("OPENAI_API_KEY");
+        startInfo.Environment.Remove("OPENAI_ADMIN_KEY");
+    }
 
     /// <summary>Performs a local shape check; this does not authenticate with OpenAI.</summary>
     public bool LooksLikeOpenAiKey(string? secret) => OpenAiKeyPolicy.IsPlausible(secret);

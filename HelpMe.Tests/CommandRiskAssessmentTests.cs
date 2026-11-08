@@ -40,6 +40,13 @@ public sealed class CommandRiskAssessmentTests
     [InlineData("Get-Item $(Write-Output item)", 35)]
     [InlineData("git log --output=review-placeholder.txt", 35)]
     [InlineData("git diff --ext-diff", 35)]
+    [InlineData("rm -- ./sample", 75)]
+    [InlineData("/bin/rm -rf ./sample", 95)]
+    [InlineData("/bin/rm -fr ./sample", 95)]
+    [InlineData("rm -r -f ./sample", 95)]
+    [InlineData("rm -f -R ./sample", 95)]
+    [InlineData("rm --recursive --force ./sample", 95)]
+    [InlineData("Get-Date; & '/usr/bin/rm' --force '--recursive' ./sample", 95)]
     public void AssessLocally_MutatingOrUnrecognizedShape_NeverLow(string command, int minimumScore)
     {
         var result = CommandRiskAssessmentService.AssessLocally(command, "en");
@@ -53,6 +60,7 @@ public sealed class CommandRiskAssessmentTests
     [InlineData("git status --short")]
     [InlineData("git branch --show-current")]
     [InlineData("Get-ChildItem -LiteralPath ./source")]
+    [InlineData("Get-Help rm")]
     [InlineData("dotnet --info")]
     public void AssessLocally_CompleteInspectionShape_RemainsLow(string command) =>
         Assert.Equal(CommandRiskLevel.Low, CommandRiskAssessmentService.AssessLocally(command, "en").Level);

@@ -43,7 +43,16 @@ public sealed class InstallationWorkflow(
         var action = options.PathAction is null
             ? pathView.SelectAction()
             : ParsePathAction(options.PathAction);
-        var plan = pathService.CreatePlan(action);
+        PortablePathPlan plan;
+        try
+        {
+            plan = pathService.CreatePlan(action);
+        }
+        catch (AmbiguousUnixPathException)
+        {
+            shell.RenderError(text.Text("Path.UnixSeparator"));
+            return 1;
+        }
         var confirmed = pathView.PreviewAndConfirm(plan, options.Yes);
 
         if (action != PortablePathAction.Status && plan.RequiresChange && !(confirmed || options.Yes))

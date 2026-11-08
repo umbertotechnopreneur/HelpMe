@@ -85,6 +85,7 @@ public sealed class ExecutableLocationService : IExecutableLocationService
 
         try
         {
+            EnvironmentSecretService.RemoveFromChildEnvironment(startInfo);
             _ = Process.Start(startInfo)
                 ?? throw new InvalidOperationException("The system file manager could not be started.");
         }
