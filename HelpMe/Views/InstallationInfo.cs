@@ -47,6 +47,14 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
     public IEnumerable<Segment> Render(RenderOptions options, int maxWidth) =>
         CreateContent(maxWidth).Render(options, maxWidth);
 
+    /// <summary>Shows localized links in the About footer, with visible URLs for plain terminals.</summary>
+    /// <param name="text">Localization used for the visible link names.</param>
+    internal static IRenderable CreateAboutLinks(ILocalizationService text) => new Rows(
+        CreateAboutLink(text.Text("About.Website"), AuthorUrl),
+        CreateAboutLink(text.Text("About.Repository"), RepositoryUrl),
+        CreateAboutLink(text.Text("About.Terms"), TermsUrl),
+        CreateAboutLink(text.Text("About.Privacy"), PrivacyUrl));
+
     #endregion
 
     #region Implementation
@@ -75,16 +83,22 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
         var details = new Grid().AddColumn(new GridColumn().RightAligned()).AddColumn(new GridColumn().LeftAligned());
         var narrowDetails = new List<IRenderable>();
 
-        AddDetail(details, narrowDetails, "Footer.Version", buildInformation.Version);
+        if (renderCard) AddDetail(details, narrowDetails, "Footer.Version", buildInformation.Version);
         AddDetail(details, narrowDetails, "About.BuildDate", buildInformation.BuildTimestamp);
         AddDetail(details, narrowDetails, "About.BuildCommit", buildInformation.GitCommit);
         AddDetail(details, narrowDetails, "About.BuildMachine", buildInformation.MachineName);
-        AddDetail(details, narrowDetails, "About.Author", "Umberto Giacobbi");
-        AddDetail(details, narrowDetails, "About.License", "MIT");
+        if (renderCard)
+        {
+            AddDetail(details, narrowDetails, "About.Author", "Umberto Giacobbi");
+            AddDetail(details, narrowDetails, "About.License", "MIT");
+        }
         AddDetail(details, narrowDetails, "About.Platforms", "Windows / Linux / macOS");
 
+        IRenderable installationDetails = width >= 65 ? details : new Rows(narrowDetails);
+        if (!renderCard) return installationDetails;
+
         return new Rows(
-            width >= 65 ? details : new Rows(narrowDetails),
+            installationDetails,
             new Text(text.Text("About.Repository"), Style.Parse(TerminalTheme.Muted)),
             new Markup($"[underline {TerminalTheme.Info} link={RepositoryUrl}]{RepositoryUrl}[/]"),
             new Text(" "),
@@ -96,6 +110,12 @@ internal sealed class InstallationInfo(ILocalizationService text, BuildInformati
             new Text(text.Text("About.Terms"), Style.Parse(TerminalTheme.Muted)),
             new Markup($"[underline {TerminalTheme.Info} link={TermsUrl}]{TermsUrl}[/]"));
     }
+
+    /// <summary>Centers one project link and prints its destination for terminals without hyperlinks.</summary>
+    /// <param name="label">Localized link name.</param>
+    /// <param name="url">Fixed project link destination.</param>
+    private static IRenderable CreateAboutLink(string label, string url) => Align.Center(new Markup(
+        $"[{TerminalTheme.Muted}]{Markup.Escape(label)}[/] [underline {TerminalTheme.Info} link={url}]{url}[/]"));
 
     /// <summary>Separates each right-aligned label and left-aligned value with one trailing blank row.</summary>
     private void AddDetail(Grid grid, List<IRenderable> narrowRows, string labelKey, string value)

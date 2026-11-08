@@ -96,6 +96,13 @@ internal static partial class UiTextCatalog
             German: "Ein schlanker, portabler Terminal-Assistent. Formulieren Sie Ihre Anliegen in natürlicher Sprache und prüfen Sie die vorgeschlagenen Befehle vor der Ausführung.",
             Spanish: "Un asistente de terminal ligero y portátil. Convierte tus peticiones en lenguaje natural en comandos que puedes revisar antes de ejecutarlos.",
             Vietnamese: "Trợ lý dòng lệnh gọn nhẹ, có thể mang theo. Biến yêu cầu bằng ngôn ngữ tự nhiên thành các lệnh để bạn xem xét trước khi chạy."));
+        entries.Add("About.Purpose", new(
+            English: "I built HelpMe to turn your requests into terminal commands you can review before running them.",
+            Italian: "Ho creato HelpMe per trasformare le tue richieste in comandi da controllare prima di eseguirli.",
+            French: "J’ai créé HelpMe pour transformer vos demandes en commandes que vous pouvez vérifier avant de les exécuter.",
+            German: "Ich habe HelpMe entwickelt, um deine Anfragen in Terminalbefehle umzuwandeln, die du vor dem Ausführen prüfen kannst.",
+            Spanish: "Creé HelpMe para convertir tus peticiones en comandos de terminal que puedes revisar antes de ejecutarlos.",
+            Vietnamese: "Tôi tạo HelpMe để chuyển yêu cầu của bạn thành lệnh. Bạn có thể xem lại lệnh trước khi chạy."));
         entries.Add("About.BuildDate", new(
             English: "Built at",
             Italian: "Compilato il",
