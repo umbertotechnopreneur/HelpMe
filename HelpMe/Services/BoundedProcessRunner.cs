@@ -107,7 +107,6 @@ internal static class BoundedProcessRunner
             cancellationToken.ThrowIfCancellationRequested();
             if (supervisor is not null && !deadline.IsCancellationRequested)
             {
-                supervisor.Release();
                 await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
             }
             timedOut = deadline.IsCancellationRequested && !stopToken.IsCancellationRequested;

@@ -68,13 +68,11 @@ internal sealed class LinuxCommandSupervisor : IDisposable
         }
     }
 
-    /// <summary>Allows the supervisor to exit after both command output streams are drained.</summary>
-    internal void Release() => _control.WriteByte(1);
-
     /// <summary>Closes the private connection and removes its socket.</summary>
     public void Dispose() => _control.Dispose();
 
-    /// <summary>Adopts orphaned descendants and stays alive until the caller finishes or kills the tree.</summary>
+    /// <summary>Adopts orphaned descendants and stays alive while forwarding the command's output.</summary>
+    /// <param name="pipeName">The private control connection named by the caller.</param>
     [SupportedOSPlatform("linux")]
     internal static async Task<int> RunChildAsync(string pipeName)
     {
@@ -98,13 +96,17 @@ internal sealed class LinuxCommandSupervisor : IDisposable
         {
             throw new InvalidDataException("Missing command executable.");
         }
-        var target = new ProcessStartInfo(executable) { UseShellExecute = false };
+        var target = new ProcessStartInfo(executable)
+        {
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
         EnvironmentSecretService.RemoveFromChildEnvironment(target);
         foreach (var argument in argv.Skip(1))
         {
             target.ArgumentList.Add(argument);
         }
-        using var devNull = File.OpenHandle("/dev/null", FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
         using var child = new Process { StartInfo = target };
         try
         {
@@ -117,19 +119,15 @@ internal sealed class LinuxCommandSupervisor : IDisposable
             await control.WriteAsync(failure).ConfigureAwait(false);
             return 1;
         }
-        // Only the command and its descendants should keep the caller's pipes open.
-        for (var descriptor = 0; descriptor <= 2; descriptor++)
-        {
-            if (Dup2(devNull.DangerousGetHandle().ToInt32(), descriptor) < 0)
-            {
-                var error = new Win32Exception(Marshal.GetLastPInvokeError());
-                child.Kill(entireProcessTree: true);
-                throw error;
-            }
-        }
+        // Separate command pipes let the supervisor see EOF without depending on inherited runtime descriptors.
+        using var stdout = Console.OpenStandardOutput();
+        using var stderr = Console.OpenStandardError();
+        var output = child.StandardOutput.BaseStream.CopyToAsync(stdout);
+        var error = child.StandardError.BaseStream.CopyToAsync(stderr);
         await child.WaitForExitAsync().ConfigureAwait(false);
+        // The caller can now bound pipe draining even when the command itself had no deadline.
         control.WriteByte(1);
-        await control.ReadExactlyAsync(new byte[1]).ConfigureAwait(false);
+        await Task.WhenAll(output, error).ConfigureAwait(false);
         return child.ExitCode;
     }
 
@@ -167,8 +165,4 @@ internal sealed class LinuxCommandSupervisor : IDisposable
     /// <summary>Sets a Linux process attribute using the native word-sized prctl arguments.</summary>
     [DllImport("libc", EntryPoint = "prctl", SetLastError = true)]
     private static extern int Prctl(int option, nuint arg2, nuint arg3, nuint arg4, nuint arg5);
-
-    /// <summary>Replaces an inherited standard descriptor after launching the command.</summary>
-    [DllImport("libc", EntryPoint = "dup2", SetLastError = true)]
-    private static extern int Dup2(int source, int destination);
 }
