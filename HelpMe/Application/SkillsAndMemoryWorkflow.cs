@@ -258,7 +258,7 @@ public sealed partial class SkillsAndMemoryWorkflow(
                     new { skill.Name, skill.Fingerprint }, AuditSessionOutcome.Failed, ct).ConfigureAwait(false))
                 {
                     var result = await commands.RunForResultAsync(
-                        session.Id, command, settings, ct, executionMode).ConfigureAwait(false);
+                        session.Id, command, settings with { CommandShell = CommandShell.PowerShell }, ct, executionMode).ConfigureAwait(false);
                     session.Outcome = result is null ? AuditSessionOutcome.Cancelled
                         : result.ExitCode == 0 && !result.TimedOut ? AuditSessionOutcome.Completed : AuditSessionOutcome.Failed;
                 }

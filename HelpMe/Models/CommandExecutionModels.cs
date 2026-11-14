@@ -49,6 +49,8 @@ public sealed record CommandRiskAssessment(
     public bool CanRunDirect => UsedAi && Score is >= 0 and < 60
         && Level is CommandRiskLevel.Low or CommandRiskLevel.Medium;
 
+    public CommandShell Shell { get; init; } = CommandShell.PowerShell;
+
     #endregion
 
 }
@@ -62,6 +64,10 @@ public sealed class ApprovedCommand
     /// <summary>Creates the execution capability after the workflow completes the selected authorization gate.</summary>
     private ApprovedCommand(string text, CommandRiskAssessment assessment)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        ArgumentNullException.ThrowIfNull(assessment);
+        if (assessment.Shell is not (CommandShell.PowerShell or CommandShell.Bash))
+            throw new ArgumentException("Approval requires a concrete shell.", nameof(assessment));
         Text = text;
         Assessment = assessment;
         ApprovedAt = DateTimeOffset.UtcNow;
@@ -75,6 +81,8 @@ public sealed class ApprovedCommand
     public string Text { get; }
 
     public CommandRiskAssessment Assessment { get; }
+
+    public CommandShell Shell => Assessment.Shell;
 
     public DateTimeOffset ApprovedAt { get; }
 
@@ -107,6 +115,8 @@ public sealed record CommandExecutionResult(
     public bool Cancelled { get; init; }
 
     public bool OutputWasStreamed { get; init; }
+
+    public CommandShell Shell { get; init; } = CommandShell.PowerShell;
 
     #endregion
 

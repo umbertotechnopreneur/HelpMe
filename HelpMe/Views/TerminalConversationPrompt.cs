@@ -115,7 +115,7 @@ internal static class TerminalConversationPrompt
             return rows;
         }
 
-        TerminalPromptDock.Align(console, reservedRows: Math.Min(console.Profile.Height - 1, choices.Count * 2 + 6));
+        TerminalPromptDock.Align(console, reservedRows: Math.Max(1, Math.Min(console.Profile.Height - 1, choices.Count * 2 + 6)));
         var paintedRows = 0;
         var paintedSize = (Width: console.Profile.Width, Height: console.Profile.Height);
 
@@ -178,7 +178,7 @@ internal static class TerminalConversationPrompt
                 {
                     EraseMenu();
                     TerminalHistoryView.Show(console, text, key, reader);
-                    TerminalPromptDock.Align(console, reservedRows: Math.Min(console.Profile.Height - 1, choices.Count * 2 + 6));
+                    TerminalPromptDock.Align(console, reservedRows: Math.Max(1, Math.Min(console.Profile.Height - 1, choices.Count * 2 + 6)));
                     PaintMenu();
                     continue;
                 }

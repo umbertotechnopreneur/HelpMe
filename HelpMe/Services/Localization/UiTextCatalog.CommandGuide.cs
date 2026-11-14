@@ -69,12 +69,12 @@ internal static partial class UiTextCatalog
             Spanish: "Falta la guía de comandos instalada: {0}. Repara o reinstala HelpMe para recuperarla.",
             Vietnamese: "Thiếu hướng dẫn lệnh đã cài: {0}. Sửa hoặc cài lại HelpMe để khôi phục."));
         entries.Add("Guide.OpenFailed", new(
-            English: "The PDF reader could not be started. Open this file manually or configure a default PDF reader: {0}",
-            Italian: "Non è stato possibile avviare il lettore PDF. Apri il file manualmente oppure configura un lettore PDF predefinito: {0}",
-            French: "Impossible de lancer le lecteur PDF. Ouvrez ce fichier manuellement ou configurez un lecteur PDF par défaut : {0}",
-            German: "Der PDF-Reader konnte nicht gestartet werden. Öffne diese Datei manuell oder richte ein PDF-Standardprogramm ein: {0}",
-            Spanish: "No se pudo iniciar el lector PDF. Abre este archivo manualmente o configura un lector PDF predeterminado: {0}",
-            Vietnamese: "Không thể khởi động trình đọc PDF. Mở tệp này thủ công hoặc đặt trình đọc PDF mặc định: {0}"));
+            English: "The PDF reader could not be started. On Linux, a graphical session, xdg-open, and a PDF reader are needed. Open or copy this file manually: {0}",
+            Italian: "Non è stato possibile aprire il PDF. Su Linux servono una sessione grafica, xdg-open e un lettore PDF. Apri o copia il file manualmente: {0}",
+            French: "Impossible d’ouvrir le PDF. Sous Linux, une session graphique, xdg-open et un lecteur PDF sont nécessaires. Ouvrez ou copiez ce fichier manuellement : {0}",
+            German: "Das PDF konnte nicht geöffnet werden. Linux benötigt eine grafische Sitzung, xdg-open und einen PDF-Reader. Öffne oder kopiere die Datei manuell: {0}",
+            Spanish: "No se pudo abrir el PDF. Linux necesita una sesión gráfica, xdg-open y un lector PDF. Abre o copia el archivo manualmente: {0}",
+            Vietnamese: "Không thể mở PDF. Linux cần phiên đồ họa, xdg-open và trình đọc PDF. Mở hoặc sao chép tệp thủ công: {0}"));
     }
 
     #endregion

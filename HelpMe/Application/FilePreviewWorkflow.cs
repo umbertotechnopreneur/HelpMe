@@ -60,7 +60,7 @@ public sealed class FilePreviewWorkflow(
             cancellationToken.ThrowIfCancellationRequested();
             var command = service.BuildCommand(preview, effect);
             var result = await commands.RunForResultAsync(
-                session.Id, command, settings, cancellationToken, executionMode).ConfigureAwait(false);
+                session.Id, command, settings with { CommandShell = CommandShell.PowerShell }, cancellationToken, executionMode).ConfigureAwait(false);
 
             if (result is null)
             {

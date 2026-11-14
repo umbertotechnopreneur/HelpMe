@@ -7,7 +7,7 @@ These instructions apply to every change in this repository.
 - Keep AgentInbox, HelpMe, and WorkTrail visually consistent using [the MeUp style guide](docs/assets/meup/README.md). Use a common README structure and author signature, with a distinct accent color and concrete benefit for each product. Keep the main product purpose ahead of optional extras.
 
 - Open each README with the concrete problem I encountered in daily work, then explain how I built the app to solve it and what the reader can do with it. Keep the problem and solution ahead of architecture, branding, optional examples, and project history. Use honest, specific language; light humor is welcome when it fits.
-- Apply this style throughout repository documentation: plain English, short sentences, concrete actions, and useful examples. Cut filler, vague slogans, hype, corporate language, and formulaic AI-sounding prose.
+- Write documentation, contributor guidance, code comments, and artwork text in plain English. Use short sentences, concrete actions, and useful examples. Cut filler, slogans, hype, and corporate language. Keep runtime UI and prompts in all six supported languages.
 - Speak to the reader as "you". When speaking as the author, use "I", "me", and "my", never a company-style "we", "us", or "our", or third-person labels such as "the author" or "the developer". Apply this voice to captions and provenance notes too. Umberto is the solo maintainer, with help from a few contributors; keep their credits accurate.
 - Keep technical detail in the relevant reference guides. Preserve exact commands, UI labels, privacy facts, limitations, and the distinction between implemented, tested, and planned features. Do not promise unlimited capacity or untested compatibility.
 - Preserve third-party quotations and license text; these writing preferences apply to original project copy.
@@ -21,7 +21,7 @@ These instructions apply to every change in this repository.
 - When a build is explicitly requested, default to a local development/debug build using the Debug configuration. A generic build or release request does not authorize a Microsoft Store package. Produce a Store version only when the owner explicitly asks for one; never upload or publish it without explicit authorization.
 - Keep development/debug artifacts separate from Store release artifacts. These rules do not authorize running builds, changing release pipelines, creating tags, or publishing on their own.
 - The owner chooses every product and package version, including the fourth MSIX revision. Never increment or change it without explicit authorization. For an owner-requested forced local MSIX installation, use `Add-AppxPackage -Path <package> -ForceUpdateFromAnyVersion -ForceApplicationShutdown`. Never combine `-ForceApplicationShutdown` with `-ForceTargetApplicationShutdown`, and do not use `-Update` for the main package because that switch updates dependency packages. `-ForceUpdateFromAnyVersion` permits the requested package version to replace a higher installed version; it does not bypass Windows error `0x80073CFB` for the same package version with different content. If Windows refuses that equal-version replacement, report the error and obtain explicit authorization before removing and reinstalling the package; do not choose a new version.
-- Windows distribution is MSIX-only. Do not propose or add portable ZIP, standalone EXE, or MSI distribution unless the owner explicitly changes this decision. This preference does not authorize packaging or workflow changes.
+- Do not add Windows ZIP, standalone EXE, or MSI distribution unless the owner explicitly changes the MSIX-only decision.
 
 ## Private business notes
 
@@ -41,7 +41,7 @@ These instructions apply to every change in this repository.
 - In that case, the owner authorizes a supported administrator merge override for the macOS check only, without asking again. Keep branch protections configured, never override other failed checks or unresolved reviews, and report macOS validation accurately. This exception does not authorize starting builds, tests, Git delivery, installation, or publication by itself.
 - Create MSIX release artifacts only through GitHub Actions. For explicit local debug testing, a signed MSIX may be built and installed from an ignored `artifacts/msix` subdirectory using the existing current-user certificate; do not upload, publish, tag, or describe it as a release. Create an annotated `v<version>` tag only after the matching source version is on `main`.
 - For an owner-requested local Debug build or reinstall, use the fast path: reuse the established Debug configuration and known current-user signing certificate, create the package, and attempt installation immediately. Verify only the installation result, installed version, and package status. Diagnose the signature, manifest, or dependencies only after installation fails, and do not run unrequested UI tests. Keep full validation for Release and Store builds. Run any mandatory cleanup quietly and report it concisely.
-- Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths.
+- Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths. Exclude `.env`, local databases, `bin/`, `obj/`, `artifacts/`, and `.vs/`.
 - Use `artifacts/` as the only repository-local area for temporary, generated, compiled, and packaging output produced during work, including intermediates, logs, reports, and scratch files. Store each output type in a dedicated subdirectory; never place these outputs at the repository root or beside source files.
 
 ## Mandatory artifact cleanup
@@ -71,17 +71,15 @@ These instructions apply to every change in this repository.
 
 - HelpMe is a lightweight .NET 10 console assistant whose public command is `hm`.
 - Skills, memory collection, proposals, and reminders are global. Do not introduce project-scoped labels, groups, availability, configuration, storage, or retention in `hm --skills`, `hm --learning`, or their Setup controls.
-- Keep the application code portable across Windows, Linux, and macOS. Windows distribution is MSIX-only. Do not introduce a background agent or platform-specific runtime dependency.
+- Keep the application code portable across Windows, Linux, and macOS. Linux is the next portability target; distinguish planned adaptation from behavior verified on Linux. This does not authorize Linux packages or change the source-only distribution policy. Do not introduce a background agent or platform-specific runtime dependency.
 - Keep GitHub as the project home and write public copy in product language before implementation detail.
-- Use plain, friendly English in documentation: speak directly to the reader, use short sentences and practical examples, and explain technical terms when needed. Keep factual credits and privacy details accurate.
-- Write repository documentation, README copy, contributor guidance, code comments, and project artwork text in English. Keep runtime UI and prompt translations in all six supported languages.
 - Preserve the separation between `Models`, `Services`, `Views`, and the `Application` orchestrator.
 - Runtime AI instructions belong in `/prompt` as versioned YAML with metadata and all six supported languages: `it`, `en`, `fr`, `de`, `es`, `vi`.
 
 ## Command safety and privacy
 
 - Keep deterministic local risk scoring active. Optional AI review is advisory and cannot authorize execution.
-- Run application-authorized commands without elevation through `pwsh -NoProfile -NonInteractive`, with timeout and bounded output.
+- Bind each command approval to its reviewed interpreter. Run without elevation through PowerShell (`pwsh -NoProfile -NonInteractive`) or Bash (`bash --noprofile --norc -p`), with timeout, cancellation, and bounded output. Keep deterministic scoring aware of shell syntax; never switch interpreters after approval. Bash must not load startup files or imported shell functions. Generated PowerShell wrappers remain explicitly PowerShell.
 - `--yes` must never authorize chat commands.
 - Never accept secrets as command-line values or store them in settings, SQLite, Serilog, tests, screenshots, or documentation.
 - Redact recognizable credentials before prompt/response persistence and before command output is sent to an AI follow-up.
@@ -103,19 +101,16 @@ These instructions apply to every change in this repository.
 - Do not use cards, boxed panels, or decorative enclosing frames unless the user explicitly requests them for that surface. Use open layouts with headings, grids, spacing, and separators instead.
 - Use Spectre.Console layout primitives purposefully (for example grids, rules, and selection prompts) to convey hierarchy; do not reduce command, help, or status surfaces to undifferentiated text walls.
 - Arrange form fields in two columns with right-aligned label text and left-aligned value text, followed by one blank row. Keep action bars and shortcut hints unboxed, with a single separator before the actions; use semantic button colors and a visible focus marker.
-- Keep repository-wide rules in `AGENTS.md`; `.github/copilot-instructions.md` points here instead of duplicating them.
-- Commit exclusions include `.env`, local databases, `bin/`, `obj/`, `artifacts/`, and `.vs/`.
 
 ## Working practices
 
-- Read `AGENTS.md` before editing; no additional Copilot instruction read is needed when these rules are already in context.
-- Obtain explicit user authorization before creating any Git branch or worktree.
+- Read `AGENTS.md` before editing. Keep repository-wide rules here; `.github/copilot-instructions.md` links here and does not need a separate read. Branches and worktrees require explicit owner authorization.
 - When creating a pull request, assign it to `umbertotechnopreneur` and add the existing repository labels that match its final scope.
 - Use PowerShell 7 as `pwsh -NoProfile` for Windows automation.
 - Use `apply_patch` for deliberate tracked-file edits and avoid broad formatting churn.
 - Fail fast on invalid input and unsupported state; do not conceal failures with silent fallbacks.
 - Run automated tests and CLI smoke tests only when the user explicitly requests them. Implementation, review, commit, and push requests do not authorize test execution.
-- If this task attempted a build, follow Mandatory artifact cleanup after the last build, requested test, packaging, or installation step, including after failure and before handoff. Use `dotnet clean .\HelpMe.slnx` with the matching configuration, runtime, and output paths, then remove leftover task-owned intermediates. Preserve pending deliverables and unrelated artifacts. Commit or push alone does not require cleanup.
+- Apply Mandatory artifact cleanup after build work, including failed attempts. Use `dotnet clean .\HelpMe.slnx` with matching configuration, platform, runtime, and output paths. Commit or push alone does not require cleanup.
 - Record active work in `.github/tasks/todo.md`. On completion, replace `.github/tasks/archive.md` with a brief summary of that task only. Keep unresolved tasks actionable and omit narratives of earlier attempts.
 
 ## Required validation

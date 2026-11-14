@@ -80,20 +80,38 @@ public sealed class CommandExecutionService : ICommandExecutionService
 
         var streamSource = command.Text.Length > 8_000;
         _logger.LogInformation("Authorized command starting. AuthorizationId={AuthorizationId}, RiskScore={RiskScore}", command.AuthorizationId, command.Assessment.Score);
-        var result = await BoundedProcessRunner.RunAsync(BuildStartInfo(command.Text), command.Text, timeout, cancellationToken,
+        var result = await BoundedProcessRunner.RunAsync(BuildStartInfo(command), command.Text, timeout, cancellationToken,
             streamSource ? command.Text : null, output, stopToken).ConfigureAwait(false);
         _logger.LogInformation("Authorized command completed. AuthorizationId={AuthorizationId}, ExitCode={ExitCode}, TimedOut={TimedOut}, ElapsedMs={ElapsedMs}",
             command.AuthorizationId, result.ExitCode, result.TimedOut, result.ElapsedMilliseconds);
-        return result;
+        return result with { Shell = command.Shell };
     }
 
     #endregion
 
     #region Implementation
 
-    /// <summary>Builds a non-interactive, non-elevated PowerShell child-process definition.</summary>
-    private static ProcessStartInfo BuildStartInfo(string command)
+    /// <summary>Builds a non-interactive child process for the exact approved interpreter and command.</summary>
+    internal static ProcessStartInfo BuildStartInfo(ApprovedCommand approved)
     {
+        var command = approved.Text;
+        if (approved.Shell == CommandShell.Bash)
+        {
+            if (OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Native Bash execution requires Unix.");
+            var bash = new ProcessStartInfo("bash") { WorkingDirectory = Environment.CurrentDirectory };
+            bash.ArgumentList.Add("--noprofile");
+            bash.ArgumentList.Add("--norc");
+            // Privileged mode ignores imported shell functions, BASH_ENV and inherited shell options.
+            // It does not request elevation or change the user's identity.
+            bash.ArgumentList.Add("-p");
+            bash.ArgumentList.Add(command.Length > 8_000 ? "-s" : "-c");
+            if (command.Length <= 8_000) bash.ArgumentList.Add(command);
+            foreach (var name in bash.Environment.Keys.Where(name => name.StartsWith("BASH_FUNC_", StringComparison.Ordinal)
+                         || name is "BASH_ENV" or "ENV" or "SHELLOPTS" or "BASHOPTS" or "CDPATH" or "GLOBIGNORE" or "PS4" or "PROMPT_COMMAND").ToArray())
+                bash.Environment.Remove(name);
+            return bash;
+        }
+        if (approved.Shell != CommandShell.PowerShell) throw new InvalidOperationException("Unsupported approved shell.");
         var startInfo = new ProcessStartInfo
         {
             FileName = "pwsh",

@@ -239,7 +239,7 @@ public sealed class CommandExecutionServiceTests
 
     /// <summary>Creates the test-only authorization capability for the exact safe fixture command.</summary>
     private static ApprovedCommand Approve(string command) => ApprovedCommand.Create(command,
-        CommandRiskAssessmentService.AssessLocally(command, "en"));
+        CommandRiskAssessmentService.AssessLocally(command, "en", CommandShell.PowerShell));
 
     /// <summary>Accepts a terminated descendant even while its system reaper still owns the zombie.</summary>
     private static bool HasStoppedOnLinux(int pid)

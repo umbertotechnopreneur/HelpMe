@@ -1,3 +1,3 @@
 # Lessons learned
 
-Record durable repository-specific lessons here when they are discovered.
+Keep only concrete lessons that help avoid repeating a mistake in this repository. Put rules in `AGENTS.md` and open work in `todo.md`; do not repeat them here.

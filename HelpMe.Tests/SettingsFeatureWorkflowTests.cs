@@ -144,7 +144,7 @@ public sealed class SettingsFeatureWorkflowTests
             },
             second =>
             {
-                Assert.Equal(expected, second.Settings);
+                Assert.Equal(CommandShellResolver.ForInvocation(expected, null), second.Settings);
                 Assert.Equal(SettingsSection.Theme, second.InitialSection);
                 Assert.True(second.SaveSucceeded);
             });

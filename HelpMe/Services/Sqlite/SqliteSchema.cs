@@ -24,7 +24,7 @@ internal static class SqliteSchema
     #region Fields
 
     /// <summary>Identifies the schema version supported by this application build.</summary>
-    internal const int Version = 8;
+    internal const int Version = 9;
 
     /// <summary>Enables the persistent write-ahead logging mode before schema creation starts.</summary>
     internal const string EnableWriteAheadLoggingSql = "PRAGMA journal_mode = WAL;";
@@ -47,6 +47,7 @@ internal static class SqliteSchema
             direct_mode_enabled INTEGER NOT NULL DEFAULT 1 CHECK (direct_mode_enabled IN (0, 1)),
             show_session_summary_during_work INTEGER NOT NULL DEFAULT 0 CHECK (show_session_summary_during_work IN (0, 1)),
             script_language TEXT NOT NULL DEFAULT 'powershell' CHECK (script_language IN ('powershell', 'batch', 'bash', 'python', 'javascript')),
+            command_shell TEXT NOT NULL DEFAULT 'auto' CHECK (command_shell IN ('auto', 'pwsh', 'bash')),
             prompt_caching_enabled INTEGER NOT NULL CHECK (prompt_caching_enabled IN (0, 1)),
             max_conversation_turns INTEGER NOT NULL CHECK (max_conversation_turns BETWEEN 2 AND 50),
             max_message_characters INTEGER NOT NULL CHECK (max_message_characters BETWEEN 500 AND 100000),

@@ -124,6 +124,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        settings = settings with { CommandShell = CommandShellResolver.Require(settings.CommandShell, _text.Language) };
         var assessment = await _riskAssessment.AssessAsync(
             sessionId,
             command,
@@ -131,10 +132,12 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
             settings,
             _text.Language,
             cancellationToken).ConfigureAwait(false);
+        if (assessment.Shell != settings.CommandShell)
+            throw new InvalidOperationException("The reviewed shell differs from the selected shell.");
         await _audit.AppendSessionEventAsync(
             sessionId,
             "command_preview",
-            new { command, assessment, executionMode },
+            new { command, shell = assessment.Shell, assessment, executionMode },
             cancellationToken).ConfigureAwait(false);
         _commandView.RenderPreview(command, assessment);
 
@@ -142,7 +145,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
         {
             _shell.RenderWarning(_text.Text(assessment.UsedAi ? "Direct.Blocked" : "Direct.ReviewRequired"));
             await _audit.RecordAsync("command_authorization", "blocked", sessionId,
-                new { command, assessment.Score, assessment.Level, executionMode }, cancellationToken).ConfigureAwait(false);
+                new { command, assessment.Shell, assessment.Score, assessment.Level, executionMode }, cancellationToken).ConfigureAwait(false);
 
             return null;
         }
@@ -164,7 +167,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
                 "command_authorization",
                 "denied",
                 sessionId,
-                new { command, assessment.Score, executionMode },
+                new { command, assessment.Shell, assessment.Score, executionMode },
                 cancellationToken).ConfigureAwait(false);
 
             return null;
@@ -175,7 +178,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
             "command_authorization",
             "approved",
             sessionId,
-            new { command, assessment.Score, executionMode },
+            new { command, assessment.Shell, assessment.Score, executionMode },
             cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         var approved = ApprovedCommand.Create(command, assessment);
@@ -194,6 +197,7 @@ public sealed class AuthorizedCommandWorkflow : IAuthorizedCommandWorkflow
             new
             {
                 prepared.Command,
+                prepared.Shell,
                 prepared.ExitCode,
                 standardOutput = prepared.StandardOutput,
                 standardError = prepared.StandardError,

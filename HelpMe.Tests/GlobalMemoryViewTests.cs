@@ -134,6 +134,7 @@ public sealed class GlobalMemoryViewTests
             Out = new AnsiConsoleOutput(output)
         });
         rendering.Profile.Width = 160;
+        rendering.Profile.Height = 40;
         rendering.Profile.Capabilities.Interactive = true;
         rendering.Profile.Capabilities.AlternateBuffer = false;
         var console = TestProxy.Create<IAnsiConsole>((method, args) => method.Name == "get_Input" ? input : method.Invoke(rendering, args));

@@ -61,7 +61,8 @@ public sealed class PlanWorkflow(
             var goal = input.Sanitize(options.Query!, settings.MaxMessageCharacters, fromArgument: true);
             var response = await assistant.SendAsync("plan-system", goal, settings, cancellationToken).ConfigureAwait(false);
             runtimeStatus = AiConversationWorkflow.CreateTurnSnapshot(response, settings, response.EstimatedCostUsd ?? 0);
-            plan = store.Parse(response.Text, goal, Environment.CurrentDirectory);
+            plan = store.Parse(response.Text, goal, Environment.CurrentDirectory,
+                CommandShellResolver.Require(settings.CommandShell, settings.Language));
             lease = store.Acquire(plan.Id);
         }
         // Hold the exclusive lease through execution so another session cannot advance the same plan.
@@ -97,6 +98,8 @@ public sealed class PlanWorkflow(
         CancellationToken cancellationToken,
         ShellRuntimeStatus? runtimeStatus = null)
     {
+        store.Validate(plan);
+        settings = settings with { CommandShell = CommandShellResolver.Require(plan.Shell, settings.Language) };
         await using var session = await AuditSessionScope.StartAsync(
             audit, "plan", settings, new { plan.Id }, AuditSessionOutcome.Paused, cancellationToken).ConfigureAwait(false);
         try

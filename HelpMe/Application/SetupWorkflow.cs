@@ -129,7 +129,8 @@ public sealed class SetupWorkflow(
 
             if (submission.TestConnection)
             {
-                await conversationWorkflow.RunConnectionTestAsync(submission.Settings, cancellationToken).ConfigureAwait(false);
+                await conversationWorkflow.RunConnectionTestAsync(
+                    CommandShellResolver.ForInvocation(submission.Settings, current.CommandShellOverride), cancellationToken).ConfigureAwait(false);
             }
 
             if (!submission.KeepOpen)
@@ -137,7 +138,7 @@ public sealed class SetupWorkflow(
                 return 0;
             }
 
-            current = submission.Settings;
+            current = CommandShellResolver.ForInvocation(submission.Settings, current.CommandShellOverride);
             initialSection = submission.SelectedSection;
             saved = true;
         }

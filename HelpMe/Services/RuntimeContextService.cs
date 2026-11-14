@@ -28,7 +28,7 @@ public interface IRuntimeContextService
     #region Methods
 
     /// <summary>Returns the sanitized runtime context for the current working environment.</summary>
-    RuntimeContext GetCurrent(ScriptLanguage preferredScriptLanguage);
+    RuntimeContext GetCurrent(ScriptLanguage preferredScriptLanguage, CommandShell commandShell);
 
     #endregion
 }
@@ -59,7 +59,7 @@ public sealed class RuntimeContextService : IRuntimeContextService
     #region Methods
 
     /// <summary>Returns the OS, effective shell, selected script interpreter, machine name, and an account-safe local working directory.</summary>
-    public RuntimeContext GetCurrent(ScriptLanguage preferredScriptLanguage)
+    public RuntimeContext GetCurrent(ScriptLanguage preferredScriptLanguage, CommandShell commandShell)
     {
         if (!Enum.IsDefined(preferredScriptLanguage))
         {
@@ -79,7 +79,8 @@ public sealed class RuntimeContextService : IRuntimeContextService
             },
             definition.DisplayName,
             availability,
-            _redactor);
+            _redactor) with
+        { CommandShell = CommandShellResolver.Describe(commandShell) };
     }
 
     /// <summary>Converts a small trusted platform snapshot into the exact provider-bound runtime context.</summary>

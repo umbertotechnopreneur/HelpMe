@@ -84,7 +84,9 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         ArgumentNullException.ThrowIfNull(settings);
 
-        var local = AssessLocally(command, language);
+        var shell = CommandShellResolver.Require(settings.CommandShell, language);
+        settings = settings with { CommandShell = shell };
+        var local = AssessLocally(command, language, shell);
         if (!useAi || !settings.AiEnabled || !_secrets.IsConfigured(settings.ApiKeyVariable))
         {
             return local;
@@ -104,7 +106,7 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
                 ? Translate(language, "Risk.LocalWins")
                 : Translate(language, "Risk.Advisory");
 
-            return new CommandRiskAssessment(score, level, ai.DescriptionMarkdown, true, advisory);
+            return new CommandRiskAssessment(score, level, ai.DescriptionMarkdown, true, advisory) { Shell = shell };
         }
         catch (Exception exception) when (exception is OpenAiRequestException or HttpRequestException or JsonException)
         {
@@ -117,8 +119,10 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
     }
 
     /// <summary>Scores obvious command effects without sending command text outside the machine.</summary>
-    internal static CommandRiskAssessment AssessLocally(string command, string language)
+    internal static CommandRiskAssessment AssessLocally(string command, string language, CommandShell shell)
     {
+        if (shell is not (CommandShell.PowerShell or CommandShell.Bash))
+            throw new ArgumentOutOfRangeException(nameof(shell));
         var normalized = command.Trim();
         var score = 35;
         var effect = Translate(language, "Risk.Unknown");
@@ -144,8 +148,18 @@ public sealed partial class CommandRiskAssessmentService : ICommandRiskAssessmen
             effect = Translate(language, "Risk.Low");
         }
 
+        if (shell == CommandShell.Bash)
+        {
+            // Bash evaluation and unknown programs are never eligible for automatic execution.
+            var bashScore = BashCommandRisk.Score(normalized);
+            if (bashScore > score)
+            {
+                score = bashScore;
+                effect = Translate(language, score >= 85 ? "Risk.Critical" : "Risk.High");
+            }
+        }
         var description = Translate(language, "Risk.Description", effect);
-        return new CommandRiskAssessment(score, ScoreToLevel(score), description, false, null);
+        return new CommandRiskAssessment(score, ScoreToLevel(score), description, false, null) { Shell = shell };
     }
 
     #endregion

@@ -58,6 +58,16 @@ public sealed record AppSettings(
 
     public ScriptLanguage ScriptLanguage { get; init; } = ScriptLanguage.PowerShell;
 
+    public CommandShell PreferredCommandShell { get; init; } = CommandShell.Auto;
+
+    /// <summary>Holds the effective interpreter for one invocation without changing the saved preference.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CommandShell CommandShell { get; init; } = CommandShell.PowerShell;
+
+    /// <summary>Preserves an explicit CLI override when a settings form changes the saved shell preference.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CommandShell? CommandShellOverride { get; init; }
+
     #endregion
 
     #region Fields

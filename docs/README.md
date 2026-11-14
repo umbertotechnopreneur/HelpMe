@@ -20,7 +20,11 @@ The [printable manual](PromptMeUp-CLI-Manual.pdf) is an older edition under the 
 
 - [Contributing](../CONTRIBUTING.md) covers the local build and contribution process.
 - [Architecture](ARCHITECTURE.md) explains where the code lives and how questions, data, and command approvals move through it.
-- [Releasing](RELEASING.md) explains how to build portable packages and prepare a GitHub release.
-- [Windows packaging](WINDOWS_PACKAGING.md) covers optional MSI, MSIX, and WinGet packages.
+- [Releasing](RELEASING.md) contains release instructions. Windows distribution is MSIX-only; older packaging instructions must be checked against `AGENTS.md` before use.
+- [Windows packaging](WINDOWS_PACKAGING.md) contains packaging details. References to MSI or portable distribution are outdated.
+
+## Platforms
+
+I am working toward running HelpMe on Windows and Linux. Linux adaptation and validation are still pending; I do not claim verified Linux compatibility yet. Linux and macOS remain source-only, without prebuilt packages or commercial support. The commercial edition targets Windows 11 on x64 and ARM64 through MSIX.
 
 Use [`document.template.md`](../document.template.md) for public technical documentation. Keep future product proposals in the owner's private MeUp notes.

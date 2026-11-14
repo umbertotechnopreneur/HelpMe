@@ -40,7 +40,7 @@ public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, I
     #region Methods
 
     /// <summary>Parses a model plan as new pending steps, never importing model-supplied execution status.</summary>
-    public ExecutionPlan Parse(string json, string goal, string directory)
+    public ExecutionPlan Parse(string json, string goal, string directory, CommandShell shell)
     {
         try
         {
@@ -50,7 +50,7 @@ public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, I
                 item.GetProperty("command").GetString()!,
                 item.GetProperty("verification").GetString()!,
                 item.GetProperty("expected").GetString()!)).ToList();
-            var plan = new ExecutionPlan(1, Guid.NewGuid().ToString("N"), goal, Path.GetFullPath(directory), steps);
+            var plan = new ExecutionPlan(1, Guid.NewGuid().ToString("N"), goal, Path.GetFullPath(directory), steps) { Shell = shell };
             Validate(plan);
             return plan;
         }
@@ -114,6 +114,7 @@ public sealed class PlanStore(AppPaths paths, ISensitiveDataRedactor redactor, I
     public void Validate(ExecutionPlan plan)
     {
         if (plan is null || plan.Version != 1 || !Guid.TryParseExact(plan.Id, "N", out _)
+            || plan.Shell is not (CommandShell.PowerShell or CommandShell.Bash)
             || !ValidText(plan.Goal, _limits.MaxPlanBytes) || !ValidText(plan.Directory, 4096)
             || !Path.IsPathFullyQualified(plan.Directory) || plan.Steps is null || plan.Steps.Count < 1)
         {

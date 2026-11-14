@@ -108,6 +108,10 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
             TerminalTheme.Info);
         _console.WriteLine();
 
+        _console.Write(new Text(_text.Text("Shell.Preview", CommandShellResolver.Describe(assessment.Shell)),
+            Style.Parse(TerminalTheme.Info)));
+        _console.WriteLine();
+
         foreach (var line in command.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
         {
             _console.MarkupLine($"  [bold {TerminalTheme.Primary}]{Markup.Escape(line)}[/]");
