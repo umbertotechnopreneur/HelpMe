@@ -1,8 +1,6 @@
 # Open tasks
 
-- [ ] Commit and push the packaging branch, open its pull request, verify Linux x64 and ARM64 CI, and remove only the retired macOS required check. Keep the release unpublished.
-
-- [ ] Validate Windows and Linux ARM64 separately. When authorized, verify paste, resize, and navigation in real terminal emulators; the Linux CLI and simulated-terminal smoke checks do not establish compatibility with every terminal or architecture.
+- [ ] Validate Windows ARM64 separately. When authorized, verify paste, resize, and navigation in real Windows and Linux terminal emulators, including ARM64; automated tests and CLI smoke checks do not establish compatibility with every terminal or desktop.
 
 - [ ] Harden AppPaths for missing or unwritable Linux data locations and report directory-creation failures through the startup error flow. Review private file permissions for settings, SQLite, and logs; keep storage global and preserve HELPME_DATA_DIR.
 - [ ] When authorized, verify optional Linux desktop integration on Wayland and X11, including unavailable clipboard tools and missing PDF readers. Verify PATH changes only with disposable profiles; compare Bash login and interactive behavior, ZDOTDIR, and XDG_CONFIG_HOME.
