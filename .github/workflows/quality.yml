@@ -28,6 +28,10 @@ on:
 permissions:
   contents: read
 
+env:
+  UseArtifactsOutput: 'true'
+  ArtifactsPath: ${{ github.workspace }}/artifacts/build
+
 concurrency:
   group: helpme-quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -44,7 +48,7 @@ jobs:
           persist-credentials: false
 
       - name: Verify public changelog
-        run: pwsh -NoProfile -File ./scripts/Generate-Changelog.ps1 -Check
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command changelog -Verify
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -55,7 +59,7 @@ jobs:
         run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command preflight
 
       - name: Restore
-        run: dotnet restore HelpMe.slnx
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command restore
 
       - name: Verify redistribution notices
         run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command notices -OutputDirectory ./artifacts/notice-check -Runtime linux-x64
@@ -87,12 +91,16 @@ jobs:
       - name: Verify XML method comments
         run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command check-xml
 
+      - name: Clean lint output
+        if: always()
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command clean -Configuration Release
+
   build:
     name: Build (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
@@ -108,57 +116,58 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore HelpMe.slnx
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command restore
 
       - name: Build with warnings as errors
-        run: dotnet build HelpMe.slnx --configuration Release --no-restore --warnaserror
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command build -Configuration Release
 
       - name: Test
-        run: dotnet test HelpMe.slnx --configuration Release --no-build
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command test -Configuration Release -NoBuild
 
       - name: Smoke test the CLI without credentials
         shell: pwsh
-        run: |
-          $env:HELPME_DATA_DIR = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString())
-          $env:OPENAI_API_KEY = $null
-          $env:OPENAI_ADMIN_KEY = $null
-          foreach ($command in @('--version', '--help', '--third-party')) {
-            dotnet run --project HelpMe/HelpMe.csproj --configuration Release --no-build -- $command --no-animation --no-emoji
-            if ($LASTEXITCODE -ne 0) { throw "Smoke test failed: $command" }
-          }
-
-      - name: Validate a native portable package
-        shell: pwsh
-        run: |
-          $platform = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
-          $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-          pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command portable -Runtime "$platform-$architecture"
-          if ($LASTEXITCODE -ne 0) { throw 'Portable package validation failed.' }
-
-      - name: Validate Windows installer compilation
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          [xml]$project = Get-Content HelpMe/HelpMe.csproj -Raw
-          $version = [string]$project.Project.PropertyGroup.Version
-          $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-          $payload = "artifacts/portable/$version/win-$architecture/payload"
-          pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command windows-installer -Architecture $architecture -PublishDirectory $payload -OutputDirectory artifacts/windows-installer
-          if ($LASTEXITCODE -ne 0) { throw 'Windows installer compilation failed.' }
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command smoke -Configuration Release
 
       - name: Clean build output
         if: always() && steps.dotnet.outcome == 'success'
         shell: pwsh
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command clean -Configuration Release
+
+  package:
+    name: Debian (${{ matrix.runtime }})
+    needs: [lint, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, runtime: linux-x64 }
+          - { os: ubuntu-24.04-arm, runtime: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Build Debian package and clean intermediates
+        shell: pwsh
+        env:
+          TARGET_RUNTIME: ${{ matrix.runtime }}
+        run: pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command deb -Configuration Release -Runtime $env:TARGET_RUNTIME
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        id: upload
+        with:
+          name: deb-${{ matrix.runtime }}
+          path: artifacts/deb/release/${{ matrix.runtime }}/*.deb
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove uploaded runner copies
+        if: always() && steps.upload.outcome == 'success'
+        shell: pwsh
+        env:
+          TARGET_RUNTIME: ${{ matrix.runtime }}
         run: |
-          $platform = if ($IsWindows) { 'win' } elseif ($IsMacOS) { 'osx' } else { 'linux' }
-          $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-          [xml]$project = Get-Content HelpMe/HelpMe.csproj -Raw
-          $version = [string]$project.Project.PropertyGroup.Version
-          $payload = [System.IO.Path]::GetFullPath("artifacts/portable/$version/$platform-$architecture/payload")
-          dotnet clean ./HelpMe/HelpMe.csproj --configuration Release --runtime "$platform-$architecture" "-p:PublishDir=$payload"
-          $runtimeCleanExitCode = $LASTEXITCODE
-          dotnet clean ./HelpMe.slnx --configuration Release
-          $solutionCleanExitCode = $LASTEXITCODE
-          git status --short
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot verify the working tree after cleanup.' }
-          if ($runtimeCleanExitCode -ne 0 -or $solutionCleanExitCode -ne 0) { throw 'Quality build cleanup failed.' }
+          . ./scripts/Common/artifacts.ps1
+          Remove-HelpMeArtifactPath "artifacts/deb/release/$env:TARGET_RUNTIME"

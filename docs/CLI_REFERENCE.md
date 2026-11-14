@@ -133,7 +133,7 @@ sh scripts/Common/commands/hm-path.sh status --executable /path/to/built/hm
 sh scripts/Common/commands/hm-path.sh install --executable /path/to/built/hm
 ```
 
-The helper can also find an adjacent `hm`, the standard Debug output at `artifacts/bin/HelpMe/debug/hm`, or `hm` already on PATH. It does not build or move the application.
+The helper can also find an adjacent `hm`, the standard Debug output at `artifacts/build/bin/HelpMe/debug/hm`, or `hm` already on PATH. It does not build or move the application. See the [single repository command entry point](../scripts/README.md) for building and Debian package installation.
 
 The copy action uses optional `wl-copy` on Wayland, or `xclip` then `xsel` on X11. Missing tools or a missing graphical session leave the command visible for manual copying. Command text goes through standard input, without shell interpolation. Nothing is installed automatically.
 

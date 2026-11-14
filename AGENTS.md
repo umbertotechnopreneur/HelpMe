@@ -17,7 +17,7 @@ These instructions apply to every change in this repository.
 ## Distribution and build defaults
 
 - The commercial edition supports Windows 11 on x64 and ARM64 only. Distribute it only as MSIX.
-- Linux and macOS are source-only: users must compile and adapt the source themselves. Do not provide compiled binaries, installers, or commercial support for these platforms, and do not imply that every project can run there unchanged.
+- Linux distribution uses Debian packages for x64 and ARM64. Keep local Debug packages separate from CI Release packages and document native dependencies and tested limits. macOS builds and packages are outside the current scope. Do not imply commercial Linux support or compatibility with every distribution.
 - When a build is explicitly requested, default to a local development/debug build using the Debug configuration. A generic build or release request does not authorize a Microsoft Store package. Produce a Store version only when the owner explicitly asks for one; never upload or publish it without explicit authorization.
 - Keep development/debug artifacts separate from Store release artifacts. These rules do not authorize running builds, changing release pipelines, creating tags, or publishing on their own.
 - The owner chooses every product and package version, including the fourth MSIX revision. Never increment or change it without explicit authorization. For an owner-requested forced local MSIX installation, use `Add-AppxPackage -Path <package> -ForceUpdateFromAnyVersion -ForceApplicationShutdown`. Never combine `-ForceApplicationShutdown` with `-ForceTargetApplicationShutdown`, and do not use `-Update` for the main package because that switch updates dependency packages. `-ForceUpdateFromAnyVersion` permits the requested package version to replace a higher installed version; it does not bypass Windows error `0x80073CFB` for the same package version with different content. If Windows refuses that equal-version replacement, report the error and obtain explicit authorization before removing and reinstalling the package; do not choose a new version.
@@ -36,9 +36,8 @@ These instructions apply to every change in this repository.
 
 - Never create a branch, commit, or push on your own initiative. Each action requires an explicit request from the owner; a request to edit files does not authorize Git delivery.
 - For documentation-only or repository-instruction-only changes, keep edits local until the owner explicitly requests delivery. If authorized, use the current branch and include `[skip ci]` unless the owner requests CI. Do not treat this rule as permission to bypass repository protections.
-- For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge. The macOS-only CI exception below is explicitly owner-authorized.
-- Prioritize CI platforms in this order: Windows, Linux, macOS. A failing, cancelled, unavailable, or stalled macOS-only check does not block an owner-authorized delivery when Windows, Linux, platform-independent required checks, and review requirements are satisfied.
-- In that case, the owner authorizes a supported administrator merge override for the macOS check only, without asking again. Keep branch protections configured, never override other failed checks or unresolved reviews, and report macOS validation accurately. This exception does not authorize starting builds, tests, Git delivery, installation, or publication by itself.
+- For all other changes, keep `main` protected. Make changes on a focused branch, open a pull request, and use squash merge only after required checks and conversations are resolved. Do not bypass branch protections, required checks, or review requirements for these changes. Delete the branch after a successful merge.
+- Prioritize Windows CI, then Linux. macOS jobs are outside the current scope.
 - Create MSIX release artifacts only through GitHub Actions. For explicit local debug testing, a signed MSIX may be built and installed from an ignored `artifacts/msix` subdirectory using the existing current-user certificate; do not upload, publish, tag, or describe it as a release. Create an annotated `v<version>` tag only after the matching source version is on `main`.
 - For an owner-requested local Debug build or reinstall, use the fast path: reuse the established Debug configuration and known current-user signing certificate, create the package, and attempt installation immediately. Verify only the installation result, installed version, and package status. Diagnose the signature, manifest, or dependencies only after installation fails, and do not run unrequested UI tests. Keep full validation for Release and Store builds. Run any mandatory cleanup quietly and report it concisely.
 - Preserve unrelated working-tree changes. Never commit credentials, tokens, local data, logs, generated artifacts, or private machine paths. Exclude `.env`, local databases, `bin/`, `obj/`, `artifacts/`, and `.vs/`.
@@ -49,7 +48,7 @@ These instructions apply to every change in this repository.
 - Every authorized local or CI build, test, packaging, installation, or artifact-download task includes cleanup of its own generated output. Apply this to Debug, Release, and Microsoft Store work, including failed attempts. This rule does not authorize starting builds or tests.
 - Use task-specific subdirectories under ignored `artifacts/` for temporary output. Before reusing a build directory, remove its obsolete transient contents while preserving pending deliverables. Do not run builds concurrently in the same checkout.
 - After the last use and before handoff, run `dotnet clean` with the matching configuration, platform, runtime, and output paths, then remove task-owned intermediates that it leaves behind: `publish`, `payload`, `bin`, `obj`, temporary caches, scratch files, transport archives, disposable test profiles, and unnecessary logs. Clean task-owned temporary directories too; `dotnet clean` alone is not sufficient. Do not retain whole historical build/run directories.
-- Retain only the latest validated MSIX for each requested channel and architecture, with matching checksums, minimal package metadata, and any small verification record needed for handoff. Preserve Store packages awaiting upload until the owner confirms upload, and preserve any explicitly requested reinstall/rollback package, backup, or unresolved failure evidence.
+- Retain only the latest validated MSIX or Debian package for each requested channel and architecture, with matching checksums, minimal package metadata, and any small verification record needed for handoff. Preserve Store packages awaiting upload until the owner confirms upload, and preserve any explicitly requested reinstall/rollback package, backup, or unresolved failure evidence.
 - Remove superseded generated packages and run directories once their replacement is validated and they are no longer needed for pending delivery, reinstall, rollback, or diagnosis. After a confirmed upload, remove its local bundle unless the owner asks to retain it. Do not accumulate an indefinite archive of installers or full logs.
 - Before recursive removal or moving, resolve and verify every absolute target stays inside this repository's `artifacts/` or the exact temporary directory created by the task; do not follow links outside those roots. Use `pwsh -NoProfile` and literal-path filesystem operations. Never blindly wipe all of `artifacts/`, a shared/system temp directory, unrelated output, user data, backups, or shared SDK/NuGet caches.
 - Verify the cleanup result and report briefly what deliverables remain. If locks, permissions, or approval review prevent cleanup, identify the remaining paths and approximate size; do not claim the directory is clean.
@@ -71,7 +70,7 @@ These instructions apply to every change in this repository.
 
 - HelpMe is a lightweight .NET 10 console assistant whose public command is `hm`.
 - Skills, memory collection, proposals, and reminders are global. Do not introduce project-scoped labels, groups, availability, configuration, storage, or retention in `hm --skills`, `hm --learning`, or their Setup controls.
-- Keep the application code portable across Windows, Linux, and macOS. Linux is the next portability target; distinguish planned adaptation from behavior verified on Linux. This does not authorize Linux packages or change the source-only distribution policy. Do not introduce a background agent or platform-specific runtime dependency.
+- Keep the application code portable across Windows and Linux, targeting x64 and ARM64. Do not add macOS builds or packages for now. Distinguish implemented portability from verified platform behavior. Linux Debian packaging is owner-authorized; publishing, tags, versions, and Git delivery still require their respective authorization. Do not introduce a background agent or platform-specific application runtime dependency.
 - Keep GitHub as the project home and write public copy in product language before implementation detail.
 - Preserve the separation between `Models`, `Services`, `Views`, and the `Application` orchestrator.
 - Runtime AI instructions belong in `/prompt` as versioned YAML with metadata and all six supported languages: `it`, `en`, `fr`, `de`, `es`, `vi`.
@@ -110,7 +109,7 @@ These instructions apply to every change in this repository.
 - Use `apply_patch` for deliberate tracked-file edits and avoid broad formatting churn.
 - Fail fast on invalid input and unsupported state; do not conceal failures with silent fallbacks.
 - Run automated tests and CLI smoke tests only when the user explicitly requests them. Implementation, review, commit, and push requests do not authorize test execution.
-- Apply Mandatory artifact cleanup after build work, including failed attempts. Use `dotnet clean .\HelpMe.slnx` with matching configuration, platform, runtime, and output paths. Commit or push alone does not require cleanup.
+- Apply Mandatory artifact cleanup after build work, including failed attempts. Use `scripts/HelpMe.ps1 -Command clean` with the matching configuration and runtime for development output. Packaging helpers must clean their own matching configuration, platform, runtime, and output paths. Commit or push alone does not require cleanup.
 - Record active work in `.github/tasks/todo.md`. On completion, replace `.github/tasks/archive.md` with a brief summary of that task only. Keep unresolved tasks actionable and omit narratives of earlier attempts.
 
 ## Required validation
@@ -126,10 +125,10 @@ Non-test commands for code changes:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command preflight
-dotnet restore .\HelpMe.slnx
-dotnet format .\HelpMe.slnx --verify-no-changes --no-restore
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command restore
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command check-format
 pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command check-xml
-dotnet build .\HelpMe.slnx --configuration Release --no-restore --warnaserror
+pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command build -Configuration Release
 ```
 
-Only when explicitly requested by the user, run the appropriate automated tests, such as `dotnet test .\HelpMe.slnx --configuration Release --no-build`, or proportionate CLI smoke tests with a disposable `HELPME_DATA_DIR`. Run these checks before cleanup when they need the build output. Do not use real secrets or mutate PATH/fonts during validation.
+Only when explicitly requested by the user, run the appropriate automated tests, such as `pwsh -NoProfile -File .\scripts\HelpMe.ps1 -Command test -Configuration Release -NoBuild`, or proportionate CLI smoke tests with a disposable `HELPME_DATA_DIR`. Run these checks before cleanup when they need the build output. Do not use real secrets or mutate PATH/fonts during validation.

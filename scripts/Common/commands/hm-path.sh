@@ -50,8 +50,8 @@ if [ -n "$executable" ]; then
   esac
 elif [ -x "$script_dir/hm" ]; then
   executable="$script_dir/hm"
-elif [ -f "$repository_root/HelpMe/HelpMe.csproj" ] && [ -x "$repository_root/artifacts/bin/HelpMe/debug/hm" ]; then
-  executable="$repository_root/artifacts/bin/HelpMe/debug/hm"
+elif [ -f "$repository_root/HelpMe/HelpMe.csproj" ] && [ -x "$repository_root/artifacts/build/bin/HelpMe/debug/hm" ]; then
+  executable="$repository_root/artifacts/build/bin/HelpMe/debug/hm"
 elif command -v hm >/dev/null 2>&1; then
   executable=$(command -v hm)
 else

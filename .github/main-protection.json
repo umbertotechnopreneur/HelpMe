@@ -15,10 +15,6 @@
         "app_id": 15368
       },
       {
-        "context": "Build (macos-latest)",
-        "app_id": 15368
-      },
-      {
         "context": "Analyze C#",
         "app_id": 15368
       },

@@ -33,6 +33,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'Store MSIX packaging requires Windows.' }
+if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Build Store MSIX only through GitHub Actions.' }
 foreach ($part in $Version.Split('.')) {
     $number = 0
     if (-not [int]::TryParse($part, [ref]$number) -or $number -gt 65535) {

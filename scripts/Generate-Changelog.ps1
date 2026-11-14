@@ -67,12 +67,12 @@ foreach ($group in ($updates | Group-Object Date | Sort-Object Name -Descending)
 $expected = $lines -join "`n"
 if ($Check) {
     if (-not [System.IO.File]::Exists($changelogPath)) {
-        throw 'CHANGELOG.md is missing. Run pwsh -NoProfile -File ./scripts/Generate-Changelog.ps1 and commit it with this PR.'
+        throw 'CHANGELOG.md is missing. Run pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command changelog and commit it with this PR.'
     }
 
     $actual = [System.IO.File]::ReadAllText($changelogPath) -replace "`r`n?", "`n"
     if ($actual -cne $expected) {
-        throw 'CHANGELOG.md is out of date. Run pwsh -NoProfile -File ./scripts/Generate-Changelog.ps1 and commit the result with this PR.'
+        throw 'CHANGELOG.md is out of date. Run pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command changelog and commit the result with this PR.'
     }
 
     Write-Host 'CHANGELOG.md matches the public task updates.'

@@ -24,13 +24,15 @@
 param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)]
-    [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64')]
-    [string]$Runtime
+    [ValidateSet('win-x64', 'win-arm64', 'linux-x64', 'linux-arm64')]
+    [string]$Runtime,
+    [string]$AssetsFile
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
-$assets = Get-Content (Join-Path $root 'HelpMe/obj/project.assets.json') -Raw | ConvertFrom-Json -AsHashtable
+if (-not $AssetsFile) { $AssetsFile = Join-Path $root 'artifacts/build/obj/HelpMe/project.assets.json' }
+$assets = Get-Content -LiteralPath $AssetsFile -Raw | ConvertFrom-Json -AsHashtable
 $licenseRoot = Join-Path $OutputDirectory 'LICENSES'
 if (Test-Path -LiteralPath $licenseRoot) { throw 'Use a fresh payload directory for notice export.' }
 New-Item -ItemType Directory -Path $licenseRoot -Force | Out-Null

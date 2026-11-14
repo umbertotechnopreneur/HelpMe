@@ -1,10 +1,11 @@
 # Latest completed task
 
-## 2026-11-15 — Linux shell validation
+## 2026-11-15 — Debian packaging and script consolidation
 
-- Exercised Bash and PowerShell execution, Unicode, long commands, output limits, startup isolation, cancellation, missing interpreters, and descendant cleanup.
-- Fixed negative menu row reservations when the console reports an unknown height. Gave simulated interactive consoles explicit dimensions and aligned the Setup regression with invocation shell resolution.
-- Verified CLI commands, disposable PATH profiles, and interactive command approval and plan resume using isolated data without live AI calls.
-- Kept real desktop, terminal-emulator, Windows, and ARM64 validation as separate work.
+- Added self-contained Debian packaging for Linux x64 and ARM64, with checksums, attribution, package metadata, and automatic intermediate cleanup.
+- Built and installed the current x64 Debug package without changing the source version or saved HelpMe data.
+- Routed development and CI commands through `scripts/HelpMe.ps1`, consolidated the build guide in `scripts/README.md`, and removed obsolete portable and Windows EXE installers.
+- Prepared native Linux release jobs and draft creation. Removed macOS build targets and cleaned obsolete generated output while preserving pending packages, backups, and import-scan records.
+- Added native Linux ARM64 build, test, and CLI smoke jobs. The shared quality workflow creates both Debian packages for pull requests and release drafts.
 
-Public update: The conversation menu handles an unknown terminal height without requesting a negative number of rows.
+Public update: HelpMe has Debian packaging for Linux x64 and ARM64, a shared build command, and one build and packaging guide. GitHub release automation prepares a draft for manual publication.

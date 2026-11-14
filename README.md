@@ -27,7 +27,7 @@ The examples below use `hm`. From source, replace it with `dotnet run --project 
 
 ## Platforms and downloads
 
-I am working toward running HelpMe on Windows and Linux. Linux adaptation and validation are still pending. Linux and macOS are source-only: compile and adapt the code for your environment. I do not provide prebuilt packages or commercial support for those platforms.
+HelpMe targets Windows and Linux on x64 and ARM64. Linux packaging uses `.deb` files with the .NET runtime included; native libraries are declared as dependencies. See [build, installation, and release instructions](scripts/README.md). A configured workflow does not mean a package has already been published. macOS builds and packages are outside the current scope. I do not provide commercial Linux support or promise compatibility with every distribution.
 
 The commercial edition targets Windows 11 on x64 and ARM64 and uses MSIX. The existing [Microsoft Store listing](https://apps.microsoft.com/detail/9P2WJBVQMW4J) is for the previous PromptMeUp release; the HelpMe rebrand has not been submitted.
 
@@ -82,7 +82,7 @@ Documentation and contributions are in English; the app supports all six interfa
 | --- | --- |
 | [Command guide](docs/CLI_REFERENCE.md) | [How the code is organized](docs/ARCHITECTURE.md) |
 | [Privacy](docs/PRIVACY.md) | [Build and testing guide](CONTRIBUTING.md#get-a-local-build-running) |
-| [Costs and conversation memory](docs/OPENAI_COSTS_AND_CACHING.md) | [Release process](docs/RELEASING.md) |
+| [Costs and conversation memory](docs/OPENAI_COSTS_AND_CACHING.md) | [Build and release process](scripts/README.md) |
 | [Support](SUPPORT.md) | [How the project is run](GOVERNANCE.md) |
 
 Security issue? [Report it privately](https://github.com/umbertotechnopreneur/PromptMeUp/security/advisories/new), following the [security policy](SECURITY.md).
