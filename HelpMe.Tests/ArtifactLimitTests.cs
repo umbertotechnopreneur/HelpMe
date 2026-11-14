@@ -112,7 +112,8 @@ public sealed class ArtifactLimitTests
         var store = new PlanStore(fixture.Paths, new SensitiveDataRedactor(), text);
         var smallStore = new PlanStore(fixture.Paths, new SensitiveDataRedactor(), text, new ArtifactLimits(maxPlanBytes: ArtifactLimits.Mebibyte));
         var plan = new ExecutionPlan(1, Guid.NewGuid().ToString("N"), "Synthetic goal", Path.GetTempPath(),
-            [new PlanStep("Inspect", "Get-Date", "Get-Date", new string('é', 200_000), PlanStepStatus.Completed)]);
+            [new PlanStep("Inspect", "Get-Date", "Get-Date", new string('é', 200_000), PlanStepStatus.Completed)])
+        { Shell = CommandShell.PowerShell };
         await store.SaveAsync(plan, default);
         var path = Path.Combine(fixture.Paths.DataDirectory, "plans", plan.Id + ".json");
         Assert.True(new FileInfo(path).Length > ArtifactLimits.Mebibyte);

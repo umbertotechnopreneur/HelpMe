@@ -21,25 +21,49 @@
 set -eu
 
 action="${1:-status}"
+if [ "$#" -gt 0 ]; then shift; fi
 case "$action" in
   install|remove|status) ;;
-  *) echo "Usage: ./hm-path.sh [install|remove|status] [--yes]" >&2; exit 2 ;;
+  *) echo "Usage: sh hm-path.sh [install|remove|status] [--executable /path/to/hm] [--yes]" >&2; exit 2 ;;
 esac
 
+executable=""
+confirmed=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --executable)
+      if [ "$#" -lt 2 ] || [ -n "$executable" ] || [ -z "$2" ]; then
+        echo "Supply --executable once, followed by the built hm path." >&2; exit 2
+      fi
+      executable=$2; shift 2 ;;
+    --yes) confirmed=true; shift ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repository_root=$(dirname -- "$script_dir")
-if [ -x "$script_dir/hm" ]; then
+repository_root=$(CDPATH= cd -- "$script_dir/../../.." && pwd)
+if [ -n "$executable" ]; then
+  case "$executable" in
+    /*) ;;
+    *) executable="$PWD/$executable" ;;
+  esac
+elif [ -x "$script_dir/hm" ]; then
   executable="$script_dir/hm"
-elif [ -x "$repository_root/HelpMe/bin/Release/net10.0/hm" ]; then
-  executable="$repository_root/HelpMe/bin/Release/net10.0/hm"
+elif [ -f "$repository_root/HelpMe/HelpMe.csproj" ] && [ -x "$repository_root/artifacts/build/bin/HelpMe/debug/hm" ]; then
+  executable="$repository_root/artifacts/build/bin/HelpMe/debug/hm"
 elif command -v hm >/dev/null 2>&1; then
   executable=$(command -v hm)
 else
-  echo "hm was not found. Publish or build HelpMe first." >&2
+  echo "hm was not found. Supply --executable /path/to/built/hm." >&2
   exit 1
 fi
 
-if [ "${2:-}" = "--yes" ]; then
+if [ ! -f "$executable" ] || [ ! -x "$executable" ]; then
+  echo "The selected hm executable is missing or not executable." >&2; exit 1
+fi
+
+if [ "$confirmed" = true ]; then
   exec "$executable" "--path=$action" --yes
 fi
 

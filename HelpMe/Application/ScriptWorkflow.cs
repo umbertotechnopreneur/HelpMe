@@ -155,7 +155,7 @@ public sealed class ScriptWorkflow(
         await using var session = await AuditSessionScope.StartAsync(
             audit, "script-validation", settings, new { language = ScriptLanguageCatalog.ToStorageValue(language) }, AuditSessionOutcome.Failed, cancellationToken).ConfigureAwait(false);
         var result = await commands.RunForResultAsync(
-            session.Id, languages.BuildValidationCommand(language, source), settings, cancellationToken, executionMode).ConfigureAwait(false);
+            session.Id, languages.BuildValidationCommand(language, source), settings with { CommandShell = CommandShell.PowerShell }, cancellationToken, executionMode).ConfigureAwait(false);
         session.Outcome = result switch
         {
             null => AuditSessionOutcome.Cancelled,
@@ -182,7 +182,7 @@ public sealed class ScriptWorkflow(
         var result = await commands.RunForResultAsync(
             session.Id,
             languages.BuildExecutionCommand(definition.Language, source),
-            settings,
+            settings with { CommandShell = CommandShell.PowerShell },
             cancellationToken,
             executionMode).ConfigureAwait(false);
         session.Outcome = result switch

@@ -545,7 +545,7 @@ public sealed class OpenAiService : IOpenAiService
             prompt,
             settings,
             language,
-            _runtimeContext.GetCurrent(settings.ScriptLanguage),
+            _runtimeContext.GetCurrent(settings.ScriptLanguage, CommandShellResolver.Require(settings.CommandShell, language)),
             _limits,
             guide,
             preferredNamePrompt);

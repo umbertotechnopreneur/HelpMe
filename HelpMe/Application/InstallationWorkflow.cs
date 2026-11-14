@@ -53,6 +53,11 @@ public sealed class InstallationWorkflow(
             shell.RenderError(text.Text("Path.UnixSeparator"));
             return 1;
         }
+        catch (UnsupportedPathShellException)
+        {
+            shell.RenderError(text.Text("Shell.PathUnavailable"));
+            return 1;
+        }
         var confirmed = pathView.PreviewAndConfirm(plan, options.Yes);
 
         if (action != PortablePathAction.Status && plan.RequiresChange && !(confirmed || options.Yes))

@@ -399,9 +399,11 @@ public sealed class TerminalViewTests
         Assert.Equal(command, copied);
     }
 
-    /// <summary>Verifies that the inline command menu consumes arrow and Enter keys without a live renderer.</summary>
-    [Fact]
-    public void ConversationMenu_AcceptsKeyboardChoice()
+    /// <summary>Consumes arrow and Enter keys even when a redirected Linux console reports no usable height.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(40)]
+    public void ConversationMenu_AcceptsKeyboardChoice(int? height)
     {
         var keys = new Queue<ConsoleKeyInfo>(
         [
@@ -425,6 +427,7 @@ public sealed class TerminalViewTests
         var console = TestProxy.Create<IAnsiConsole>((method, args) =>
             method.Name == "get_Input" ? input : method.Invoke(rendering, args));
 
+        if (height is { } knownHeight) rendering.Profile.Height = knownHeight;
         var selected = TerminalConversationPrompt.SelectInteractive(console, new LocalizationService(),
         [
             new TerminalMenuChoice<int>(0, "Stop"),

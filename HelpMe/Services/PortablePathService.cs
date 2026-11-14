@@ -24,6 +24,9 @@ namespace HelpMe.Services;
 /// <summary>Reports that the install directory would create multiple entries in the Unix PATH.</summary>
 internal sealed class AmbiguousUnixPathException() : InvalidOperationException("The install directory contains the Unix PATH separator.");
 
+/// <summary>Reports that PATH integration cannot select a profile from the calling shell.</summary>
+internal sealed class UnsupportedPathShellException() : InvalidOperationException("The calling shell has no supported PATH profile.");
+
 /// <summary>Plans and applies user-approved changes that expose the command on PATH.</summary>
 public interface IPortablePathService
 {
@@ -64,12 +67,14 @@ public sealed class PortablePathService : IPortablePathService
     {
         var executableDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(AppContext.BaseDirectory));
         ValidateInstallDirectory(action, executableDirectory);
-        var target = ResolvePersistenceTarget();
-        var isPresent = IsPersisted(executableDirectory, target);
+        var targets = ResolvePersistenceTargets();
+        var target = string.Join(", ", targets);
+        var presence = targets.Select(path => IsPersisted(executableDirectory, path)).ToArray();
+        var isPresent = presence.All(value => value);
         var requiresChange = action switch
         {
             PortablePathAction.Install => !isPresent,
-            PortablePathAction.Remove => isPresent,
+            PortablePathAction.Remove => presence.Any(value => value),
             _ => false
         };
         var preview = action switch
@@ -78,7 +83,8 @@ public sealed class PortablePathService : IPortablePathService
             PortablePathAction.Remove => $"Remove the HelpMe-managed entry '{executableDirectory}' from {target}.",
             _ => $"Inspect whether '{executableDirectory}' is persisted in {target}."
         };
-        return new PortablePathPlan(action, executableDirectory, target, preview, isPresent, requiresChange);
+        return new PortablePathPlan(action, executableDirectory, target, preview, isPresent, requiresChange)
+        { PersistenceTargets = targets };
     }
 
     /// <summary>Applies an already previewed PATH plan to user scope without installing or moving binaries.</summary>
@@ -98,11 +104,14 @@ public sealed class PortablePathService : IPortablePathService
         }
         else
         {
-            await ApplyUnixProfileAsync(plan, cancellationToken).ConfigureAwait(false);
+            foreach (var profile in TargetsFor(plan))
+            {
+                await ApplyUnixProfileAsync(plan with { PersistenceTarget = profile }, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         UpdateCurrentProcessPath(plan);
-        var isPresent = IsPersisted(plan.ExecutableDirectory, plan.PersistenceTarget);
+        var isPresent = TargetsFor(plan).All(path => IsPersisted(plan.ExecutableDirectory, path));
         _logger.LogInformation(
             "Portable PATH updated. Action={Action}, Target={Target}, Changed={Changed}, Present={Present}",
             plan.Action,
@@ -142,7 +151,7 @@ public sealed class PortablePathService : IPortablePathService
     }
 
     /// <summary>Maintains one clearly marked PATH block in the active Unix shell profile.</summary>
-    private static async Task ApplyUnixProfileAsync(PortablePathPlan plan, CancellationToken cancellationToken)
+    internal static async Task ApplyUnixProfileAsync(PortablePathPlan plan, CancellationToken cancellationToken)
     {
         var profile = plan.PersistenceTarget;
         var directory = Path.GetDirectoryName(profile);
@@ -154,20 +163,14 @@ public sealed class PortablePathService : IPortablePathService
         var current = File.Exists(profile)
             ? await File.ReadAllTextAsync(profile, cancellationToken).ConfigureAwait(false)
             : string.Empty;
-        var withoutManagedBlock = RemoveManagedBlock(current).TrimEnd();
+        var withoutManagedBlock = RemoveManagedBlock(current);
         var updated = withoutManagedBlock;
         if (plan.Action == PortablePathAction.Install)
         {
-            var shellLine = IsFishProfile(profile)
-                ? $"fish_add_path --global {QuoteForPosixShell(plan.ExecutableDirectory)}"
-                : $"export PATH={QuoteForPosixShell(plan.ExecutableDirectory)}:\"$PATH\"";
+            var shellLine = BuildUnixPathLine(profile, plan.ExecutableDirectory);
             updated = string.IsNullOrEmpty(withoutManagedBlock)
                 ? $"{MarkerStart}{Environment.NewLine}{shellLine}{Environment.NewLine}{MarkerEnd}{Environment.NewLine}"
-                : $"{withoutManagedBlock}{Environment.NewLine}{Environment.NewLine}{MarkerStart}{Environment.NewLine}{shellLine}{Environment.NewLine}{MarkerEnd}{Environment.NewLine}";
-        }
-        else if (!string.IsNullOrEmpty(updated))
-        {
-            updated += Environment.NewLine;
+                : $"{withoutManagedBlock}{(withoutManagedBlock.EndsWith('\n') ? string.Empty : Environment.NewLine)}{MarkerStart}{Environment.NewLine}{shellLine}{Environment.NewLine}{MarkerEnd}{Environment.NewLine}";
         }
 
         await File.WriteAllTextAsync(profile, updated, cancellationToken).ConfigureAwait(false);
@@ -212,16 +215,21 @@ public sealed class PortablePathService : IPortablePathService
         }
 
         var content = File.ReadAllText(target);
-        return content.Contains(MarkerStart, StringComparison.Ordinal)
-               && content.Contains(executableDirectory, StringComparison.Ordinal);
+        var start = content.IndexOf(MarkerStart, StringComparison.Ordinal);
+        var end = start < 0 ? -1 : content.IndexOf(MarkerEnd, start, StringComparison.Ordinal);
+        if (end <= start) return false;
+        var block = content[start..end];
+        return block.Contains(BuildUnixPathLine(target, executableDirectory), StringComparison.Ordinal)
+            || block.Contains($"export PATH={QuoteForPosixShell(executableDirectory)}:\"$PATH\"", StringComparison.Ordinal)
+            || block.Contains($"fish_add_path --global {QuoteForPosixShell(executableDirectory)}", StringComparison.Ordinal);
     }
 
     /// <summary>Returns the Windows user scope or a profile file appropriate for the current Unix shell.</summary>
-    private static string ResolvePersistenceTarget()
+    private static IReadOnlyList<string> ResolvePersistenceTargets()
     {
         if (OperatingSystem.IsWindows())
         {
-            return "Windows user PATH";
+            return ["Windows user PATH"];
         }
 
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -230,12 +238,48 @@ public sealed class PortablePathService : IPortablePathService
             throw new InvalidOperationException("The user profile directory could not be resolved.");
         }
 
-        var shell = Path.GetFileName(Environment.GetEnvironmentVariable("SHELL") ?? string.Empty);
-        return shell.Equals("zsh", StringComparison.OrdinalIgnoreCase)
-            ? Path.Combine(userProfile, ".zprofile")
-            : shell.Equals("fish", StringComparison.OrdinalIgnoreCase)
-                ? Path.Combine(userProfile, ".config", "fish", "config.fish")
-                : Path.Combine(userProfile, ".profile");
+        var shell = OperatingSystem.IsLinux() ? CommandShellResolver.CallingShellName
+            : Path.GetFileName(Environment.GetEnvironmentVariable("SHELL"));
+        return UnixPersistenceTargets(userProfile, shell,
+            Environment.GetEnvironmentVariable("XDG_CONFIG_HOME"), Environment.GetEnvironmentVariable("ZDOTDIR"));
+    }
+
+    /// <summary>Chooses explicit shell profiles, covering interactive and login shells without changing unrelated files.</summary>
+    internal static IReadOnlyList<string> UnixPersistenceTargets(string home, string? shell, string? configHome, string? zDotDir)
+    {
+        var config = AbsoluteDirectoryOrDefault(configHome, Path.Combine(home, ".config"));
+        var zsh = AbsoluteDirectoryOrDefault(zDotDir, home);
+        return shell switch
+        {
+            "bash" => [Path.Combine(home, ".bashrc"), new[] { ".bash_profile", ".bash_login", ".profile" }
+                .Select(name => Path.Combine(home, name)).FirstOrDefault(File.Exists) ?? Path.Combine(home, ".profile")],
+            "zsh" => [Path.Combine(zsh, ".zshrc"), Path.Combine(zsh, ".zprofile")],
+            "fish" => [Path.Combine(config, "fish", "config.fish")],
+            "pwsh" => [Path.Combine(config, "powershell", "profile.ps1")],
+            _ => throw new UnsupportedPathShellException()
+        };
+    }
+
+    /// <summary>Honors absolute shell configuration directories and rejects relative environment overrides.</summary>
+    private static string AbsoluteDirectoryOrDefault(string? value, string fallback) =>
+        !string.IsNullOrWhiteSpace(value) && Path.IsPathFullyQualified(value) ? Path.GetFullPath(value) : fallback;
+
+    /// <summary>Returns the exact profiles captured in the preview instead of detecting the shell again during writes.</summary>
+    private static IReadOnlyList<string> TargetsFor(PortablePathPlan plan) =>
+        plan.PersistenceTargets.Count > 0 ? plan.PersistenceTargets : [plan.PersistenceTarget];
+
+    /// <summary>Builds an idempotent PATH entry in the syntax of the selected profile.</summary>
+    private static string BuildUnixPathLine(string profile, string directory)
+    {
+        if (IsFishProfile(profile))
+            return $"fish_add_path --global '{directory.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal)}'";
+        if (profile.EndsWith(".ps1", StringComparison.Ordinal))
+        {
+            var literal = "'" + directory.Replace("'", "''", StringComparison.Ordinal) + "'";
+            return $"if ($env:PATH.Split([IO.Path]::PathSeparator) -cnotcontains {literal}) {{ $env:PATH = {literal} + [IO.Path]::PathSeparator + $env:PATH }}";
+        }
+        var quoted = QuoteForPosixShell(directory);
+        return $"case \":$PATH:\" in *:{quoted}:*) ;; *) export PATH={quoted}:\"$PATH\" ;; esac";
     }
 
     /// <summary>Removes only the block owned by HelpMe and leaves surrounding profile content untouched.</summary>

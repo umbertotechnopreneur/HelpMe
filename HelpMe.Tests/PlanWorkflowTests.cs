@@ -39,6 +39,18 @@ public sealed class PlanWorkflowTests : IDisposable
 
     #region Methods
 
+    /// <summary>Uses the plan's original interpreter even when resumed from a different session shell.</summary>
+    [Fact]
+    public async Task RunStepsAsync_ResumedPlan_PreservesShell()
+    {
+        var fixture = CreateFixture([Result("first", 0), Result("verify-first", 0)]);
+        var plan = Plan("first");
+        await fixture.Workflow.RunStepsAsync(plan, true,
+            AppSettings.Default with { CommandShell = CommandShell.Bash }, CancellationToken.None);
+        Assert.All(fixture.Commands.Shells, shell => Assert.Equal(CommandShell.PowerShell, shell));
+        Assert.Equal(2, fixture.Commands.Shells.Count);
+    }
+
     /// <summary>Stops after a failed action and never starts a later plan command.</summary>
     [Fact]
     public async Task RunStepsAsync_FailedAction_StopsBeforeLaterStep()
@@ -141,7 +153,7 @@ public sealed class PlanWorkflowTests : IDisposable
     public void Parse_ModelStatus_DoesNotGrantProgress()
     {
         var json = """{"steps":[{"label":"one","command":"Get-Location","verification":"Get-Location","expected":"path","status":"completed"}]}""";
-        Assert.Equal(PlanStepStatus.Pending, CreateStore().Parse(json, "inspect", _directory).Steps[0].Status);
+        Assert.Equal(PlanStepStatus.Pending, CreateStore().Parse(json, "inspect", _directory, CommandShell.PowerShell).Steps[0].Status);
     }
 
     /// <summary>Scopes resume IDs to generated compact GUIDs and forbids ambiguous goals.</summary>
@@ -205,7 +217,8 @@ public sealed class PlanWorkflowTests : IDisposable
 
     /// <summary>Builds a simple pending plan with one verification per action.</summary>
     private ExecutionPlan Plan(params string[] commands) => new(1, Guid.NewGuid().ToString("N"), "goal", Path.GetFullPath(_directory),
-        commands.Select((command, index) => new PlanStep($"Step {index + 1}", command, "verify-" + command, "present")).ToList());
+        commands.Select((command, index) => new PlanStep($"Step {index + 1}", command, "verify-" + command, "present")).ToList())
+    { Shell = CommandShell.PowerShell };
 
     /// <summary>Builds one harmless typed command result for deterministic workflow tests.</summary>
     private static CommandExecutionResult Result(string command, int exitCode) => new(command, exitCode, "", "", false, false, 1);
@@ -250,6 +263,7 @@ public sealed class PlanWorkflowTests : IDisposable
 
         public List<string> Seen { get; } = [];
         public List<CommandExecutionMode> Modes { get; } = [];
+        public List<CommandShell> Shells { get; } = [];
 
         #endregion
 
@@ -261,6 +275,7 @@ public sealed class PlanWorkflowTests : IDisposable
         {
             Seen.Add(command);
             Modes.Add(executionMode);
+            Shells.Add(settings.CommandShell);
             return Task.FromResult(_outcomes.Dequeue());
         }
 

@@ -38,9 +38,8 @@ $candidates = @(
     (Join-Path $PSScriptRoot 'hm'),
     (Join-Path $repositoryRoot 'scripts\hm.exe'),
     (Join-Path $repositoryRoot 'scripts\hm'),
-    (Join-Path $repositoryRoot 'HelpMe\bin\Release\net10.0-windows10.0.19041.0\hm.exe'),
-    (Join-Path $repositoryRoot 'HelpMe\bin\Release\net10.0\hm.exe'),
-    (Join-Path $repositoryRoot 'HelpMe\bin\Release\net10.0\hm')
+    (Join-Path $repositoryRoot 'artifacts/build/bin/HelpMe/debug/hm.exe'),
+    (Join-Path $repositoryRoot 'artifacts/build/bin/HelpMe/debug/hm')
 ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
 $executable = $candidates |
@@ -48,7 +47,7 @@ $executable = $candidates |
     Select-Object -First 1
 if (-not $executable) {
     $resolvedCommand = Get-Command hm -CommandType Application -ErrorAction SilentlyContinue
-    $executable = $resolvedCommand.Source
+    if ($resolvedCommand) { $executable = $resolvedCommand.Source }
 }
 
 if (-not $executable) {

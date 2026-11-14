@@ -49,7 +49,7 @@ public sealed class CommandRiskAssessmentTests
     [InlineData("Get-Date; & '/usr/bin/rm' --force '--recursive' ./sample", 95)]
     public void AssessLocally_MutatingOrUnrecognizedShape_NeverLow(string command, int minimumScore)
     {
-        var result = CommandRiskAssessmentService.AssessLocally(command, "en");
+        var result = CommandRiskAssessmentService.AssessLocally(command, "en", CommandShell.PowerShell);
 
         Assert.True(result.Score >= minimumScore);
         Assert.NotEqual(CommandRiskLevel.Low, result.Level);
@@ -63,13 +63,13 @@ public sealed class CommandRiskAssessmentTests
     [InlineData("Get-Help rm")]
     [InlineData("dotnet --info")]
     public void AssessLocally_CompleteInspectionShape_RemainsLow(string command) =>
-        Assert.Equal(CommandRiskLevel.Low, CommandRiskAssessmentService.AssessLocally(command, "en").Level);
+        Assert.Equal(CommandRiskLevel.Low, CommandRiskAssessmentService.AssessLocally(command, "en", CommandShell.PowerShell).Level);
 
     /// <summary>Verifies that a familiar inspection command remains in the low local-risk band.</summary>
     [Fact]
     public void AssessLocally_ReadOnlyCommand_ReturnsLowRisk()
     {
-        var result = CommandRiskAssessmentService.AssessLocally("Get-Location", "en");
+        var result = CommandRiskAssessmentService.AssessLocally("Get-Location", "en", CommandShell.PowerShell);
 
         Assert.Equal(15, result.Score);
         Assert.Equal(CommandRiskLevel.Low, result.Level);
@@ -79,7 +79,7 @@ public sealed class CommandRiskAssessmentTests
     [Fact]
     public void AssessLocally_RecursiveForcedDelete_ReturnsCriticalRisk()
     {
-        var result = CommandRiskAssessmentService.AssessLocally("Remove-Item C:\\data -Recurse -Force", "en");
+        var result = CommandRiskAssessmentService.AssessLocally("Remove-Item C:\\data -Recurse -Force", "en", CommandShell.PowerShell);
 
         Assert.Equal(95, result.Score);
         Assert.Equal(CommandRiskLevel.Critical, result.Level);
@@ -89,7 +89,7 @@ public sealed class CommandRiskAssessmentTests
     [Fact]
     public void AssessLocally_RunAsElevation_ReturnsHighRisk()
     {
-        var result = CommandRiskAssessmentService.AssessLocally("Start-Process pwsh -Verb RunAs", "en");
+        var result = CommandRiskAssessmentService.AssessLocally("Start-Process pwsh -Verb RunAs", "en", CommandShell.PowerShell);
 
         Assert.True(result.Score >= 75);
         Assert.Equal(CommandRiskLevel.High, result.Level);

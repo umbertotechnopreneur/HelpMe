@@ -202,7 +202,7 @@ public sealed class SqliteDatabaseService : IDatabaseService
                    prompt_caching_enabled, max_conversation_turns, max_message_characters,
                    max_context_percent, max_command_output_characters, command_timeout_seconds,
                    endpoint, api_key_variable, admin_key_variable, updated_unix, context_token_budget, theme, preferred_name, direct_mode_enabled,
-                   show_session_summary_during_work, script_language
+                   show_session_summary_during_work, script_language, command_shell
             FROM app_settings
             WHERE id = 1;
             """;
@@ -238,7 +238,8 @@ public sealed class SqliteDatabaseService : IDatabaseService
             PreferredName = PreferredNamePolicy.Normalize(reader.GetString(21), _redactor),
             DirectModeEnabled = reader.GetInt32(22) == 1,
             ShowSessionSummaryDuringWork = reader.GetInt32(23) == 1,
-            ScriptLanguage = ScriptLanguageCatalog.ParseStorageValue(reader.GetString(24))
+            ScriptLanguage = ScriptLanguageCatalog.ParseStorageValue(reader.GetString(24)),
+            PreferredCommandShell = CommandShellResolver.Parse(reader.GetString(25))
         };
         var normalizedPreamble = _promptProtection.Protect(settings.CustomInstruction).SanitizedText;
         var safePreamble = _redactor.Redact(normalizedPreamble);
@@ -283,6 +284,7 @@ public sealed class SqliteDatabaseService : IDatabaseService
                     direct_mode_enabled = $directModeEnabled,
                     show_session_summary_during_work = $showSessionSummaryDuringWork,
                     script_language = $scriptLanguage,
+                    command_shell = $commandShell,
                     prompt_caching_enabled = $promptCachingEnabled,
                     max_conversation_turns = $maxConversationTurns,
                     max_message_characters = $maxMessageCharacters,
@@ -310,6 +312,7 @@ public sealed class SqliteDatabaseService : IDatabaseService
             command.Parameters.AddWithValue("$directModeEnabled", settings.DirectModeEnabled ? 1 : 0);
             command.Parameters.AddWithValue("$showSessionSummaryDuringWork", settings.ShowSessionSummaryDuringWork ? 1 : 0);
             command.Parameters.AddWithValue("$scriptLanguage", ScriptLanguageCatalog.ToStorageValue(settings.ScriptLanguage));
+            command.Parameters.AddWithValue("$commandShell", CommandShellResolver.ToStorageValue(settings.PreferredCommandShell));
             command.Parameters.AddWithValue("$promptCachingEnabled", settings.PromptCachingEnabled ? 1 : 0);
             command.Parameters.AddWithValue("$maxConversationTurns", settings.MaxConversationTurns);
             command.Parameters.AddWithValue("$maxMessageCharacters", settings.MaxMessageCharacters);
@@ -835,6 +838,10 @@ public sealed class SqliteDatabaseService : IDatabaseService
                 await EnsureScriptLanguageColumnAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
             }
             await EnsureGlobalSkillsSettingsScopeAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            if (currentVersion < 9)
+            {
+                await EnsureCommandShellColumnAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+            }
             await EnsureLegacySkillsSettingsAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
             await EnsureDefaultSettingsAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
             if (currentVersion != SqliteSchema.Version)
@@ -955,6 +962,20 @@ public sealed class SqliteDatabaseService : IDatabaseService
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             command.CommandText = "UPDATE app_settings SET script_language = $scriptLanguage WHERE id = 1;";
             command.Parameters.AddWithValue("$scriptLanguage", DetectDefaultScriptLanguage());
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Adds the independent command-shell preference without replacing saved script language.</summary>
+    private static async Task EnsureCommandShellColumnAsync(
+        SqliteConnection connection, SqliteTransaction transaction, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('app_settings') WHERE name = 'command_shell';";
+        if (Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)) == 0)
+        {
+            command.CommandText = "ALTER TABLE app_settings ADD COLUMN command_shell TEXT NOT NULL DEFAULT 'auto' CHECK (command_shell IN ('auto', 'pwsh', 'bash'));";
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
     }
@@ -1134,6 +1155,7 @@ public sealed class SqliteDatabaseService : IDatabaseService
             || !protectedPreamble.IsSafe
             || !protectedPreamble.IsWithinWordLimit
             || !Enum.IsDefined<ScriptLanguage>(settings.ScriptLanguage)
+            || !Enum.IsDefined(settings.PreferredCommandShell)
             || settings.MaxConversationTurns is < 2 or > 50
             || settings.MaxMessageCharacters is < 500 or > 100_000
             || settings.MaxContextPercent is < 10 or > 95

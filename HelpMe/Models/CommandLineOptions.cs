@@ -71,7 +71,8 @@ public sealed record CommandLineOptions(
     string? PreviewAction = null,
     string? Prefix = null,
     string? Pattern = null,
-    bool ResetAll = false);
+    bool ResetAll = false,
+    CommandShell? Shell = null);
 
 /// <summary>Carries either valid invocation options or a parsing error.</summary>
 public sealed record CommandLineParseResult(CommandLineOptions? Options, string? Error)

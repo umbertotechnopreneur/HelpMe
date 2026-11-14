@@ -48,6 +48,9 @@ public sealed class CommandGuideService
         }
         else if (OperatingSystem.IsMacOS() || OperatingSystem.IsLinux())
         {
+            if (OperatingSystem.IsLinux() && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DISPLAY"))
+                && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")))
+                throw new InvalidOperationException("A graphical session is required to open the PDF.");
             start.FileName = OperatingSystem.IsMacOS() ? "open" : "xdg-open";
             start.UseShellExecute = false;
             start.ArgumentList.Add(DocumentPath);
@@ -63,6 +66,12 @@ public sealed class CommandGuideService
         if (!start.UseShellExecute && process is null)
         {
             throw new InvalidOperationException("The PDF viewer could not be started.");
+        }
+        if (OperatingSystem.IsLinux() && process is not null)
+        {
+            // Some readers keep xdg-open alive until the document closes. Never terminate that reader.
+            if (process.WaitForExit(1500) && process.ExitCode != 0)
+                throw new InvalidOperationException("No PDF reader could open the guide.");
         }
     }
 

@@ -71,6 +71,7 @@ public sealed class CommandLineParser : ICommandLineParser
         string? prefix = null;
         string? pattern = null;
         var resetAll = false;
+        CommandShell? shell = null;
         var commandWasSelected = false;
         var queryOptionWasSpecified = false;
         var queryParts = new List<string>();
@@ -80,6 +81,12 @@ public sealed class CommandLineParser : ICommandLineParser
             var argument = args[index];
             switch (argument.ToLowerInvariant())
             {
+                case "--shell":
+                    if (shell is not null || !TryReadValue(args, ref index, argument, out var shellName, out _))
+                        return Failure("Shell.Usage");
+                    try { shell = CommandShellResolver.Parse(shellName!); }
+                    catch (ArgumentException) { return Failure("Shell.Usage"); }
+                    break;
                 case "--direct":
                     if (command == AppCommand.Direct)
                     {
@@ -342,6 +349,13 @@ public sealed class CommandLineParser : ICommandLineParser
                     dryRun = true;
                     break;
                 default:
+                    if (argument.StartsWith("--shell=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (shell is not null) return Failure("Shell.Usage");
+                        try { shell = CommandShellResolver.Parse(argument[8..]); }
+                        catch (ArgumentException) { return Failure("Shell.Usage"); }
+                        break;
+                    }
                     if (argument.StartsWith("--query=", StringComparison.OrdinalIgnoreCase))
                     {
                         if (queryOptionWasSpecified)
@@ -466,7 +480,7 @@ public sealed class CommandLineParser : ICommandLineParser
         }
 
         return new CommandLineParseResult(
-            new CommandLineOptions(command, query, language, noAnimation, noEmoji, yes, dryRun, pathAction, inputFile, outputFile, resumeId, previewAction, prefix, pattern, resetAll),
+            new CommandLineOptions(command, query, language, noAnimation, noEmoji, yes, dryRun, pathAction, inputFile, outputFile, resumeId, previewAction, prefix, pattern, resetAll, shell),
             null);
     }
 

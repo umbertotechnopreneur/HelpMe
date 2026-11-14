@@ -54,6 +54,7 @@ to a file, this follow-up menu doesn't open.
 | `--forget <id or description>` | `/forget <id or description>` | Finds a saved note and asks before deleting it. Descriptions may use AI to find matches. |
 | `--memories` | — | Opens the local memory manager to view, create, edit, or delete saved notes. |
 | `--direct <request>` | — | Forces direct execution for this session: risk review, five-second countdown, execution, and result analysis. Enabled by default; can be disabled in setup. |
+| `--shell <auto\|pwsh\|bash>` | `--shell=<value>` | Overrides the saved command shell for this invocation, including an explicit Auto override. |
 | `--diagnose [text]` | `--file <log>` or stdin | Explains an error or log excerpt and suggests what to check next. |
 | `--script <request>` | `--file <source>`, `--output <new-script>` | Creates or revises a script in your selected language for you to review, save, validate, or run once from a temporary file. |
 | `--plan <goal>` | `--plan --resume <id>` | Breaks a task into steps you can approve, check, and resume. |
@@ -106,6 +107,37 @@ and code; `--no-emoji` uses plain text. See [terminal themes](TERMINAL_THEMES.md
 to pick colors or edit a theme file.
 
 `hm --where` shows where your running copy lives. To switch to that folder, it gives you a `Set-Location -LiteralPath '...'` command on Windows, or `cd '...'` on Unix, to run yourself. An app can't change the folder of the shell that launched it. You can also open the folder in your file manager after reviewing and confirming that action.
+
+## Choose your command shell
+
+Open `hm --setup`, choose **Commands**, and set **Command shell** to Auto, PowerShell, or Bash. This choice is saved globally and is independent of the language used to generate scripts. Bash execution is available on Linux and macOS; Windows offers Auto and PowerShell.
+
+```bash
+hm --shell bash "Show the current Git status"
+hm --shell pwsh "Show the current Git status"
+hm --shell auto --chat
+```
+
+An explicit `--shell` value wins for that invocation without overwriting Setup. Auto detects Bash or PowerShell from the Linux calling processes; it does not use the terminal emulator name or assume that `$SHELL` is your current shell. If detection is ambiguous, select Bash or PowerShell explicitly. Auto defaults to PowerShell on Windows and macOS. The exact interpreter appears in each command preview and is retained in saved plans. Recreate older plans that lack shell metadata.
+
+Only a small set of literal Bash inspection commands can use the direct countdown. Expansion, redirection, compound commands, and unrecognized programs receive a high local score and need manual confirmation with direct mode disabled. Generated wrappers for script execution, syntax validation, file previews, and skill actions still require PowerShell 7, even when conversational commands use Bash.
+
+## Linux PATH, clipboard, and PDF integration
+
+Run `hm --path status`, then `hm --path install` to review the exact files before changing them. Run from the shell whose profile you want to configure. Bash uses `.bashrc` plus the first existing login profile (`.bash_profile`, `.bash_login`, or `.profile`); Zsh uses `.zshrc` and `.zprofile` under `ZDOTDIR` when set; Fish and PowerShell use their files under `XDG_CONFIG_HOME` (default `~/.config`). PowerShell uses `powershell/profile.ps1`. Unknown callers are rejected. Reopen that shell to load its profile; no logout is needed. `--path remove` removes only HelpMe's marked blocks in those profiles. Repeat in each shell you configured. Profiles loaded with `--noprofile` or `-NoProfile` do not apply these changes.
+
+From the source tree, invoke the helper with `sh` and pass the exact built executable:
+
+```bash
+sh scripts/Common/commands/hm-path.sh status --executable /path/to/built/hm
+sh scripts/Common/commands/hm-path.sh install --executable /path/to/built/hm
+```
+
+The helper can also find an adjacent `hm`, the standard Debug output at `artifacts/build/bin/HelpMe/debug/hm`, or `hm` already on PATH. It does not build or move the application. See the [single repository command entry point](../scripts/README.md) for building and Debian package installation.
+
+The copy action uses optional `wl-copy` on Wayland, or `xclip` then `xsel` on X11. Missing tools or a missing graphical session leave the command visible for manual copying. Command text goes through standard input, without shell interpolation. Nothing is installed automatically.
+
+Opening the bundled PDF on Linux requires a graphical session, `xdg-open`, and a configured PDF reader. If unavailable, HelpMe shows the file path so you can open or copy it yourself. The command reference remains available in terminal help.
 
 ## Browse the command guide
 
@@ -301,7 +333,7 @@ stops the remaining operations.
 ## Follow a resumable plan
 
 Use `hm --plan "Build, test, and package this project"`. HelpMe creates one
-to ten ordered PowerShell steps, saves their pending state locally, and shows
+to ten ordered steps in the selected command shell, saves their pending state locally, and shows
 `hm --plan --resume <id>`. The plan must be resumed from its original directory.
 
 Starting a plan doesn't approve its steps. You review and approve each action

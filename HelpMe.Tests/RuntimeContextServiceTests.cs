@@ -96,7 +96,7 @@ public sealed class RuntimeContextServiceTests
     [Fact]
     public void GetCurrent_SelectedInterpreter_DoesNotExposeExecutablePath()
     {
-        var context = new RuntimeContextService(new ScriptLanguageCatalog(), new SensitiveDataRedactor()).GetCurrent(ScriptLanguage.PowerShell);
+        var context = new RuntimeContextService(new ScriptLanguageCatalog(), new SensitiveDataRedactor()).GetCurrent(ScriptLanguage.PowerShell, CommandShell.PowerShell);
 
         var promptBlock = context.ToPromptBlock("en", includeWorkingDirectory: true);
 

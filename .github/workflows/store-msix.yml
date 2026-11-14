@@ -30,6 +30,10 @@ on:
 permissions:
   contents: read
 
+env:
+  UseArtifactsOutput: 'true'
+  ArtifactsPath: ${{ github.workspace }}/artifacts/build
+
 concurrency:
   group: helpme-store-msix
   cancel-in-progress: false
@@ -147,6 +151,11 @@ jobs:
             dotnet clean ./HelpMe/HelpMe.csproj --configuration Release --runtime "win-$architecture" "-p:PublishDir=$publishPath"
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
-          dotnet clean ./HelpMe.slnx --configuration Release
+          pwsh -NoProfile -File ./scripts/HelpMe.ps1 -Command clean -Configuration Release
           if ($LASTEXITCODE -ne 0) { $failed = $true }
+          . ./scripts/Common/artifacts.ps1
+          Remove-HelpMeArtifactPath "artifacts/store/$env:PACKAGE_VERSION/publish"
+          foreach ($architecture in @('x64', 'arm64')) {
+            Remove-HelpMeArtifactPath "artifacts/store/$env:PACKAGE_VERSION/$architecture/payload"
+          }
           if ($failed) { throw 'Store build cleanup failed.' }

@@ -161,6 +161,7 @@ public sealed class HelpMeApplication : IHelpMeApplication
         await _database.InitializeAsync(cancellationToken).ConfigureAwait(false);
         var promptCount = (await _prompts.ListAsync(cancellationToken).ConfigureAwait(false)).Count;
         var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
+        settings = CommandShellResolver.ForInvocation(settings, options.Shell);
 
         if (_themes is not null)
         {
@@ -298,7 +299,7 @@ public sealed class HelpMeApplication : IHelpMeApplication
 
             var current = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
             _text.SetLanguage(options.Language ?? current.Language);
-            current = current with { Language = _text.Language };
+            current = CommandShellResolver.ForInvocation(current with { Language = _text.Language }, options.Shell);
 
             if (_themes is not null)
             {

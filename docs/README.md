@@ -20,7 +20,10 @@ The [printable manual](PromptMeUp-CLI-Manual.pdf) is an older edition under the 
 
 - [Contributing](../CONTRIBUTING.md) covers the local build and contribution process.
 - [Architecture](ARCHITECTURE.md) explains where the code lives and how questions, data, and command approvals move through it.
-- [Releasing](RELEASING.md) explains how to build portable packages and prepare a GitHub release.
-- [Windows packaging](WINDOWS_PACKAGING.md) covers optional MSI, MSIX, and WinGet packages.
+- [Build and packaging commands](../scripts/README.md) covers local development, Linux Debian packages, Windows MSIX, CI, release drafts, and artifact cleanup in one place.
+
+## Platforms
+
+I target Windows and Linux on x64 and ARM64. Windows distribution uses MSIX; Linux packaging uses Debian packages. macOS builds and packages are outside the current scope. Linux compatibility depends on the distribution and its native libraries; I do not provide commercial Linux support.
 
 Use [`document.template.md`](../document.template.md) for public technical documentation. Keep future product proposals in the owner's private MeUp notes.

@@ -223,6 +223,16 @@ public sealed class FullscreenSetupView : ISetupView
             new("Settings.Context", context) { HelpKey = "Settings.ContextHelp" },
             new("Settings.Commands",
             [
+                new("command-shell", "Shell.Setting", () => CommandShellResolver.ToStorageValue(draft.Settings.PreferredCommandShell),
+                    value => draft.Settings = draft.Settings with { PreferredCommandShell = CommandShellResolver.Parse(value) })
+                {
+                    Choices = () => (OperatingSystem.IsWindows()
+                            ? new[] { CommandShell.Auto, CommandShell.PowerShell }
+                            : new[] { CommandShell.Auto, CommandShell.PowerShell, CommandShell.Bash })
+                        .Select(shell => new FormChoice(CommandShellResolver.ToStorageValue(shell), _text.Text("Shell." + shell)))
+                        .ToArray(),
+                    HelpKey = "Shell.SettingHelp"
+                },
                 new("script-language", "Setup.ScriptLanguage", () => _scriptLanguages.Get(draft.Settings.ScriptLanguage).StorageValue,
                     value => draft.Settings = draft.Settings with { ScriptLanguage = ScriptLanguageCatalog.ParseStorageValue(value) })
                 {

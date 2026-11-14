@@ -136,7 +136,7 @@ public sealed class ReviewImprovementTests
     {
         foreach (var command in new[] { "Get-Date", "Remove-Item sample -Recurse", "Set-Content sample value", "curl example.invalid", "unknown-command" })
         {
-            var result = CommandRiskAssessmentService.AssessLocally(command, language);
+            var result = CommandRiskAssessmentService.AssessLocally(command, language, CommandShell.PowerShell);
             Assert.Contains(heading, result.DescriptionMarkdown, StringComparison.Ordinal);
             Assert.DoesNotContain("{0}", result.DescriptionMarkdown, StringComparison.Ordinal);
             if (language != "en")

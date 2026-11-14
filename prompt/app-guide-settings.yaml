@@ -17,7 +17,7 @@
 # VBWR E
 
 id: app-guide-settings
-version: 5
+version: 6
 description: Local settings navigation, saving, preferred name, and personal preferences.
 tags:
   - app-guide
@@ -28,6 +28,8 @@ metadata:
   source: packaged-local-guide
 texts:
   en: |-
+    Save Command shell under Commands in hm --setup: Auto, PowerShell, or Bash. This global preference is separate from script language. --shell auto|pwsh|bash overrides it for one invocation without changing the saved value. See the commands chapter for detection, approval, and wrapper limitations.
+
     Direct mode is on by default for questions and chat, and can be disabled under AI in `hm --setup`. `hm --direct "request"` forces it for one session.
 
     Settings (`hm --setup`) has Skills and Memory fields in the same form, plus Saved memories and read-only Privacy. Read each skill and any collection or deletion notice before confirming. Save applies the draft, including Skills and Memory; Cancel discards it. The shared project switch does not start message collection. Saved memories opens a separate note manager: changes saved there are immediate and Settings Cancel does not undo them. CLI and slash commands remain available, including `--learning`.
@@ -36,6 +38,8 @@ texts:
 
     From a live terminal, `hm --setup` opens Settings at General, `hm --ai-setup` or `hm --ai-settings` at AI, and `hm --theme` at Theme. Use the sidebar to move between sections. General contains language; AI contains model, reasoning, output detail, optional advisory command review, and caching. Conversation contains chat limits. Commands contains execution timeout and captured-output limits. Credentials contains key replacement and the optional connection check. Personalization contains personal instructions and location preference. Save applies the whole draft; Cancel keeps existing settings. Saving alone makes no AI call; a connection check runs only when enabled. Give these as manual steps: leave chat with `/exit`, run the chosen settings command in the terminal, edit, and save. Never offer interactive settings commands in the response's commands array or through `/run`. Do not claim to inspect or change settings yourself.
   it: |-
+    Salva Shell dei comandi in Comandi di hm --setup: Automatica, PowerShell o Bash. È una preferenza globale separata dal linguaggio script. --shell auto|pwsh|bash prevale per un avvio senza cambiarla. Il capitolo commands spiega rilevamento, approvazione e limiti dei comandi generati.
+
     La modalità direct è attiva di default per domande e chat; puoi disattivarla in AI dentro `hm --setup`. `hm --direct "richiesta"` la forza per una sessione.
 
     Le Impostazioni (`hm --setup`) contengono i campi Skills e Memoria nello stesso modulo, oltre a Ricordi salvati e Privacy in sola lettura. Leggi ogni skill e gli avvisi di raccolta o cancellazione prima di confermare. Salva applica la bozza, comprese Skills e Memoria; Annulla la scarta. L’interruttore del progetto non avvia la raccolta dei messaggi. Ricordi salvati apre un gestore separato: le modifiche salvate lì sono immediate e Annulla nelle impostazioni non le annulla. Restano disponibili i comandi CLI e con /, incluso `--learning`.
@@ -44,6 +48,8 @@ texts:
 
     Da un terminale interattivo, `hm --setup` apre le Impostazioni su Generale, `hm --ai-setup` o `hm --ai-settings` su AI e `hm --theme` sul tema. Usa la barra laterale per cambiare sezione. Generale contiene la lingua; AI contiene modello, ragionamento, dettaglio delle risposte, revisione AI facoltativa dei comandi e cache. Conversazione contiene i limiti della chat. Comandi contiene durata massima e limite dell'output acquisito. Credenziali contiene sostituzione delle chiavi e verifica facoltativa della connessione. Personalizzazione contiene istruzioni personali e preferenza di posizione. Salva applica tutte le modifiche; Annulla conserva le impostazioni esistenti. Il solo salvataggio non chiama l'AI; la verifica della connessione parte solo se abilitata. Fornisci passaggi manuali: esci dalla chat con `/exit`, esegui il comando delle impostazioni nel terminale, modifica e salva. Non proporre comandi di impostazioni interattive nell'array commands o tramite `/run`. Non affermare di consultare o cambiare direttamente le impostazioni.
   fr: |-
+    Enregistrez Shell des commandes sous Commandes dans hm --setup : Automatique, PowerShell ou Bash. Ce choix global est distinct du langage des scripts. --shell auto|pwsh|bash le remplace pour un lancement sans le modifier. Le chapitre commands explique détection, confirmation et limites des commandes générées.
+
     Le mode direct est actif par défaut pour les questions et le chat ; désactivez-le dans AI avec `hm --setup`. `hm --direct "demande"` le force pour une session.
 
     Les réglages (`hm --setup`) contiennent les champs Compétences et Mémoire dans le même formulaire, plus Souvenirs enregistrés et Confidentialité en lecture seule. Lisez chaque compétence et les avis de collecte ou suppression avant de confirmer. Enregistrer applique le brouillon, y compris Compétences et Mémoire ; Annuler l’abandonne. L’interrupteur du projet ne lance pas la collecte des messages. Souvenirs enregistrés ouvre un gestionnaire séparé : ses changements enregistrés sont immédiats et Annuler les réglages ne les annule pas. Les commandes CLI et / restent disponibles, dont `--learning`.
@@ -52,6 +58,8 @@ texts:
 
     Dans un terminal interactif, `hm --setup` ouvre les réglages généraux, `hm --ai-setup` ou `hm --ai-settings` la section IA, et `hm --theme` le thème. La barre latérale permet de changer de section. Général contient la langue ; IA contient modèle, raisonnement, détail des réponses, avis IA facultatif sur les commandes et cache. Conversation contient les limites du chat. Commandes contient délai d'exécution et limite de sortie capturée. Identifiants contient remplacement des clés et test de connexion facultatif. Personnalisation contient instructions personnelles et préférence de localisation. Enregistrer applique toutes les modifications ; Annuler conserve les réglages existants. Enregistrer seul n'appelle pas l'IA ; le test de connexion ne se lance que s'il est activé. Donnez des étapes manuelles : quitter le chat avec `/exit`, lancer la commande de réglages dans le terminal, modifier puis enregistrer. Ne proposez jamais ces commandes interactives dans commands ni via `/run`. Ne prétendez pas consulter ou modifier vous-même les réglages.
   de: |-
+    Speichere Befehls-Shell unter Befehle in hm --setup: Automatisch, PowerShell oder Bash. Die globale Wahl ist unabhängig von der Skriptsprache. --shell auto|pwsh|bash überschreibt sie für einen Aufruf ohne Speicherung. Das Kapitel commands erklärt Erkennung, Freigabe und Grenzen generierter Befehle.
+
     Der Direktmodus ist für Fragen und Chat standardmäßig aktiv; unter AI in `hm --setup` ausschalten. `hm --direct "Anfrage"` aktiviert ihn für eine Sitzung.
 
     Einstellungen (`hm --setup`) enthalten Skills und Gedächtnis als Felder im selben Formular, dazu Gespeicherte Erinnerungen und schreibgeschützten Datenschutz. Lies Skills und Hinweise zur Erfassung oder Löschung vor dem Bestätigen. Speichern übernimmt den Entwurf einschließlich Skills und Gedächtnis; Abbrechen verwirft ihn. Der gemeinsame Projektschalter startet keine Nachrichtenerfassung. Gespeicherte Erinnerungen öffnet eine getrennte Notizverwaltung: Dort gespeicherte Änderungen gelten sofort und werden durch Abbrechen der Einstellungen nicht rückgängig gemacht. CLI- und /-Befehle einschließlich `--learning` bleiben verfügbar.
@@ -60,6 +68,8 @@ texts:
 
     Im interaktiven Terminal öffnet `hm --setup` die allgemeinen Einstellungen, `hm --ai-setup` oder `hm --ai-settings` den KI-Bereich und `hm --theme` das Design. Über die Seitenleiste wechselt man Bereiche. Allgemein enthält die Sprache; KI enthält Modell, Denkaufwand, Antwortdetail, optionale beratende Befehlsprüfung und Cache. Unterhaltung enthält Chatlimits. Befehle enthält Laufzeit und Ausgabelimit. Zugangsdaten enthält Schlüsselwechsel und optionalen Verbindungstest. Personalisierung enthält persönliche Anweisungen und Standortpräferenz. Speichern übernimmt den gesamten Entwurf; Abbrechen behält bisherige Werte. Speichern allein ruft keine KI auf; der Verbindungstest läuft nur, wenn aktiviert. Beschreibe manuelle Schritte: Chat mit `/exit` verlassen, Einstellungsbefehl im Terminal starten, ändern und speichern. Biete interaktive Einstellungsbefehle niemals im commands-Array oder über `/run` an. Behaupte nicht, die Einstellungen selbst zu lesen oder zu ändern.
   es: |-
+    Guarda Shell de comandos en Comandos de hm --setup: Automática, PowerShell o Bash. La preferencia global es independiente del lenguaje de scripts. --shell auto|pwsh|bash la reemplaza para un inicio sin cambiarla. El capítulo commands explica detección, aprobación y límites de comandos generados.
+
     El modo directo está activo por defecto para preguntas y chat; desactívalo en AI con `hm --setup`. `hm --direct "solicitud"` lo fuerza para una sesión.
 
     Configuración (`hm --setup`) contiene los campos Skills y Memoria en el mismo formulario, además de Recuerdos guardados y Privacidad de solo lectura. Lee cada skill y los avisos de recopilación o borrado antes de confirmar. Guardar aplica el borrador, incluidas Skills y Memoria; Cancelar lo descarta. El interruptor del proyecto no inicia la recopilación de mensajes. Recuerdos guardados abre un gestor separado: sus cambios guardados son inmediatos y Cancelar Configuración no los deshace. Los comandos CLI y / siguen disponibles, incluido `--learning`.
@@ -68,6 +78,8 @@ texts:
 
     Desde un terminal interactivo, `hm --setup` abre los ajustes generales, `hm --ai-setup` o `hm --ai-settings` la sección IA, y `hm --theme` el tema. La barra lateral permite cambiar de sección. General contiene el idioma; IA contiene modelo, razonamiento, detalle de respuesta, revisión orientativa opcional de comandos y caché. Conversación contiene los límites del chat. Comandos contiene tiempo de ejecución y límite de salida capturada. Credenciales contiene sustitución de claves y prueba de conexión opcional. Personalización contiene instrucciones personales y preferencia de ubicación. Guardar aplica todos los cambios; Cancelar conserva los ajustes anteriores. Guardar por sí solo no llama a la IA; la prueba solo se realiza si se activa. Da pasos manuales: salir del chat con `/exit`, ejecutar el comando de ajustes en el terminal, editar y guardar. Nunca propongas comandos de ajustes interactivos en commands ni mediante `/run`. No afirmes consultar o modificar los ajustes por tu cuenta.
   vi: |-
+    Lưu Shell chạy lệnh tại mục Lệnh trong hm --setup: Tự động, PowerShell hoặc Bash. Lựa chọn toàn cục này riêng với ngôn ngữ script. --shell auto|pwsh|bash ghi đè cho một lần chạy mà không lưu lại. Mục commands giải thích nhận diện, phê duyệt và giới hạn của lệnh tạo.
+
     Chế độ direct mặc định bật cho câu hỏi và chat; tắt trong AI tại `hm --setup`. `hm --direct "yêu cầu"` bật cho một phiên.
 
     Cài đặt (`hm --setup`) có các trường Kỹ năng và Bộ nhớ trong cùng biểu mẫu, cùng Ghi nhớ đã lưu và Quyền riêng tư chỉ đọc. Đọc từng kỹ năng và thông báo thu thập hoặc xóa trước khi xác nhận. Lưu áp dụng bản nháp, gồm Kỹ năng và Bộ nhớ; Hủy bỏ qua bản nháp. Công tắc chung của dự án không bắt đầu thu thập tin nhắn. Ghi nhớ đã lưu mở trình quản lý riêng: thay đổi đã lưu tại đó có hiệu lực ngay và Hủy Cài đặt không hoàn tác chúng. Các lệnh CLI và / vẫn dùng được, gồm `--learning`.

@@ -41,4 +41,8 @@ public sealed record ExecutionPlan(
     string Id,
     string Goal,
     string Directory,
-    List<PlanStep> Steps);
+    List<PlanStep> Steps)
+{
+    [System.Text.Json.Serialization.JsonRequired]
+    public CommandShell Shell { get; init; }
+}

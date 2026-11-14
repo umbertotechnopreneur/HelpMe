@@ -33,7 +33,10 @@ public sealed record PortablePathPlan(
     string PersistenceTarget,
     string Preview,
     bool IsPresent,
-    bool RequiresChange);
+    bool RequiresChange)
+{
+    public IReadOnlyList<string> PersistenceTargets { get; init; } = [];
+}
 
 /// <summary>Reports the result and user guidance for a command-path operation.</summary>
 public sealed record PortablePathResult(

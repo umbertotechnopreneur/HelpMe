@@ -123,6 +123,10 @@ public sealed class HelpView(
                     Example = $"hm --query \"{text.Text("Help.ExamplePrompt")}\"",
                     Arguments = [new($"\"{text.Text("Help.ExamplePrompt")}\"", text.Text("Help.Argument.Question"))]
                 },
+                new("--shell auto|pwsh|bash", text.Text("Shell.Help"))
+                {
+                    Example = "hm --shell bash \"git status\""
+                },
                 new("--direct <request>", text.Text("Direct.Help"))
                 {
                     Example = "hm --direct \"git status\"",

@@ -43,6 +43,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\bundled-skills.ps1')
 $bundledSkillFiles = @(Get-BundledSkillFiles)
 if (-not $IsWindows) { throw 'MSIX packaging and certificate-store signing require Windows.' }
+if ($Channel -eq 'Store' -and $env:GITHUB_ACTIONS -ne 'true') { throw 'Store MSIX packages are built only in GitHub Actions.' }
 if ($Unsigned -and -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
     throw 'Unsigned packaging cannot use CertificateThumbprint.'
 }
