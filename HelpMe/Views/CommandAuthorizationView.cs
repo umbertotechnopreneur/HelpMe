@@ -162,10 +162,14 @@ public sealed class CommandAuthorizationView : ICommandAuthorizationView
     {
         var choice = _decisionOverride?.Invoke() ?? TerminalConversationPrompt.Select(_console, _text,
         [
-            new TerminalMenuChoice<CommandDecision>(CommandDecision.Cancel, _text.Text("Common.No"), Tone: TerminalMenuTone.Muted),
-            new TerminalMenuChoice<CommandDecision>(CommandDecision.Execute, _text.Text("Common.Yes"), Tone: TerminalMenuTone.Caution),
-            new TerminalMenuChoice<CommandDecision>(CommandDecision.Copy, _text.Text("Command.Copy")),
-            new TerminalMenuChoice<CommandDecision>(CommandDecision.CopyAndExit, _text.Text("Command.CopyAndExit"))
+            new TerminalMenuChoice<CommandDecision>(CommandDecision.Cancel,
+                TerminalTheme.IconPrefix(_shell.Options, "❌", "-") + _text.Text("Common.No"), Tone: TerminalMenuTone.Muted),
+            new TerminalMenuChoice<CommandDecision>(CommandDecision.Execute,
+                TerminalTheme.IconPrefix(_shell.Options, "✅", "+") + _text.Text("Common.Yes"), Tone: TerminalMenuTone.Caution),
+            new TerminalMenuChoice<CommandDecision>(CommandDecision.Copy,
+                TerminalTheme.IconPrefix(_shell.Options, "📋", "+") + _text.Text("Command.Copy"), Tone: TerminalMenuTone.Positive),
+            new TerminalMenuChoice<CommandDecision>(CommandDecision.CopyAndExit,
+                TerminalTheme.IconPrefix(_shell.Options, "🚪", ">") + _text.Text("Command.CopyAndExit"), Tone: TerminalMenuTone.Positive)
         ], _text.Text("Command.Authorize"), echoSelection: false);
 
         if (choice is CommandDecision.Copy or CommandDecision.CopyAndExit)
